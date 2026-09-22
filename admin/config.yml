@@ -1,0 +1,51 @@
+backend:
+  name: git-gateway
+  branch: main
+
+publish_mode: simple
+media_folder: "assets"
+public_folder: "assets"
+
+collections:
+  - name: "settings"
+    label: "Configurações Gerais"
+    files:
+      - name: "settings"
+        label: "Cores, Logo, WhatsApp, Banners e Vídeo"
+        file: "content/settings.json"
+        fields:
+          - { label: "Cor Principal (Botões e Detalhes)", name: "brand_color", widget: "color" }
+          - { label: "Número do WhatsApp (só números, com DDI+DDD, ex: 5567991941891)", name: "whatsapp_number", widget: "string" }
+          - { label: "Logo", name: "logo", widget: "image" }
+          - { label: "Banner da Home", name: "banner_home", widget: "image" }
+          - { label: "Banner do Portfólio", name: "banner_portfolio", widget: "image" }
+          - { label: "Vídeo Institucional (Home)", name: "video_institucional", widget: "file" }
+
+  - name: "portfolio"
+    label: "Portfólio"
+    files:
+      - name: "projects"
+        label: "Projetos"
+        file: "content/projects.json"
+        fields:
+          - name: "items"
+            label: "Projetos"
+            widget: "list"
+            summary: "{{title}}"
+            fields:
+              - { label: "Título", name: "title", widget: "string" }
+              - { label: "Selo (ex: EM BREVE, NOVO, FINALIZADO)", name: "tag", widget: "string", required: false }
+              - { label: "Foto de Capa", name: "image", widget: "image", required: false }
+              - { label: "Vídeo (opcional — se preenchido, aparece no lugar da foto)", name: "video", widget: "file", required: false }
+
+      - name: "clients"
+        label: "Clientes Atendidos"
+        file: "content/clients.json"
+        fields:
+          - name: "items"
+            label: "Clientes"
+            widget: "list"
+            summary: "{{name}}"
+            fields:
+              - { label: "Nome do Cliente", name: "name", widget: "string" }
+              - { label: "Logo do Cliente", name: "logo", widget: "image" }

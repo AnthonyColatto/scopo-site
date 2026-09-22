@@ -1,0 +1,94 @@
+SCOPO — GUIA DA ÁREA DE ADMIN
+=====================================
+
+Agora o site tem uma área de admin de verdade: uma página com login onde
+você troca logo, cor dos botões, banners, vídeo, fotos e vídeos dos projetos
+e os clientes atendidos — tudo clicando, sem abrir nenhum arquivo de código.
+
+Só que, como o site não tem servidor próprio (ele é só HTML/CSS/JS, o que o
+deixa rápido e barato de hospedar), essa área de admin precisa de uma
+configuração inicial, feita UMA VEZ SÓ. Depois de configurado, você só usa
+normalmente, sempre pelo navegador, sem precisar mexer em zip nem em código
+nunca mais.
+
+Vou te guiar por essa configuração inicial abaixo. Se travar em algum passo,
+me manda um print aqui no chat que eu te ajudo a resolver.
+
+------------------------------------------------------------
+PASSO 1 — Criar conta no GitHub (grátis)
+------------------------------------------------------------
+O GitHub é onde o "código" do site vai morar de agora em diante — pense nele
+como uma pasta na nuvem que guarda as versões do site e permite que a área
+de admin salve as alterações que você fizer.
+
+  1. Acesse github.com e crie uma conta grátis.
+  2. Crie um repositório novo (botão "New repository"), pode chamar de
+     "scopo-site". Deixe como "Public" ou "Private", tanto faz.
+  3. Faça upload de TODOS os arquivos e pastas deste zip para dentro desse
+     repositório (o GitHub tem um botão "uploading an existing file" — você
+     pode arrastar a pasta inteira).
+
+------------------------------------------------------------
+PASSO 2 — Conectar esse repositório à Netlify
+------------------------------------------------------------
+Se seu site já está publicado na Netlify (do jeito "arrastar a pasta"),
+vamos trocar para o modo conectado ao GitHub, que é o que permite a área de
+admin salvar sozinha.
+
+  1. No painel da Netlify, vá em "Site configuration" > "Build & deploy" >
+     "Link repository" (ou crie um site novo com "Add new site" > "Import an
+     existing project" > escolha GitHub > selecione o repositório
+     "scopo-site").
+  2. Como o site não precisa de "build" (não tem etapa de compilação), pode
+     deixar o campo de comando de build em branco e o "publish directory"
+     como a raiz ( . ou vazio).
+  3. Clique em publicar. A partir de agora, qualquer alteração salva pela
+     área de admin atualiza o site automaticamente em 1 a 2 minutos.
+
+------------------------------------------------------------
+PASSO 3 — Ativar Identity + Git Gateway (isso é o login da área de admin)
+------------------------------------------------------------
+  1. No painel da Netlify do seu site, vá em "Site configuration" >
+     "Identity" e clique em "Enable Identity".
+  2. Ainda em Identity, em "Registration", deixe como "Invite only" (assim
+     só você consegue criar login).
+  3. Vá em "Identity" > "Services" > "Git Gateway" e clique em "Enable Git
+     Gateway". Isso permite que a área de admin salve as mudanças no GitHub
+     por trás dos panos, sem você precisar saber nada de código.
+  4. Ainda em Identity, clique em "Invite users" e convide o seu próprio
+     e-mail. Você vai receber um e-mail da Netlify para criar sua senha.
+
+------------------------------------------------------------
+PASSO 4 — Usar a área de admin
+------------------------------------------------------------
+Depois disso tudo configurado (passos 1 a 3, feitos uma única vez), é só
+acessar:
+
+  https://SEUDOMINIO.com/admin
+
+Fazer login com o e-mail/senha que você criou, e você vai ver um painel com:
+
+  • "Configurações Gerais" — trocar a cor principal dos botões, a logo, o
+    número do WhatsApp, os dois banners e o vídeo institucional.
+  • "Portfólio" — editar os 20 projetos (título, selo, foto ou vídeo de
+    capa) e os 12 clientes atendidos (nome e logo), adicionar mais ou
+    remover, tudo pela lista.
+
+Cada alteração some clicando em "Publish" no canto superior, e em 1 a 2
+minutos já está no ar, sem precisar mexer em nada além do navegador.
+
+------------------------------------------------------------
+E SE EU NÃO QUISER CONFIGURAR ISSO AGORA?
+------------------------------------------------------------
+Sem problema — o site funciona normalmente do jeito antigo também: os
+arquivos de foto/vídeo continuam na pasta "assets" com os mesmos nomes de
+antes, e você pode trocá-los manualmente e reenviar o zip pra Netlify, ou só
+me pedir aqui no chat que eu edito e te devolvo o zip atualizado. A área de
+admin é um extra pra quando você quiser editar sozinho, direto pelo celular
+ou computador, sem depender de mim ou de arquivos.
+
+------------------------------------------------------------
+O SITE CONTINUA RESPONSIVO
+------------------------------------------------------------
+Ele se ajusta sozinho para celular, tablet e desktop — isso não muda com a
+área de admin.
