@@ -37,6 +37,15 @@ collections:
               - { label: "Selo (ex: EM BREVE, NOVO, FINALIZADO)", name: "tag", widget: "string", required: false }
               - { label: "Foto de Capa", name: "image", widget: "image", required: false }
               - { label: "Vídeo (opcional — se preenchido, aparece no lugar da foto)", name: "video", widget: "file", required: false }
+              - { label: "Descrição do Projeto (aparece na página do projeto)", name: "description", widget: "text", required: false }
+              - name: "gallery"
+                label: "Galeria (fotos e vídeos do projeto)"
+                label_singular: "Item da galeria"
+                widget: "list"
+                required: false
+                summary: "{{fields.arquivo}}"
+                fields:
+                  - { label: "Foto ou vídeo", name: "arquivo", widget: "file" }
 
       - name: "clients"
         label: "Clientes Atendidos"

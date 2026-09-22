@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCOPO — Projeto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .project-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;}
+  .project-media{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;border-radius:10px;background:#111;}
+  .project-media img,.project-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+</style>
+</head>
+<body>
+<div class="scopo-root" style="width:100%;min-height:100vh;background:#050505;display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden;">
+
+  <div class="bg-texture"></div>
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;width:100%;">
+
+  <div style="height:3px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 50%, transparent);"></div>
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
+    <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:32px;width:auto;display:block;"></a>
+    <div class="nav-links" style="display:flex;align-items:center;gap:40px;">
+      <a href="index.html" class="navlink">HOME</a>
+      <a href="servicos.html" class="navlink">SERVIÇOS</a>
+      <a href="portfolio.html" class="navlink" style="color:var(--brand);">PORTFÓLIO</a>
+      <a href="sobre.html" class="navlink">SOBRE</a>
+      <a href="contato.html" class="navlink">CONTATO</a>
+    </div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;">FALE NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <div style="width:100%;padding:100px var(--pad-x) 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
+    <a href="portfolio.html" class="navlink" style="align-self:flex-start;">← Voltar ao portfólio</a>
+    <div class="eyebrow" id="js-project-tag">EM BREVE</div>
+    <div class="h1" id="js-project-title" style="font-size:clamp(23px, 4vw, 36px);">Carregando...</div>
+    <div class="body-txt" id="js-project-description" style="max-width:700px;"></div>
+  </div>
+
+  <div style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;">
+    <div class="project-gallery" id="js-project-gallery"></div>
+  </div>
+
+  </div>
+</div>
+<script src="assets/script.js"></script>
+<script src="assets/apply-content.js"></script>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+</body>
+</html>

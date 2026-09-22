@@ -54,7 +54,7 @@
     var grid = document.getElementById("js-projects-grid");
     if (!grid || !data || !data.items) return;
     grid.innerHTML = data.items
-      .map(function (p) {
+      .map(function (p, idx) {
         var thumbInner = p.video
           ? '<video muted loop playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;" src="' +
             p.video +
@@ -65,7 +65,9 @@
             (p.title || "Projeto") +
             '" style="width:100%;height:100%;object-fit:cover;display:block;">';
         return (
-          '<div class="card" style="display:flex;flex-direction:column;overflow:hidden;">' +
+          '<a href="projeto.html?id=' +
+          idx +
+          '" class="card" style="display:flex;flex-direction:column;overflow:hidden;text-decoration:none;">' +
           '<div class="thumb">' +
           thumbInner +
           '<div class="thumb-overlay">Ver projeto →</div></div>' +
@@ -75,8 +77,45 @@
           "</span>" +
           '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:15px;font-weight:700;">' +
           (p.title || "") +
-          "</div></div></div>"
+          "</div></div></a>"
         );
+      })
+      .join("");
+  }
+
+  function isVideoFile(url) {
+    return /\.(mp4|webm|mov|m4v)$/i.test(url || "");
+  }
+
+  function renderProjectDetail(data) {
+    var titleEl = document.getElementById("js-project-title");
+    var descEl = document.getElementById("js-project-description");
+    var galleryEl = document.getElementById("js-project-gallery");
+    var tagEl = document.getElementById("js-project-tag");
+    if (!galleryEl || !data || !data.items) return;
+
+    var params = new URLSearchParams(window.location.search);
+    var idx = parseInt(params.get("id"), 10);
+    var p = data.items[idx];
+
+    if (!p) {
+      if (titleEl) titleEl.textContent = "Projeto não encontrado";
+      galleryEl.innerHTML = "";
+      return;
+    }
+
+    if (titleEl) titleEl.textContent = p.title || "";
+    if (tagEl) tagEl.textContent = p.tag || "EM BREVE";
+    if (descEl) descEl.textContent = p.description || "";
+
+    var mediaItems = (p.gallery && p.gallery.length ? p.gallery.map(function (g) { return g.arquivo; }) : [p.video || p.image]).filter(Boolean);
+
+    galleryEl.innerHTML = mediaItems
+      .map(function (url) {
+        var inner = isVideoFile(url)
+          ? '<video controls muted playsinline preload="metadata" src="' + url + '"></video>'
+          : '<img src="' + url + '" alt="' + (p.title || "Projeto") + '" loading="lazy">';
+        return '<div class="project-media">' + inner + "</div>";
       })
       .join("");
   }
@@ -105,5 +144,6 @@
     applySettings(results[0]);
     renderProjects(results[1]);
     renderClients(results[2]);
+    renderProjectDetail(results[1]);
   });
 })();
