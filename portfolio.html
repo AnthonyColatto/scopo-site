@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCOPO — Portfólio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  // apply the last-known brand color instantly (before first paint) so repeat
+  // visits don't flash the old default while apply-content.js fetches fresh settings
+  (function () {
+    try {
+      var c = localStorage.getItem("scopo_brand_color");
+      if (c) document.documentElement.style.setProperty("--brand", c);
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+<div class="scopo-root" style="width:100%;min-height:100vh;background:#050505;display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden;">
+
+  <div class="bg-texture bg-texture--grid" id="js-bg-texture"></div>
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;width:100%;">
+
+  <div style="height:3px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 50%, transparent);"></div>
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
+    <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:32px;width:auto;display:block;"></a>
+    <div class="nav-links" style="display:flex;align-items:center;gap:40px;">
+      <a href="index.html" class="navlink">HOME</a>
+      <a href="servicos.html" class="navlink">SERVIÇOS</a>
+      <a href="portfolio.html" class="navlink" style="color:var(--brand);">PORTFÓLIO</a>
+      <a href="sobre.html" class="navlink">SOBRE</a>
+      <a href="contato.html" class="navlink">CONTATO</a>
+    </div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;"><span data-text-key="header_cta_label">FALE NO WHATSAPP</span><span class="arrow">→</span></a>
+  </div>
+
+  <div style="width:100%;padding:100px var(--pad-x) var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;">
+    <div class="eyebrow" data-text-key="portfolio_hero_eyebrow">NOSSO TRABALHO</div>
+    <div class="h1" data-text-key="portfolio_hero_title" style="font-size:clamp(23px, 4vw, 40px);">Portfólio</div>
+    <div class="body-txt" data-text-key="portfolio_hero_subtitle" style="max-width:600px;">Uma seleção dos projetos que ajudamos a colocar no ar — em vídeo, design, mídia e performance.</div>
+  </div>
+
+  <!-- CLIENTES ATENDIDOS -->
+  <div style="width:100%;padding:20px var(--pad-x) 90px;box-sizing:border-box;display:flex;flex-direction:column;gap:34px;">
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="eyebrow" data-text-key="portfolio_clientes_eyebrow">QUEM JÁ CONFIOU</div>
+      <div class="h1" data-text-key="portfolio_clientes_title" style="font-size:clamp(18px, 4vw, 26px);">Clientes atendidos</div>
+    </div>
+    <div id="js-clients-grid" style="display:grid;grid-template-columns:repeat(var(--g6,6),minmax(0,1fr));gap:18px;">
+      <img class="client-box" src="assets/cliente-01.png" alt="Cliente 01" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-02.png" alt="Cliente 02" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-03.png" alt="Cliente 03" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-04.png" alt="Cliente 04" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-05.png" alt="Cliente 05" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-06.png" alt="Cliente 06" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-07.png" alt="Cliente 07" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-08.png" alt="Cliente 08" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-09.png" alt="Cliente 09" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-10.png" alt="Cliente 10" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-11.png" alt="Cliente 11" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+      <img class="client-box" src="assets/cliente-12.png" alt="Cliente 12" style="object-fit:contain;padding:14px;box-sizing:border-box;">
+    </div>
+    <div class="body-txt" style="font-size:13px;color:#6B6B6B;">Espaço reservado — logos dos clientes entram assim que forem enviados.</div>
+  </div>
+
+  <!-- BANNER SLOT -->
+  <div id="js-banner-portfolio-wrap" style="width:100%;padding:0 var(--pad-x) 20px;box-sizing:border-box;">
+    <img id="js-banner-portfolio" class="banner-slot" src="assets/banner-portfolio.jpg" alt="Banner SCOPO" style="height:clamp(104px, 20vw, 180px);object-fit:cover;display:block;">
+  </div>
+
+  <!-- PROJETOS -->
+  <div style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:flex;flex-direction:column;gap:34px;">
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="eyebrow" data-text-key="portfolio_cases_eyebrow">CASES</div>
+      <div class="h1" data-text-key="portfolio_cases_title" style="font-size:clamp(18px, 4vw, 26px);">Projetos</div>
+    </div>
+
+    <div id="js-projects-grid" style="display:grid;grid-template-columns:repeat(var(--g4,4),minmax(0,1fr));gap:22px;">
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-01.jpg" alt="Projeto 01" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 01</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-02.jpg" alt="Projeto 02" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 02</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-03.jpg" alt="Projeto 03" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 03</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-04.jpg" alt="Projeto 04" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 04</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-05.jpg" alt="Projeto 05" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 05</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-06.jpg" alt="Projeto 06" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 06</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-07.jpg" alt="Projeto 07" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 07</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-08.jpg" alt="Projeto 08" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 08</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-09.jpg" alt="Projeto 09" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 09</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-10.jpg" alt="Projeto 10" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 10</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-11.jpg" alt="Projeto 11" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 11</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-12.jpg" alt="Projeto 12" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 12</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-13.jpg" alt="Projeto 13" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 13</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-14.jpg" alt="Projeto 14" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 14</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-15.jpg" alt="Projeto 15" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 15</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-16.jpg" alt="Projeto 16" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 16</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-17.jpg" alt="Projeto 17" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 17</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-18.jpg" alt="Projeto 18" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 18</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-19.jpg" alt="Projeto 19" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 19</div>
+        </div>
+      </div>
+
+      <div class="card" style="display:flex;flex-direction:column;overflow:hidden;">
+        <div class="thumb"><img src="assets/projeto-20.jpg" alt="Projeto 20" style="width:100%;height:100%;object-fit:cover;display:block;"><div class="thumb-overlay">Ver projeto →</div></div>
+        <div style="padding:18px;display:flex;flex-direction:column;gap:8px;">
+          <span class="tag">EM BREVE</span>
+          <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:15px;font-weight:700;">Projeto 20</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="body-txt" style="font-size:13px;color:#6B6B6B;">Cards de exemplo — os cases reais entram assim que o material for enviado.</div>
+  </div>
+
+  <div style="width:100%;padding:100px var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;background:#101010;border-top:1px solid #1E1E1E;">
+    <div class="h1" data-text-key="portfolio_cta_title" style="font-size:clamp(18px, 4vw, 28px);max-width:640px;">Quer ver seu projeto aqui?</div>
+    <div class="body-txt" data-text-key="portfolio_cta_subtitle" style="max-width:520px;">Vamos conversar sobre o que sua marca precisa.</div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary">CHAMAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <div style="width:100%;background:#0A0A0A;border-top:1px solid #1E1E1E;padding:70px var(--pad-x) 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
+    <div style="display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:300px;">
+        <img src="assets/logo.png" data-logo style="height:28px;width:auto;">
+        <div class="footlink" data-text-key="footer_tagline" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">MENU</div>
+        <a href="index.html" class="footlink">Home</a>
+        <a href="servicos.html" class="footlink">Serviços</a>
+        <a href="portfolio.html" class="footlink">Portfólio</a>
+        <a href="sobre.html" class="footlink">Sobre</a>
+        <a href="contato.html" class="footlink">Contato</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">SERVIÇOS</div>
+        <div id="js-footer-services" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">CONTATO</div>
+        <a href="https://wa.me/5567991941891" data-wa target="_blank" class="footlink">(67) 99194-1891</a>
+        <div id="js-footer-social" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1E1E1E;padding-top:24px;color:#5A5A5A;font-family:'Work Sans',sans-serif;font-size:12px;">© 2026 SCOPO. Todos os direitos reservados.</div>
+  </div>
+
+  </div>
+
+
+  <div class="floating-cta" id="js-floating-cta">
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:14px;border-radius:999px;display:flex;align-items:center;gap:8px;">FALAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <div class="cursor-ring" id="cursorRing"></div>
+  <div class="cursor-dot" id="cursorDot">!</div>
+
+</div>
+<script src="assets/script.js"></script>
+<script src="assets/apply-content.js"></script>
+<script src="assets/enhance.js"></script>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<script>
+  if (window.netlifyIdentity) {
+    window.netlifyIdentity.on("init", function (user) {
+      // if this page was opened from an invite/confirmation/recovery email link,
+      // the widget auto-detects the token in the URL hash and opens the
+      // "set your password" modal on its own — nothing else to do here.
+    });
+  }
+</script>
+</body>
+</html>

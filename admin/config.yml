@@ -1,0 +1,172 @@
+backend:
+  name: git-gateway
+  branch: main
+
+publish_mode: simple
+media_folder: "assets"
+public_folder: "assets"
+
+collections:
+  - name: "settings"
+    label: "Configurações Gerais"
+    files:
+      - name: "settings"
+        label: "Cores, Logo, WhatsApp, Banners e Redes Sociais"
+        file: "content/settings.json"
+        fields:
+          - { label: "Cor Principal (Botões e Detalhes)", name: "brand_color", widget: "color" }
+          - { label: "Número do WhatsApp (só números, com DDI+DDD, ex: 5567991941891)", name: "whatsapp_number", widget: "string" }
+          - { label: "Logo", name: "logo", widget: "image", hint: "Formato ideal: PNG com fundo transparente, altura de uns 120px (largura livre)." }
+          - name: "texture"
+            label: "Textura de Fundo"
+            widget: "select"
+            options:
+              - { label: "Grade sutil (recomendado)", value: "grid" }
+              - { label: "Pontilhado", value: "dots" }
+              - { label: "Nenhuma (fundo liso)", value: "none" }
+          - { label: "Som ao clicar em botões e cards", name: "sound_enabled", widget: "boolean", default: true }
+          - { label: "Cursor personalizado (bolinha que segue o mouse)", name: "custom_cursor", widget: "boolean", default: true }
+          - { label: "Símbolo dentro da bolinha do cursor (1 caractere, ex: ! ou →)", name: "cursor_symbol", widget: "string", required: false, hint: "Só aparece se não houver um ícone (abaixo) definido." }
+          - { label: "Ícone personalizado do cursor (opcional)", name: "cursor_icon", widget: "image", required: false, hint: "Formato ideal: PNG quadrado, fundo transparente, 128×128px. Se preenchido, substitui o símbolo de texto acima." }
+          - name: "banners"
+            label: "Banners / Destaques da Home"
+            label_singular: "Banner"
+            widget: "list"
+            required: false
+            minimize_collapsed: true
+            summary: "{{fields.arquivo}}"
+            hint: "Aparecem empilhados no topo da Home, na ordem em que estão aqui. Pode deixar 0 (nenhum), 1, 2 ou mais — o espaço só aparece se tiver algo preenchido."
+            fields:
+              - { label: "Foto ou vídeo de destaque", name: "arquivo", widget: "file", hint: "Formato ideal: paisagem/retangular e baixo (proporção parecida com 16:9 ou mais largo). Imagem JPG/PNG mínimo 1600×300px, ou vídeo MP4 curto (até uns 30MB)." }
+          - { label: "Banner do Portfólio (opcional)", name: "banner_portfolio", widget: "image", required: false, hint: "Formato ideal: JPG ou PNG, 1600×260px (retangular, bem largo e baixo). Deixe em branco pra não mostrar nenhum banner ali." }
+          - name: "social_links"
+            label: "Redes Sociais (aparecem no rodapé)"
+            label_singular: "Rede social"
+            widget: "list"
+            required: false
+            minimize_collapsed: true
+            summary: "{{nome}}"
+            fields:
+              - { label: "Nome (ex: Instagram, LinkedIn, TikTok)", name: "nome", widget: "string" }
+              - { label: "Link completo (ex: https://instagram.com/suamarca)", name: "link", widget: "string" }
+
+  - name: "portfolio"
+    label: "Portfólio"
+    files:
+      - name: "projects"
+        label: "Projetos"
+        file: "content/projects.json"
+        fields:
+          - name: "items"
+            label: "Projetos"
+            widget: "list"
+            summary: "{{title}}"
+            fields:
+              - { label: "Título", name: "title", widget: "string" }
+              - { label: "Selo (ex: EM BREVE, NOVO, FINALIZADO)", name: "tag", widget: "string", required: false }
+              - { label: "Foto de Capa", name: "image", widget: "image", required: false, hint: "Formato ideal: JPG, paisagem, mínimo 800×600px (vai preencher um retângulo baixo, cortando as bordas se precisar)." }
+              - { label: "Vídeo (opcional — se preenchido, aparece no lugar da foto)", name: "video", widget: "file", required: false, hint: "Formato ideal: MP4, paisagem (16:9), poucos segundos, até ~20MB." }
+              - { label: "Descrição do Projeto (aparece na página do projeto)", name: "description", widget: "text", required: false }
+              - name: "gallery"
+                label: "Galeria (fotos e vídeos do projeto)"
+                label_singular: "Item da galeria"
+                widget: "list"
+                required: false
+                summary: "{{fields.arquivo}}"
+                fields:
+                  - { label: "Foto ou vídeo", name: "arquivo", widget: "file", hint: "Formato ideal: imagem QUADRADA, mínimo 1000×1000px (vídeos também podem ser quadrados). Qualquer proporção enviada é cortada automaticamente pro quadrado." }
+
+      - name: "clients"
+        label: "Clientes Atendidos"
+        file: "content/clients.json"
+        fields:
+          - name: "items"
+            label: "Clientes"
+            widget: "list"
+            summary: "{{name}}"
+            fields:
+              - { label: "Nome do Cliente", name: "name", widget: "string" }
+              - { label: "Logo do Cliente", name: "logo", widget: "image", hint: "Formato ideal: PNG com fundo transparente, altura de uns 90px (largura livre)." }
+
+  - name: "servicos"
+    label: "Serviços"
+    files:
+      - name: "services"
+        label: "Lista de Serviços"
+        file: "content/services.json"
+        fields:
+          - name: "items"
+            label: "Serviços"
+            widget: "list"
+            summary: "{{title}}"
+            hint: "Aparecem, nessa ordem, na prévia da Home, na página Serviços completa e no rodapé de todas as páginas."
+            fields:
+              - { label: "Título", name: "title", widget: "string" }
+              - { label: "Descrição", name: "description", widget: "text" }
+              - { label: "Ícone personalizado (opcional)", name: "icone", widget: "image", required: false, hint: "Formato ideal: PNG com fundo transparente, quadrado, uns 80×80px. Se não enviar, aparece um numerozinho (01, 02...) no lugar." }
+              - name: "tags"
+                label: "Tópicos / Palavras-chave (aparecem como etiquetas)"
+                widget: "list"
+                required: false
+
+  - name: "textos"
+    label: "Textos do Site"
+    files:
+      - name: "textos"
+        label: "Títulos e Frases"
+        file: "content/texts.json"
+        fields:
+          - { label: "Texto do botão de WhatsApp (cabeçalho e flutuante)", name: "header_cta_label", widget: "string", required: false }
+          - { label: "Home — Selo acima do título", name: "home_hero_eyebrow", widget: "string", required: false }
+          - { label: "Home — Título principal", name: "home_hero_title", widget: "string", required: false }
+          - { label: "Home — Parte destacada do título (cor da marca)", name: "home_hero_highlight", widget: "string", required: false }
+          - { label: "Home — Frase abaixo do título", name: "home_hero_subtitle", widget: "text", required: false }
+          - { label: "Home — Texto do botão principal", name: "home_hero_cta", widget: "string", required: false }
+          - { label: "Home — Título da chamada final", name: "home_final_cta_title", widget: "string", required: false }
+          - { label: "Home — Frase da chamada final", name: "home_final_cta_subtitle", widget: "text", required: false }
+          - { label: "Rodapé — Frase sobre a agência", name: "footer_tagline", widget: "text", required: false }
+          - { label: "Serviços — Selo acima do título", name: "servicos_hero_eyebrow", widget: "string", required: false }
+          - { label: "Serviços — Título principal", name: "servicos_hero_title", widget: "string", required: false }
+          - { label: "Portfólio — Selo acima do título", name: "portfolio_hero_eyebrow", widget: "string", required: false }
+          - { label: "Portfólio — Título principal", name: "portfolio_hero_title", widget: "string", required: false }
+          - { label: "Sobre — Selo acima do título", name: "sobre_hero_eyebrow", widget: "string", required: false }
+          - { label: "Sobre — Título principal", name: "sobre_hero_title", widget: "string", required: false }
+          - { label: "Contato — Selo acima do título", name: "contato_hero_eyebrow", widget: "string", required: false }
+          - { label: "Contato — Título principal", name: "contato_hero_title", widget: "string", required: false }
+
+          - { label: "Serviços — Frase abaixo do título", name: "servicos_hero_subtitle", widget: "text", required: false }
+          - { label: "Serviços — Título da chamada final", name: "servicos_cta_title", widget: "string", required: false }
+          - { label: "Serviços — Frase da chamada final", name: "servicos_cta_subtitle", widget: "text", required: false }
+
+          - { label: "Portfólio — Frase abaixo do título", name: "portfolio_hero_subtitle", widget: "text", required: false }
+          - { label: "Portfólio — Selo da seção Clientes", name: "portfolio_clientes_eyebrow", widget: "string", required: false }
+          - { label: "Portfólio — Título da seção Clientes", name: "portfolio_clientes_title", widget: "string", required: false }
+          - { label: "Portfólio — Selo da seção Projetos", name: "portfolio_cases_eyebrow", widget: "string", required: false }
+          - { label: "Portfólio — Título da seção Projetos", name: "portfolio_cases_title", widget: "string", required: false }
+          - { label: "Portfólio — Título da chamada final", name: "portfolio_cta_title", widget: "string", required: false }
+          - { label: "Portfólio — Frase da chamada final", name: "portfolio_cta_subtitle", widget: "text", required: false }
+
+          - { label: "Sobre — Frase abaixo do título", name: "sobre_hero_subtitle", widget: "text", required: false }
+          - { label: "Sobre — Título \"Nossa história\"", name: "sobre_historia_title", widget: "string", required: false }
+          - { label: "Sobre — Nossa história, 1º parágrafo", name: "sobre_historia_p1", widget: "text", required: false }
+          - { label: "Sobre — Nossa história, 2º parágrafo", name: "sobre_historia_p2", widget: "text", required: false }
+          - { label: "Sobre — Número de destaque 1 (ex: +20)", name: "sobre_stat1_number", widget: "string", required: false }
+          - { label: "Sobre — Legenda do número 1", name: "sobre_stat1_label", widget: "string", required: false }
+          - { label: "Sobre — Número de destaque 2 (ex: 6)", name: "sobre_stat2_number", widget: "string", required: false }
+          - { label: "Sobre — Legenda do número 2", name: "sobre_stat2_label", widget: "string", required: false }
+          - { label: "Sobre — Número de destaque 3 (ex: 100%)", name: "sobre_stat3_number", widget: "string", required: false }
+          - { label: "Sobre — Legenda do número 3", name: "sobre_stat3_label", widget: "string", required: false }
+          - { label: "Sobre — Selo da seção Valores", name: "sobre_valores_eyebrow", widget: "string", required: false }
+          - { label: "Sobre — Título da seção Valores", name: "sobre_valores_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 1, título", name: "sobre_valor1_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 1, descrição", name: "sobre_valor1_desc", widget: "text", required: false }
+          - { label: "Sobre — Valor 2, título", name: "sobre_valor2_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 2, descrição", name: "sobre_valor2_desc", widget: "text", required: false }
+          - { label: "Sobre — Valor 3, título", name: "sobre_valor3_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 3, descrição", name: "sobre_valor3_desc", widget: "text", required: false }
+          - { label: "Sobre — Título da chamada final", name: "sobre_cta_title", widget: "string", required: false }
+          - { label: "Sobre — Frase da chamada final", name: "sobre_cta_subtitle", widget: "text", required: false }
+
+          - { label: "Contato — Frase abaixo do título", name: "contato_hero_subtitle", widget: "text", required: false }
+          - { label: "Contato — Texto sobre atendimento/região", name: "contato_endereco_texto", widget: "string", required: false }
+          - { label: "Contato — Título do formulário", name: "contato_form_title", widget: "string", required: false }
