@@ -133,3 +133,40 @@ collections:
           - { label: "Sobre — Título principal", name: "sobre_hero_title", widget: "string", required: false }
           - { label: "Contato — Selo acima do título", name: "contato_hero_eyebrow", widget: "string", required: false }
           - { label: "Contato — Título principal", name: "contato_hero_title", widget: "string", required: false }
+
+          - { label: "Serviços — Frase abaixo do título", name: "servicos_hero_subtitle", widget: "text", required: false }
+          - { label: "Serviços — Título da chamada final", name: "servicos_cta_title", widget: "string", required: false }
+          - { label: "Serviços — Frase da chamada final", name: "servicos_cta_subtitle", widget: "text", required: false }
+
+          - { label: "Portfólio — Frase abaixo do título", name: "portfolio_hero_subtitle", widget: "text", required: false }
+          - { label: "Portfólio — Selo da seção Clientes", name: "portfolio_clientes_eyebrow", widget: "string", required: false }
+          - { label: "Portfólio — Título da seção Clientes", name: "portfolio_clientes_title", widget: "string", required: false }
+          - { label: "Portfólio — Selo da seção Projetos", name: "portfolio_cases_eyebrow", widget: "string", required: false }
+          - { label: "Portfólio — Título da seção Projetos", name: "portfolio_cases_title", widget: "string", required: false }
+          - { label: "Portfólio — Título da chamada final", name: "portfolio_cta_title", widget: "string", required: false }
+          - { label: "Portfólio — Frase da chamada final", name: "portfolio_cta_subtitle", widget: "text", required: false }
+
+          - { label: "Sobre — Frase abaixo do título", name: "sobre_hero_subtitle", widget: "text", required: false }
+          - { label: "Sobre — Título \"Nossa história\"", name: "sobre_historia_title", widget: "string", required: false }
+          - { label: "Sobre — Nossa história, 1º parágrafo", name: "sobre_historia_p1", widget: "text", required: false }
+          - { label: "Sobre — Nossa história, 2º parágrafo", name: "sobre_historia_p2", widget: "text", required: false }
+          - { label: "Sobre — Número de destaque 1 (ex: +20)", name: "sobre_stat1_number", widget: "string", required: false }
+          - { label: "Sobre — Legenda do número 1", name: "sobre_stat1_label", widget: "string", required: false }
+          - { label: "Sobre — Número de destaque 2 (ex: 6)", name: "sobre_stat2_number", widget: "string", required: false }
+          - { label: "Sobre — Legenda do número 2", name: "sobre_stat2_label", widget: "string", required: false }
+          - { label: "Sobre — Número de destaque 3 (ex: 100%)", name: "sobre_stat3_number", widget: "string", required: false }
+          - { label: "Sobre — Legenda do número 3", name: "sobre_stat3_label", widget: "string", required: false }
+          - { label: "Sobre — Selo da seção Valores", name: "sobre_valores_eyebrow", widget: "string", required: false }
+          - { label: "Sobre — Título da seção Valores", name: "sobre_valores_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 1, título", name: "sobre_valor1_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 1, descrição", name: "sobre_valor1_desc", widget: "text", required: false }
+          - { label: "Sobre — Valor 2, título", name: "sobre_valor2_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 2, descrição", name: "sobre_valor2_desc", widget: "text", required: false }
+          - { label: "Sobre — Valor 3, título", name: "sobre_valor3_title", widget: "string", required: false }
+          - { label: "Sobre — Valor 3, descrição", name: "sobre_valor3_desc", widget: "text", required: false }
+          - { label: "Sobre — Título da chamada final", name: "sobre_cta_title", widget: "string", required: false }
+          - { label: "Sobre — Frase da chamada final", name: "sobre_cta_subtitle", widget: "text", required: false }
+
+          - { label: "Contato — Frase abaixo do título", name: "contato_hero_subtitle", widget: "text", required: false }
+          - { label: "Contato — Texto sobre atendimento/região", name: "contato_endereco_texto", widget: "string", required: false }
+          - { label: "Contato — Título do formulário", name: "contato_form_title", widget: "string", required: false }
