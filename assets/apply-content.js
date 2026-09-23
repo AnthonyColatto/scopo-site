@@ -11,11 +11,30 @@
     });
   }
 
+  // localStorage cache: lets the LAST-SEEN content render instantly on repeat
+  // visits (no network wait), while a fresh fetch still runs to catch new edits.
+  function getCache(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function setCache(key, data) {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {}
+  }
+
   function applySettings(settings) {
     if (!settings) return;
 
     if (settings.brand_color) {
       document.documentElement.style.setProperty("--brand", settings.brand_color);
+      try {
+        localStorage.setItem("scopo_brand_color", settings.brand_color);
+      } catch (e) {}
     }
 
     if (settings.logo) {
@@ -246,18 +265,45 @@
       .join("");
   }
 
+  function applyAll(settings, projects, clients, services) {
+    applySettings(settings);
+    renderBanners(settings);
+    renderSocialLinks(settings);
+    renderProjects(projects);
+    renderClients(clients);
+    renderProjectDetail(projects);
+    renderServices(services);
+  }
+
+  // 1) instant paint from whatever was cached on a previous visit (no network wait)
+  var cachedSettings = getCache("scopo_cache_settings");
+  var cachedProjects = getCache("scopo_cache_projects");
+  var cachedClients = getCache("scopo_cache_clients");
+  var cachedServices = getCache("scopo_cache_services");
+  if (cachedSettings || cachedProjects || cachedClients || cachedServices) {
+    applyAll(cachedSettings, cachedProjects, cachedClients, cachedServices);
+  }
+
+  // 2) always fetch the live content too, so admin edits still show up; re-render
+  // only if something actually changed, and refresh the cache for next visit
   Promise.all([
     fetchJSON("content/settings.json").catch(function () { return null; }),
     fetchJSON("content/projects.json").catch(function () { return null; }),
     fetchJSON("content/clients.json").catch(function () { return null; }),
     fetchJSON("content/services.json").catch(function () { return null; }),
   ]).then(function (results) {
-    applySettings(results[0]);
-    renderBanners(results[0]);
-    renderSocialLinks(results[0]);
-    renderProjects(results[1]);
-    renderClients(results[2]);
-    renderProjectDetail(results[1]);
-    renderServices(results[3]);
+    var settings = results[0], projects = results[1], clients = results[2], services = results[3];
+    var changed =
+      JSON.stringify(settings) !== JSON.stringify(cachedSettings) ||
+      JSON.stringify(projects) !== JSON.stringify(cachedProjects) ||
+      JSON.stringify(clients) !== JSON.stringify(cachedClients) ||
+      JSON.stringify(services) !== JSON.stringify(cachedServices);
+    if (changed || !(cachedSettings || cachedProjects || cachedClients || cachedServices)) {
+      applyAll(settings, projects, clients, services);
+    }
+    if (settings) setCache("scopo_cache_settings", settings);
+    if (projects) setCache("scopo_cache_projects", projects);
+    if (clients) setCache("scopo_cache_clients", clients);
+    if (services) setCache("scopo_cache_services", services);
   });
 })();

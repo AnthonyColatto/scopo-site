@@ -8,6 +8,19 @@
       return r.json();
     });
   }
+  function getCache(key) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function setCache(key, data) {
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (e) {}
+  }
 
   function applyTexture(settings) {
     var el = document.querySelector(".bg-texture");
@@ -37,9 +50,12 @@
       var ring = document.getElementById("cursorRing");
       if (dot) dot.style.display = "none";
       if (ring) ring.style.display = "none";
-      var style = document.createElement("style");
-      style.textContent = "@media (hover:hover) and (pointer:fine){ .scopo-root{cursor:auto !important;} }";
-      document.head.appendChild(style);
+      if (!document.getElementById("scopo-cursor-off-style")) {
+        var style = document.createElement("style");
+        style.id = "scopo-cursor-off-style";
+        style.textContent = "@media (hover:hover) and (pointer:fine){ .scopo-root{cursor:auto !important;} }";
+        document.head.appendChild(style);
+      }
     }
   }
 
@@ -148,13 +164,24 @@
     onScroll();
   }
 
+  var cachedSettings = getCache("scopo_cache_settings");
+  var cachedTexts = getCache("scopo_cache_texts");
+  if (cachedSettings || cachedTexts) {
+    applyTexture(cachedSettings);
+    applyToggles(cachedSettings);
+    applyTexts(cachedTexts);
+  }
+
   Promise.all([
     fetchJSON("content/settings.json").catch(function () { return null; }),
     fetchJSON("content/texts.json").catch(function () { return null; }),
   ]).then(function (results) {
-    applyTexture(results[0]);
-    applyToggles(results[0]);
-    applyTexts(results[1]);
+    var settings = results[0], texts = results[1];
+    applyTexture(settings);
+    applyToggles(settings);
+    applyTexts(texts);
+    if (settings) setCache("scopo_cache_settings", settings);
+    if (texts) setCache("scopo_cache_texts", texts);
   });
 
   setupParallax();

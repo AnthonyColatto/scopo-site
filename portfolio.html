@@ -7,6 +7,16 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<script>
+  // apply the last-known brand color instantly (before first paint) so repeat
+  // visits don't flash the old default while apply-content.js fetches fresh settings
+  (function () {
+    try {
+      var c = localStorage.getItem("scopo_brand_color");
+      if (c) document.documentElement.style.setProperty("--brand", c);
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
 <div class="scopo-root" style="width:100%;min-height:100vh;background:#050505;display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden;">
@@ -272,7 +282,7 @@
 
 
   <div class="floating-cta" id="js-floating-cta">
-    <a href="https://wa.me/5567991941891" data-wa data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:14px;border-radius:999px;display:flex;align-items:center;gap:8px;">FALAR NO WHATSAPP<span class="arrow">→</span></a>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:14px;border-radius:999px;display:flex;align-items:center;gap:8px;">FALAR NO WHATSAPP<span class="arrow">→</span></a>
   </div>
 
   <div class="cursor-ring" id="cursorRing"></div>
