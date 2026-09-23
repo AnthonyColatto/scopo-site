@@ -5,6 +5,19 @@ Agora o site tem uma área de admin de verdade: uma página com login onde
 você troca logo, cor dos botões, banners, vídeo, fotos e vídeos dos projetos
 e os clientes atendidos — tudo clicando, sem abrir nenhum arquivo de código.
 
+NOVIDADES (já disponíveis no /admin, sem configuração extra):
+  • "Textos do Site" — uma seção nova no admin pra trocar os títulos e
+    frases principais de cada página (Home, Serviços, Portfólio, Sobre,
+    Contato) sem mexer em código.
+  • "Textura de Fundo", "Som ao clicar" e "Cursor personalizado" — dentro de
+    "Configurações Gerais", pra ligar/desligar ou trocar esses efeitos.
+  • Cada projeto do portfólio agora abre numa página própria, com galeria de
+    fotos/vídeos (cada mídia se encaixa automaticamente num quadrado, sem
+    esticar) e um campo de descrição.
+  • Botão flutuante de WhatsApp aparece sozinho depois que a pessoa rola a
+    página, e o fundo tem um efeito sutil de profundidade (parallax) com
+    camadas se movendo em velocidades diferentes ao rolar.
+
 Só que, como o site não tem servidor próprio (ele é só HTML/CSS/JS, o que o
 deixa rápido e barato de hospedar), essa área de admin precisa de uma
 configuração inicial, feita UMA VEZ SÓ. Depois de configurado, você só usa

@@ -33,20 +33,134 @@
       });
     }
 
-    var bannerHome = document.getElementById("js-banner-home");
-    if (bannerHome && settings.banner_home) bannerHome.src = settings.banner_home;
-
+    // Portfolio banner is optional: hide the whole slot when nothing is set
     var bannerPortfolio = document.getElementById("js-banner-portfolio");
-    if (bannerPortfolio && settings.banner_portfolio) bannerPortfolio.src = settings.banner_portfolio;
+    var bannerPortfolioWrap = document.getElementById("js-banner-portfolio-wrap");
+    if (bannerPortfolio && settings.banner_portfolio) {
+      bannerPortfolio.src = settings.banner_portfolio;
+    } else if (bannerPortfolioWrap) {
+      bannerPortfolioWrap.style.display = "none";
+    }
+  }
 
-    var video = document.getElementById("js-video-institucional");
-    if (video && settings.video_institucional) {
-      var source = video.querySelector("source");
-      if (source && source.getAttribute("src") !== settings.video_institucional) {
-        source.setAttribute("src", settings.video_institucional);
-        video.load();
-      }
-      if (settings.banner_home) video.setAttribute("poster", settings.banner_home);
+  function isVideoFile(url) {
+    return /\.(mp4|webm|mov|m4v)$/i.test(url || "");
+  }
+
+  // Home banners: 0, 1 or more stacked media items (image or video), fully admin-controlled
+  function renderBanners(settings) {
+    var wrap = document.getElementById("js-home-banners");
+    if (!wrap) return;
+    var items = (settings && settings.banners) || [];
+    items = items.filter(function (b) { return b && b.arquivo; });
+    if (!items.length) {
+      wrap.innerHTML = "";
+      return;
+    }
+    wrap.innerHTML = items
+      .map(function (b) {
+        var wrapStyle = "width:100%;padding:0 var(--pad-x) 40px;box-sizing:border-box;";
+        var inner = isVideoFile(b.arquivo)
+          ? '<video controls preload="none" style="width:100%;height:auto;border-radius:10px;display:block;background:#000;"><source src="' +
+            b.arquivo +
+            '"></video>'
+          : '<img src="' +
+            b.arquivo +
+            '" alt="Banner SCOPO" style="width:100%;height:auto;border-radius:10px;display:block;object-fit:cover;">';
+        return '<div style="' + wrapStyle + '">' + inner + "</div>";
+      })
+      .join("");
+  }
+
+  // Footer social links: fully optional, admin-controlled
+  function renderSocialLinks(settings) {
+    var wrap = document.getElementById("js-footer-social");
+    if (!wrap) return;
+    var items = ((settings && settings.social_links) || []).filter(function (s) {
+      return s && s.nome && s.link;
+    });
+    wrap.innerHTML = items
+      .map(function (s) {
+        return '<a href="' + s.link + '" target="_blank" rel="noopener" class="footlink">' + s.nome + "</a>";
+      })
+      .join("");
+  }
+
+  // shows the service's custom PNG icon when uploaded, otherwise a numbered badge
+  function serviceBadge(s, idx, sizePx) {
+    if (s && s.icone) {
+      return (
+        '<img src="' +
+        s.icone +
+        '" alt="" style="width:' +
+        sizePx +
+        "px;height:" +
+        sizePx +
+        'px;object-fit:contain;display:block;">'
+      );
+    }
+    return (
+      '<div style="color:var(--brand);font-family:\'Poppins\',sans-serif;font-size:' +
+      (sizePx >= 50 ? 32 : 20) +
+      'px;font-weight:800;">' +
+      String(idx + 1).padStart(2, "0") +
+      "</div>"
+    );
+  }
+
+  function renderServices(data) {
+    var items = (data && data.items) || [];
+
+    var homeGrid = document.getElementById("js-home-services-grid");
+    if (homeGrid) {
+      homeGrid.innerHTML = items
+        .map(function (s, idx) {
+          return (
+            '<div class="card" style="padding:28px;display:flex;flex-direction:column;gap:12px;">' +
+            serviceBadge(s, idx, 36) +
+            '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:18px;font-weight:700;">' +
+            (s.title || "") +
+            "</div>" +
+            '<div class="body-txt" style="font-size:14px;">' +
+            (s.description || "") +
+            "</div></div>"
+          );
+        })
+        .join("");
+    }
+
+    var fullList = document.getElementById("js-servicos-list");
+    if (fullList) {
+      fullList.innerHTML = items
+        .map(function (s, idx) {
+          var tags = (s.tags || [])
+            .map(function (t) { return '<span class="chip">' + t + "</span>"; })
+            .join("");
+          return (
+            '<div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">' +
+            '<div style="min-width:60px;display:flex;align-items:flex-start;">' +
+            serviceBadge(s, idx, 56) +
+            "</div>" +
+            '<div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:14px;">' +
+            '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:24px;font-weight:700;">' +
+            (s.title || "") +
+            "</div>" +
+            '<div class="body-txt">' +
+            (s.description || "") +
+            "</div>" +
+            '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">' +
+            tags +
+            "</div></div></div>"
+          );
+        })
+        .join("");
+    }
+
+    var footer = document.getElementById("js-footer-services");
+    if (footer) {
+      footer.innerHTML = items
+        .map(function (s) { return '<span class="footlink">' + (s.title || "") + "</span>"; })
+        .join("");
     }
   }
 
@@ -81,10 +195,6 @@
         );
       })
       .join("");
-  }
-
-  function isVideoFile(url) {
-    return /\.(mp4|webm|mov|m4v)$/i.test(url || "");
   }
 
   function renderProjectDetail(data) {
@@ -140,10 +250,14 @@
     fetchJSON("content/settings.json").catch(function () { return null; }),
     fetchJSON("content/projects.json").catch(function () { return null; }),
     fetchJSON("content/clients.json").catch(function () { return null; }),
+    fetchJSON("content/services.json").catch(function () { return null; }),
   ]).then(function (results) {
     applySettings(results[0]);
+    renderBanners(results[0]);
+    renderSocialLinks(results[0]);
     renderProjects(results[1]);
     renderClients(results[2]);
     renderProjectDetail(results[1]);
+    renderServices(results[3]);
   });
 })();

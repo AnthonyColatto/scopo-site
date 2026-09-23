@@ -11,7 +11,7 @@
 <body>
 <div class="scopo-root" style="width:100%;min-height:100vh;background:#050505;display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden;">
 
-  <div class="bg-texture"></div>
+  <div class="bg-texture bg-texture--grid" id="js-bg-texture"></div>
 
   <div style="position:relative;z-index:1;display:flex;flex-direction:column;width:100%;">
 
@@ -26,32 +26,25 @@
       <a href="sobre.html" class="navlink">SOBRE</a>
       <a href="contato.html" class="navlink">CONTATO</a>
     </div>
-    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;">FALE NO WHATSAPP<span class="arrow">→</span></a>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;"><span data-text-key="header_cta_label">FALE NO WHATSAPP</span><span class="arrow">→</span></a>
   </div>
 
   <!-- HERO -->
   <div style="width:100%;padding:110px var(--pad-x) 90px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:26px;position:relative;overflow:hidden;">
-    <div id="heroGlow" style="position:absolute;width:560px;height:560px;border-radius:50%;left:50%;top:-260px;margin-left:-280px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 7%, transparent),transparent 70%);filter:blur(10px);pointer-events:none;z-index:0;"></div>
-    <div class="eyebrow" style="position:relative;z-index:1;">AGÊNCIA DE MARKETING</div>
-    <div class="h1" style="font-size:clamp(26px, 5vw, 44px);line-height:1.18;max-width:760px;position:relative;z-index:1;">Estratégia, criatividade<br>e resultado <span style="color:var(--brand);">na medida certa.</span></div>
-    <div class="body-txt" style="max-width:560px;font-size:17px;position:relative;z-index:1;">A SCOPO cuida de vídeo, design, mídia e performance da sua marca de ponta a ponta — pra você vender mais e aparecer melhor.</div>
+    <div data-parallax="0.05" id="heroGlow" style="position:absolute;width:560px;height:560px;border-radius:50%;left:50%;top:-260px;margin-left:-280px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 11%, transparent),transparent 70%);filter:blur(10px);pointer-events:none;z-index:0;"></div>
+    <div class="parallax-blob" data-parallax="0.02" style="width:380px;height:380px;left:4%;top:0px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 16%, transparent),transparent 70%);"></div>
+    <div class="parallax-blob" data-parallax="0.12" style="width:240px;height:240px;right:6%;top:140px;background:radial-gradient(circle,rgba(255,255,255,0.11),transparent 70%);"></div>
+    <div class="eyebrow" data-text-key="home_hero_eyebrow" style="position:relative;z-index:1;">AGÊNCIA DE MARKETING</div>
+    <div class="h1" id="js-hero-title" data-default-main="Estratégia, criatividade e resultado" data-default-highlight="na medida certa." style="font-size:clamp(26px, 5vw, 44px);line-height:1.18;max-width:760px;position:relative;z-index:1;">Estratégia, criatividade e resultado <span style="color:var(--brand);">na medida certa.</span></div>
+    <div class="body-txt" data-text-key="home_hero_subtitle" style="max-width:560px;font-size:17px;position:relative;z-index:1;">A SCOPO cuida de vídeo, design, mídia e performance da sua marca de ponta a ponta — pra você vender mais e aparecer melhor.</div>
     <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;">
-      <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary">FALAR COM UM ESPECIALISTA<span class="arrow">→</span></a>
+      <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary"><span data-text-key="home_hero_cta">FALAR COM UM ESPECIALISTA</span><span class="arrow">→</span></a>
       <a href="portfolio.html" class="btn-outline">VER PORTFÓLIO<span class="arrow">→</span></a>
     </div>
   </div>
 
-  <!-- BANNER SLOT -->
-  <div style="width:100%;padding:0 var(--pad-x) 90px;box-sizing:border-box;">
-    <img id="js-banner-home" class="banner-slot" src="assets/banner-home.jpg" alt="Banner SCOPO" style="height:clamp(128px, 24vw, 220px);object-fit:cover;display:block;">
-  </div>
-  <!-- VIDEO INSTITUCIONAL -->
-  <div style="width:100%;padding:0 var(--pad-x) 90px;box-sizing:border-box;">
-    <video id="js-video-institucional" controls preload="none" poster="assets/banner-home.jpg" style="width:100%;height:auto;border-radius:10px;display:block;background:#000;">
-      <source src="assets/video-institucional.mp4" type="video/mp4">
-    </video>
-  </div>
-
+  <!-- BANNERS / MÍDIA DE DESTAQUE (dinâmico: 0, 1 ou mais itens) -->
+  <div id="js-home-banners" style="width:100%;display:flex;flex-direction:column;gap:24px;"></div>
 
   <!-- VALUE STRIP -->
   <div style="width:100%;padding:0 var(--pad-x) 100px;box-sizing:border-box;display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
@@ -78,55 +71,7 @@
       <div class="eyebrow">O QUE FAZEMOS</div>
       <div class="h1" style="font-size:clamp(18px, 4vw, 30px);">Serviços</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Produção de Vídeo</div>
-        <div class="body-txt" style="font-size:14px;">Roteiro, filmagem e edição para institucional, publicidade e redes sociais.</div>
-      </div>
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="var(--brand)"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Marketing Estratégico</div>
-        <div class="body-txt" style="font-size:14px;">Planejamento, posicionamento e plano de ação com metas claras.</div>
-      </div>
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><path d="M4 20l4.5-1.2L20 7.3a1.8 1.8 0 0 0 0-2.6l-.7-.7a1.8 1.8 0 0 0-2.6 0L5.2 15.5 4 20z"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Design</div>
-        <div class="body-txt" style="font-size:14px;">Identidade visual, peças gráficas e materiais que fortalecem sua marca.</div>
-      </div>
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4A8.6 8.6 0 0 1 4 15.4L3 21l5.8-1a8.4 8.4 0 0 1 12.2-8.5z"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Social Media</div>
-        <div class="body-txt" style="font-size:14px;">Planejamento de conteúdo, produção e gestão diária das redes sociais.</div>
-      </div>
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 6h6v6"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Tráfego Pago</div>
-        <div class="body-txt" style="font-size:14px;">Campanhas em Meta e Google otimizadas para gerar vendas e leads.</div>
-      </div>
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.5 5.5a9 9 0 0 0 0 13M18.5 5.5a9 9 0 0 1 0 13"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Mídia OFF</div>
-        <div class="body-txt" style="font-size:14px;">Rádio, outdoor, impressos e outras mídias tradicionais bem planejadas.</div>
-      </div>
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><path d="M8 5l-6 7 6 7M16 5l6 7-6 7"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Sites, Apps &amp; Sistemas</div>
-        <div class="body-txt" style="font-size:14px;">Elaboração de sites, aplicativos e sistemas sob medida para o seu negócio.</div>
-      </div>
-
-      <div class="card" style="padding:32px;display:flex;flex-direction:column;gap:16px;">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M9 8h.01M9 12h.01M15 8h.01M15 12h.01"/></svg>
-        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;">Arquitetura</div>
-        <div class="body-txt" style="font-size:14px;">Projetos arquitetônicos para empresas e lojas que querem um espaço com identidade.</div>
-      </div>
+    <div id="js-home-services-grid" style="display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
 
     </div>
     <div style="display:flex;justify-content:center;">
@@ -144,8 +89,8 @@
 
   <!-- FINAL CTA -->
   <div style="width:100%;padding:100px var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;">
-    <div class="h1" style="font-size:clamp(19px, 4vw, 32px);max-width:700px;">Vamos criar algo com propósito?</div>
-    <div class="body-txt" style="max-width:520px;">Conte pra gente o que sua marca precisa. A resposta é rápida e sem compromisso.</div>
+    <div class="h1" data-text-key="home_final_cta_title" style="font-size:clamp(19px, 4vw, 32px);max-width:700px;">Vamos criar algo com propósito?</div>
+    <div class="body-txt" data-text-key="home_final_cta_subtitle" style="max-width:520px;">Conte pra gente o que sua marca precisa. A resposta é rápida e sem compromisso.</div>
     <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary">CHAMAR NO WHATSAPP<span class="arrow">→</span></a>
   </div>
 
@@ -154,7 +99,7 @@
     <div style="display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;">
       <div style="display:flex;flex-direction:column;gap:16px;max-width:300px;">
         <img src="assets/logo.png" data-logo style="height:28px;width:auto;">
-        <div class="footlink" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
+        <div class="footlink" data-text-key="footer_tagline" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">MENU</div>
@@ -166,20 +111,12 @@
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">SERVIÇOS</div>
-        <span class="footlink">Produção de Vídeo</span>
-        <span class="footlink">Marketing Estratégico</span>
-        <span class="footlink">Design</span>
-        <span class="footlink">Social Media</span>
-        <span class="footlink">Tráfego Pago</span>
-        <span class="footlink">Mídia OFF</span>
-        <span class="footlink">Sites, Apps &amp; Sistemas</span>
-        <span class="footlink">Arquitetura</span>
+        <div id="js-footer-services" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
         <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">CONTATO</div>
         <a href="https://wa.me/5567991941891" data-wa target="_blank" class="footlink">(67) 99194-1891</a>
-        <a href="#" class="footlink">Instagram (em breve)</a>
-        <a href="#" class="footlink">LinkedIn (em breve)</a>
+        <div id="js-footer-social" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
     </div>
     <div style="border-top:1px solid #1E1E1E;padding-top:24px;color:#5A5A5A;font-family:'Work Sans',sans-serif;font-size:12px;">© 2026 SCOPO. Todos os direitos reservados.</div>
@@ -187,12 +124,20 @@
 
   </div>
 
+
+  <div class="floating-cta" id="js-floating-cta">
+    <a href="https://wa.me/5567991941891" data-wa data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:14px;border-radius:999px;display:flex;align-items:center;gap:8px;">FALAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  
+  <div class="floating-cta" id="js-floating-cta"><a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:13px;border-radius:50px;clip-path:none;">FALE CONOSCO<span class="arrow">→</span></a></div>
   <div class="cursor-ring" id="cursorRing"></div>
   <div class="cursor-dot" id="cursorDot">!</div>
 
 </div>
 <script src="assets/script.js"></script>
 <script src="assets/apply-content.js"></script>
+<script src="assets/enhance.js"></script>
 <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <script>
   if (window.netlifyIdentity) {

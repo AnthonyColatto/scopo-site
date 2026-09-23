@@ -2,7 +2,6 @@
   var root = document.querySelector(".scopo-root");
   var dot = document.getElementById("cursorDot");
   var ring = document.getElementById("cursorRing");
-  var glow = document.getElementById("heroGlow");
 
   if (!root) return;
 
@@ -15,11 +14,6 @@
     }
     if (ring) {
       ring.style.transform = "translate3d(" + mx + "px," + my + "px,0) translate(-50%,-50%)";
-    }
-    if (glow) {
-      var gx = (mx - 720) * 0.03;
-      var gy = (my - 260) * 0.03;
-      glow.style.transform = "translate(" + gx + "px," + gy + "px)";
     }
 
     var target = e.target;

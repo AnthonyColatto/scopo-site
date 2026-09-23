@@ -2,7 +2,17 @@
   "brand_color": "#F5B800",
   "whatsapp_number": "5567991941891",
   "logo": "assets/logo.png",
-  "banner_home": "assets/banner-home.jpg",
+  "banners": [
+    { "arquivo": "assets/banner-home.jpg" },
+    { "arquivo": "assets/video-institucional.mp4" }
+  ],
   "banner_portfolio": "assets/banner-portfolio.jpg",
-  "video_institucional": "assets/video-institucional.mp4"
+  "sound_enabled": true,
+  "custom_cursor": true,
+  "texture": "grid",
+  "cursor_symbol": "!",
+  "social_links": [
+    { "nome": "Instagram", "link": "https://instagram.com" },
+    { "nome": "LinkedIn", "link": "https://linkedin.com" }
+  ]
 }
