@@ -73,6 +73,10 @@
         "Lojas",
         "Identidade de Espaço"
       ]
+    },
+    {
+      "title": "CRM",
+      "description": "Servuço de CRM"
     }
   ]
 }
