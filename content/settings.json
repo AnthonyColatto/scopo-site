@@ -1,18 +1,28 @@
 {
-  "brand_color": "#F5B800",
-  "whatsapp_number": "5567991941891",
-  "logo": "assets/logo.png",
-  "banners": [
-    { "arquivo": "assets/banner-home.jpg" },
-    { "arquivo": "assets/video-institucional.mp4" }
-  ],
-  "banner_portfolio": "assets/banner-portfolio.jpg",
-  "sound_enabled": true,
-  "custom_cursor": true,
-  "texture": "grid",
   "cursor_symbol": "!",
+  "custom_cursor": true,
   "social_links": [
-    { "nome": "Instagram", "link": "https://instagram.com" },
-    { "nome": "LinkedIn", "link": "https://linkedin.com" }
-  ]
+    {
+      "nome": "Instagram",
+      "link": "https://instagram.com"
+    },
+    {
+      "nome": "LinkedIn",
+      "link": "https://linkedin.com"
+    }
+  ],
+  "banners": [
+    {
+      "arquivo": "assets/banner-home.jpg"
+    },
+    {
+      "arquivo": "assets/video-institucional.mp4"
+    }
+  ],
+  "brand_color": "#f500e8",
+  "logo": "assets/logo.png",
+  "sound_enabled": true,
+  "banner_portfolio": "assets/banner-portfolio.jpg",
+  "whatsapp_number": "5567991941891",
+  "texture": "grid"
 }
