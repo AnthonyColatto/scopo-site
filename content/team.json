@@ -15,7 +15,7 @@
     {
       "nome": "Marlon Acioli",
       "descricao": "Especialista em Design Gráfico e Web Design, desenvolvendo soluções com foco em funcionalidade, identidade e comunicação, conectando estética e estratégia para fortalecer marcas e projetos.",
-      "cargo": "Designer Gráfico & WEB Designer Sênior",
+      "cargo": "Designer Gráfico e WEB Designer Sênior",
       "foto": "assets/marlon-perfil.jpg"
     },
     {
@@ -29,6 +29,12 @@
       "descricao": "Profissional focada em conteúdo, comunicação e performance digital, unindo criatividade e estratégia na gestão de redes sociais, produção de Stories e campanhas de tráfego pago.",
       "nome": "Karine Bandeira",
       "foto": "assets/karine-bandeira.jpg"
+    },
+    {
+      "nome": "Sandro Calixto",
+      "descricao": "Profissional especializado em produção audiovisual, da captação à edição, transformando ideias em conteúdos visuais com qualidade, criatividade e linguagem de marca.",
+      "foto": "assets/sandro.jpg",
+      "cargo": "Fotografia | Produção e Edição de Video"
     }
   ]
 }
