@@ -11,6 +11,12 @@
       "cargo": "Trade Marketing / Mídia e Produção ",
       "descricao": "Trade Marketing, Mídia e Produção, especializada na gestão e contratação de mídia e desenvolvimento de projetos para o varejo.\n\nFormada em Arquitetura, une visão técnica, criatividade e conhecimento de comportamento de consumo para desenvolver projetos arquitetônicos e experiências de marca focadas no varejo.",
       "foto": "assets/foto-perfil-ellyn.jpg"
+    },
+    {
+      "nome": "Marlon Acioli",
+      "descricao": "Especialista em Design Gráfico e Web Design, desenvolvendo soluções com foco em funcionalidade, identidade e comunicação, conectando estética e estratégia para fortalecer marcas e projetos.",
+      "cargo": "Designer Gráfico & WEB Designer Sênior",
+      "foto": "assets/marlon-perfil.jpg"
     }
   ]
 }
