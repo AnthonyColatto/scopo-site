@@ -11,11 +11,16 @@
       "link": "https://linkedin.com"
     }
   ],
-  "banners": [],
+  "banners": [
+    {
+      "arquivo": "assets/logo-animação.mp4"
+    }
+  ],
   "brand_color": "#f5df00",
-  "logo": "assets/logo.png",
+  "logo": "assets/logo-para-rodapé.png",
   "sound_enabled": true,
-  "banner_portfolio": "assets/banner-portfolio.jpg",
+  "banner_portfolio": "assets/banner.png",
   "whatsapp_number": "5567991941891",
+  "click_sound": "assets/videoplayback.m4a",
   "texture": "grid"
 }
