@@ -17,6 +17,18 @@
       "descricao": "Especialista em Design Gráfico e Web Design, desenvolvendo soluções com foco em funcionalidade, identidade e comunicação, conectando estética e estratégia para fortalecer marcas e projetos.",
       "cargo": "Designer Gráfico & WEB Designer Sênior",
       "foto": "assets/marlon-perfil.jpg"
+    },
+    {
+      "nome": "Angela Benites",
+      "cargo": "Gestora de CRM",
+      "descricao": "Especialista em gestão de relacionamento e estratégias de CRM, transformando dados e comportamento do cliente em ações de comunicação, retenção e geração de resultados.",
+      "foto": "assets/foto-perfil-angela.jpg"
+    },
+    {
+      "cargo": "Social Media / Story Maker / Tráfego Pago",
+      "descricao": "Profissional focada em conteúdo, comunicação e performance digital, unindo criatividade e estratégia na gestão de redes sociais, produção de Stories e campanhas de tráfego pago.",
+      "nome": "Karine Bandeira",
+      "foto": "assets/karine-bandeira.jpg"
     }
   ]
 }
