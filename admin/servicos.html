@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCOPO — Serviços</title>
+<link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  // apply the last-known brand color instantly (before first paint) so repeat
+  // visits don't flash the old default while apply-content.js fetches fresh settings
+  (function () {
+    try {
+      var c = localStorage.getItem("scopo_brand_color");
+      if (c) document.documentElement.style.setProperty("--brand", c);
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+<div class="scopo-root" style="width:100%;min-height:100vh;background:#050505;display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden;">
+
+  <div class="bg-texture bg-texture--grid" id="js-bg-texture"></div>
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;width:100%;">
+
+  <div style="height:3px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 50%, transparent);"></div>
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:radial-gradient(ellipse 420px 220px at 0% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%), rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
+    <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:42px;width:auto;display:block;"></a>
+    <div class="nav-links" style="display:flex;align-items:center;gap:40px;">
+      <a href="index.html" class="navlink">HOME</a>
+      <a href="servicos.html" class="navlink" style="color:var(--brand);">SERVIÇOS</a>
+      <a href="portfolio.html" class="navlink">PORTFÓLIO</a>
+      <a href="sobre.html" class="navlink">SOBRE</a>
+      <a href="contato.html" class="navlink">CONTATO</a>
+    </div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;"><span data-text-key="header_cta_label">FALE NO WHATSAPP</span><span class="arrow">→</span></a>
+  </div>
+
+  <div style="width:100%;padding:100px var(--pad-x) var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;">
+    <div class="eyebrow" data-text-key="servicos_hero_eyebrow">O QUE FAZEMOS</div>
+    <div class="h1" data-text-key="servicos_hero_title" style="font-size:clamp(23px, 4vw, 40px);">Nossos Serviços</div>
+    <div class="body-txt" data-text-key="servicos_hero_subtitle" style="max-width:600px;">Seis frentes que trabalham juntas para colocar sua marca em movimento — do planejamento à entrega final.</div>
+  </div>
+
+  <div id="js-servicos-list" data-reveal style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:flex;flex-direction:column;gap:26px;">
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Produção de Vídeo</div>
+        <div class="body-txt">Do roteiro à edição final: vídeos institucionais, publicitários e de conteúdo para redes sociais, feitos para reter atenção e comunicar com clareza.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Roteirização</span><span class="chip">Filmagem</span><span class="chip">Edição</span><span class="chip">Motion Graphics</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="var(--brand)"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Marketing Estratégico</div>
+        <div class="body-txt">Diagnóstico, posicionamento e plano de ação com metas mensuráveis. A base que orienta todas as outras frentes da sua marca.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Diagnóstico</span><span class="chip">Posicionamento</span><span class="chip">Planejamento</span><span class="chip">Metas &amp; KPIs</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><path d="M4 20l4.5-1.2L20 7.3a1.8 1.8 0 0 0 0-2.6l-.7-.7a1.8 1.8 0 0 0-2.6 0L5.2 15.5 4 20z"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Design</div>
+        <div class="body-txt">Identidade visual, artes para redes sociais, materiais impressos e digitais — tudo com consistência visual e propósito.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Identidade Visual</span><span class="chip">Peças Gráficas</span><span class="chip">Materiais Impressos</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4A8.6 8.6 0 0 1 4 15.4L3 21l5.8-1a8.4 8.4 0 0 1 12.2-8.5z"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Social Media</div>
+        <div class="body-txt">Planejamento de conteúdo, produção e gestão diária das redes — mantendo a marca ativa, relevante e com identidade.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Calendário Editorial</span><span class="chip">Produção de Conteúdo</span><span class="chip">Gestão de Redes</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 6h6v6"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Tráfego Pago</div>
+        <div class="body-txt">Campanhas em Meta Ads e Google Ads com gestão orientada por dados, focadas em gerar leads e vendas de verdade.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Meta Ads</span><span class="chip">Google Ads</span><span class="chip">Otimização de Campanhas</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><circle cx="12" cy="12" r="2"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.5 5.5a9 9 0 0 0 0 13M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Mídia OFF</div>
+        <div class="body-txt">Rádio, outdoor, impressos e outras mídias tradicionais, planejadas para complementar a presença digital da marca.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Rádio</span><span class="chip">Outdoor</span><span class="chip">Impressos</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><path d="M8 5l-6 7 6 7M16 5l6 7-6 7"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Elaboração de Sites, Aplicativos e Sistemas</div>
+        <div class="body-txt">Sites institucionais, aplicativos e sistemas sob medida — pensados junto com a estratégia da marca, não como um item avulso.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Sites</span><span class="chip">Aplicativos</span><span class="chip">Sistemas Sob Medida</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;gap:32px;padding:44px;flex-wrap:wrap;">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.5" style="flex-shrink:0;"><rect x="4" y="3" width="16" height="18" rx="1"/><path d="M9 21v-4h6v4M9 8h.01M9 12h.01M15 8h.01M15 12h.01"/></svg>
+      <div style="display:flex;flex-direction:column;gap:14px;flex:1;min-width:280px;">
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:24px;font-weight:700;">Arquitetura</div>
+        <div class="body-txt">Projetos arquitetônicos para empresas e lojas — do conceito ao projeto executivo, com identidade visual conectada à marca.</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;">
+          <span class="chip">Projetos Comerciais</span><span class="chip">Lojas</span><span class="chip">Identidade de Espaço</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div data-reveal style="width:100%;padding:100px var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;background:#101010;border-top:1px solid #1E1E1E;">
+    <div class="h1" data-text-key="servicos_cta_title" style="font-size:clamp(18px, 4vw, 28px);max-width:640px;">Não sabe por onde começar?</div>
+    <div class="body-txt" data-text-key="servicos_cta_subtitle" style="max-width:520px;">A gente monta um plano sob medida pra sua marca, sem enrolação.</div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary">FALAR COM UM ESPECIALISTA<span class="arrow">→</span></a>
+  </div>
+
+  <div style="height:2px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 45%, transparent);opacity:.45;"></div>
+  <div style="width:100%;background:#0A0A0A radial-gradient(ellipse 750px 400px at 10% 0%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 72%);border-top:1px solid #1E1E1E;padding:70px var(--pad-x) 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
+    <div style="display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:300px;">
+        <img src="assets/logo.png" data-logo style="height:36px;width:auto;">
+        <div class="footlink" data-text-key="footer_tagline" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">MENU</div>
+        <a href="index.html" class="footlink">Home</a>
+        <a href="servicos.html" class="footlink">Serviços</a>
+        <a href="portfolio.html" class="footlink">Portfólio</a>
+        <a href="sobre.html" class="footlink">Sobre</a>
+        <a href="contato.html" class="footlink">Contato</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">SERVIÇOS</div>
+        <div id="js-footer-services" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">CONTATO</div>
+        <a href="https://wa.me/5567991941891" data-wa target="_blank" class="footlink">(67) 99194-1891</a>
+        <div id="js-footer-social" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1E1E1E;padding-top:24px;color:#5A5A5A;font-family:'Work Sans',sans-serif;font-size:12px;">© 2026 SCOPO. Todos os direitos reservados.</div>
+  </div>
+
+  </div>
+
+
+  <div class="floating-cta" id="js-floating-cta">
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:14px;border-radius:999px;display:flex;align-items:center;gap:8px;">FALAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <div class="cursor-ring" id="cursorRing"></div>
+  <div class="cursor-dot" id="cursorDot">!</div>
+
+</div>
+<script src="assets/script.js"></script>
+<script src="assets/apply-content.js"></script>
+<script src="assets/enhance.js"></script>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<script>
+  if (window.netlifyIdentity) {
+    window.netlifyIdentity.on("init", function (user) {
+      // if this page was opened from an invite/confirmation/recovery email link,
+      // the widget auto-detects the token in the URL hash and opens the
+      // "set your password" modal on its own — nothing else to do here.
+    });
+  }
+</script>
+</body>
+</html>

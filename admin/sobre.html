@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCOPO — Sobre</title>
+<link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  // apply the last-known brand color instantly (before first paint) so repeat
+  // visits don't flash the old default while apply-content.js fetches fresh settings
+  (function () {
+    try {
+      var c = localStorage.getItem("scopo_brand_color");
+      if (c) document.documentElement.style.setProperty("--brand", c);
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+<div class="scopo-root" style="width:100%;min-height:100vh;background:#050505;display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden;">
+
+  <div class="bg-texture bg-texture--grid" id="js-bg-texture"></div>
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;width:100%;">
+
+  <div style="height:3px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 50%, transparent);"></div>
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:radial-gradient(ellipse 420px 220px at 0% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%), rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
+    <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:42px;width:auto;display:block;"></a>
+    <div class="nav-links" style="display:flex;align-items:center;gap:40px;">
+      <a href="index.html" class="navlink">HOME</a>
+      <a href="servicos.html" class="navlink">SERVIÇOS</a>
+      <a href="portfolio.html" class="navlink">PORTFÓLIO</a>
+      <a href="sobre.html" class="navlink" style="color:var(--brand);">SOBRE</a>
+      <a href="contato.html" class="navlink">CONTATO</a>
+    </div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;"><span data-text-key="header_cta_label">FALE NO WHATSAPP</span><span class="arrow">→</span></a>
+  </div>
+
+  <div style="width:100%;padding:100px var(--pad-x) var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;">
+    <div class="eyebrow" data-text-key="sobre_hero_eyebrow">QUEM SOMOS</div>
+    <div class="h1" data-text-key="sobre_hero_title" style="font-size:clamp(23px, 4vw, 40px);">Sobre a SCOPO</div>
+    <div class="body-txt" data-text-key="sobre_hero_subtitle" style="max-width:640px;">Uma agência de marketing pensada pra funcionar como um time completo dentro da sua empresa — sem a complexidade de gerir vários fornecedores.</div>
+  </div>
+
+  <div data-reveal style="width:100%;padding:20px var(--pad-x) 90px;box-sizing:border-box;display:grid;grid-template-columns:var(--split-a,1.1fr 0.9fr);gap:var(--pad-x);align-items:center;">
+    <div style="display:flex;flex-direction:column;gap:18px;">
+      <div class="h1" data-text-key="sobre_historia_title" style="font-size:clamp(18px, 4vw, 24px);">Nossa história</div>
+      <div class="body-txt" data-text-key="sobre_historia_p1">A SCOPO nasceu da vontade de fazer marketing de um jeito diferente: com estratégia por trás de cada peça, cada campanha e cada vídeo — não só entrega bonita, mas entrega que gera resultado.</div>
+      <div class="body-txt" data-text-key="sobre_historia_p2">Hoje reunimos produção de vídeo, design, gestão de redes, tráfego pago e mídia tradicional em um único time, acompanhando de perto cada cliente do planejamento à execução.</div>
+    </div>
+    <div class="card" style="padding:44px;display:flex;flex-direction:column;gap:26px;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:36px;font-weight:800;" data-text-key="sobre_stat1_number">+20</div>
+        <div class="body-txt" data-text-key="sobre_stat1_label" style="font-size:14px;">projetos entregues</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:36px;font-weight:800;" data-text-key="sobre_stat2_number">6</div>
+        <div class="body-txt" data-text-key="sobre_stat2_label" style="font-size:14px;">frentes de atuação sob um só time</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:36px;font-weight:800;" data-text-key="sobre_stat3_number">100%</div>
+        <div class="body-txt" data-text-key="sobre_stat3_label" style="font-size:14px;">acompanhamento próximo, do briefing à entrega</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VALORES -->
+  <div data-reveal style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:flex;flex-direction:column;gap:44px;">
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;">
+      <div class="eyebrow" data-text-key="sobre_valores_eyebrow">COMO TRABALHAMOS</div>
+      <div class="h1" data-text-key="sobre_valores_title" style="font-size:clamp(18px, 4vw, 26px);">Nossos valores</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
+      <div class="card" style="padding:34px;display:flex;flex-direction:column;gap:12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z"/></svg>
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;" data-text-key="sobre_valor1_title">Excelência</div>
+        <div class="body-txt" data-text-key="sobre_valor1_desc" style="font-size:14px;">Cuidado com o detalhe em cada entrega, do roteiro ao pixel final.</div>
+      </div>
+      <div class="card" style="padding:34px;display:flex;flex-direction:column;gap:12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;" data-text-key="sobre_valor2_title">Transparência</div>
+        <div class="body-txt" data-text-key="sobre_valor2_desc" style="font-size:14px;">Relatórios claros e comunicação direta sobre o que está funcionando.</div>
+      </div>
+      <div class="card" style="padding:34px;display:flex;flex-direction:column;gap:12px;">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="1.6"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 6h6v6"/></svg>
+        <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:17px;font-weight:700;" data-text-key="sobre_valor3_title">Foco em resultado</div>
+        <div class="body-txt" data-text-key="sobre_valor3_desc" style="font-size:14px;">Cada ação é pensada pra gerar retorno real pro negócio do cliente.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EQUIPE (opcional — só aparece se algum membro for cadastrado no admin) -->
+  <div id="js-team-section" data-reveal style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:none;flex-direction:column;gap:44px;">
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;">
+      <div class="eyebrow" data-text-key="sobre_equipe_eyebrow">QUEM FAZ ACONTECER</div>
+      <div class="h1" data-text-key="sobre_equipe_title" style="font-size:clamp(18px, 4vw, 26px);">Nosso time</div>
+    </div>
+    <div id="js-team-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px;"></div>
+  </div>
+
+  <div data-reveal style="width:100%;padding:100px var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;background:#101010;border-top:1px solid #1E1E1E;">
+    <div class="h1" data-text-key="sobre_cta_title" style="font-size:clamp(18px, 4vw, 28px);max-width:640px;">Quer fazer parte dessa história?</div>
+    <div class="body-txt" data-text-key="sobre_cta_subtitle" style="max-width:520px;">Fala com a gente e vamos entender como podemos ajudar sua marca.</div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary">FALAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <div style="height:2px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 45%, transparent);opacity:.45;"></div>
+  <div style="width:100%;background:#0A0A0A radial-gradient(ellipse 750px 400px at 10% 0%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 72%);border-top:1px solid #1E1E1E;padding:70px var(--pad-x) 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
+    <div style="display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:300px;">
+        <img src="assets/logo.png" data-logo style="height:36px;width:auto;">
+        <div class="footlink" data-text-key="footer_tagline" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">MENU</div>
+        <a href="index.html" class="footlink">Home</a>
+        <a href="servicos.html" class="footlink">Serviços</a>
+        <a href="portfolio.html" class="footlink">Portfólio</a>
+        <a href="sobre.html" class="footlink">Sobre</a>
+        <a href="contato.html" class="footlink">Contato</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">SERVIÇOS</div>
+        <div id="js-footer-services" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">CONTATO</div>
+        <a href="https://wa.me/5567991941891" data-wa target="_blank" class="footlink">(67) 99194-1891</a>
+        <div id="js-footer-social" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1E1E1E;padding-top:24px;color:#5A5A5A;font-family:'Work Sans',sans-serif;font-size:12px;">© 2026 SCOPO. Todos os direitos reservados.</div>
+  </div>
+
+  </div>
+
+
+  <div class="floating-cta" id="js-floating-cta">
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:14px;border-radius:999px;display:flex;align-items:center;gap:8px;">FALAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <div class="cursor-ring" id="cursorRing"></div>
+  <div class="cursor-dot" id="cursorDot">!</div>
+
+</div>
+<script src="assets/script.js"></script>
+<script src="assets/apply-content.js"></script>
+<script src="assets/enhance.js"></script>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<script>
+  if (window.netlifyIdentity) {
+    window.netlifyIdentity.on("init", function (user) {
+      // if this page was opened from an invite/confirmation/recovery email link,
+      // the widget auto-detects the token in the URL hash and opens the
+      // "set your password" modal on its own — nothing else to do here.
+    });
+  }
+</script>
+</body>
+</html>

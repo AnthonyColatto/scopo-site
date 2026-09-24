@@ -1,23 +1,171 @@
 <!doctype html>
-<html>
+<html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>SCOPO — Admin</title>
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCOPO — Estratégia, criatividade e resultado</title>
+<link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<script>
+  // apply the last-known brand color instantly (before first paint) so repeat
+  // visits don't flash the old default while apply-content.js fetches fresh settings
+  (function () {
+    try {
+      var c = localStorage.getItem("scopo_brand_color");
+      if (c) document.documentElement.style.setProperty("--brand", c);
+    } catch (e) {}
+  })();
+</script>
 </head>
 <body>
-  <script>
-    if (window.netlifyIdentity) {
-      window.netlifyIdentity.on("init", function (user) {
-        if (!user) {
-          window.netlifyIdentity.on("login", function () {
-            document.location.href = "/admin/";
-          });
-        }
-      });
-    }
-  </script>
-  <script src="https://unpkg.com/decap-cms@^3.0.0/dist/decap-cms.js"></script>
+<div class="scopo-root" style="width:100%;min-height:100vh;background:#050505;display:flex;flex-direction:column;box-sizing:border-box;position:relative;overflow:hidden;">
+
+  <div class="bg-texture bg-texture--grid" id="js-bg-texture"></div>
+
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;width:100%;">
+
+  <!-- HEADER -->
+  <div style="height:3px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 50%, transparent);"></div>
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:radial-gradient(ellipse 420px 220px at 0% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%), rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
+    <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:42px;width:auto;display:block;"></a>
+    <div class="nav-links" style="display:flex;align-items:center;gap:40px;">
+      <a href="index.html" class="navlink" style="color:var(--brand);">HOME</a>
+      <a href="servicos.html" class="navlink">SERVIÇOS</a>
+      <a href="portfolio.html" class="navlink">PORTFÓLIO</a>
+      <a href="sobre.html" class="navlink">SOBRE</a>
+      <a href="contato.html" class="navlink">CONTATO</a>
+    </div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;"><span data-text-key="header_cta_label">FALE NO WHATSAPP</span><span class="arrow">→</span></a>
+  </div>
+
+  <!-- HERO -->
+  <div style="width:100%;padding:110px var(--pad-x) 90px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:26px;position:relative;overflow:hidden;">
+    <div class="hero-hud" aria-hidden="true">
+      <div class="hud-corner hud-corner--tl"></div>
+      <div class="hud-corner hud-corner--tr"></div>
+      <div class="hud-corner hud-corner--bl"></div>
+      <div class="hud-corner hud-corner--br"></div>
+      <div class="hud-rec"><span class="hud-dot"></span>REC <span class="js-hud-timecode">00:00:00</span></div>
+      <div class="hud-label">SCOPO_REEL — TAKE 01</div>
+      <div class="hud-scrubber"><div class="hud-scrubber-track"><div class="hud-scrubber-fill"></div></div></div>
+    </div>
+    <div data-parallax="0.05" id="heroGlow" style="position:absolute;width:560px;height:560px;border-radius:50%;left:50%;top:-260px;margin-left:-280px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 11%, transparent),transparent 70%);filter:blur(10px);pointer-events:none;z-index:0;"></div>
+    <div class="parallax-blob" data-parallax="0.02" style="width:380px;height:380px;left:4%;top:0px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 16%, transparent),transparent 70%);"></div>
+    <div class="parallax-blob" data-parallax="0.12" style="width:240px;height:240px;right:6%;top:140px;background:radial-gradient(circle,rgba(255,255,255,0.11),transparent 70%);"></div>
+    <div class="eyebrow hero-in" data-text-key="home_hero_eyebrow" style="position:relative;z-index:1;animation-delay:.05s;">AGÊNCIA DE MARKETING</div>
+    <div class="h1 hero-in" id="js-hero-title" data-default-main="Estratégia, criatividade e resultado" data-default-highlight="na medida certa." style="font-size:clamp(26px, 5vw, 44px);line-height:1.18;max-width:760px;position:relative;z-index:1;animation-delay:.16s;">Estratégia, criatividade e resultado <span style="color:var(--brand);">na medida certa.</span></div>
+    <div class="body-txt hero-in" data-text-key="home_hero_subtitle" style="max-width:560px;font-size:17px;position:relative;z-index:1;animation-delay:.28s;">A SCOPO cuida de vídeo, design, mídia e performance da sua marca de ponta a ponta — pra você vender mais e aparecer melhor.</div>
+    <div class="hero-in" style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;animation-delay:.4s;">
+      <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary"><span data-text-key="home_hero_cta">FALAR COM UM ESPECIALISTA</span><span class="arrow">→</span></a>
+      <a href="portfolio.html" class="btn-outline">VER PORTFÓLIO<span class="arrow">→</span></a>
+    </div>
+  </div>
+
+  <!-- BANNERS / MÍDIA DE DESTAQUE (dinâmico: 0, 1 ou mais itens) -->
+  <div id="js-home-banners" data-reveal style="width:100%;display:flex;flex-direction:column;gap:24px;"></div>
+
+  <!-- VALUE STRIP -->
+  <div data-reveal style="width:100%;padding:0 var(--pad-x) 100px;box-sizing:border-box;display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
+    <div class="card" style="padding:36px;display:flex;flex-direction:column;gap:12px;">
+      <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:34px;font-weight:800;">01</div>
+      <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;">Estratégia primeiro</div>
+      <div class="body-txt">Nada de post por postar. Cada ação nasce de um objetivo de negócio claro.</div>
+    </div>
+    <div class="card" style="padding:36px;display:flex;flex-direction:column;gap:12px;">
+      <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:34px;font-weight:800;">02</div>
+      <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;">Time completo</div>
+      <div class="body-txt">Vídeo, design, tráfego e mídia OFF sob um só teto — sem perder qualidade em nada.</div>
+    </div>
+    <div class="card" style="padding:36px;display:flex;flex-direction:column;gap:12px;">
+      <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:34px;font-weight:800;">03</div>
+      <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;">Foco em resultado</div>
+      <div class="body-txt">Métricas acompanhadas de perto. O que não gera retorno, a gente muda.</div>
+    </div>
+  </div>
+
+  <!-- SERVICES PREVIEW -->
+  <div data-reveal style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
+    <div style="display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;">
+      <div class="eyebrow">O QUE FAZEMOS</div>
+      <div class="h1" style="font-size:clamp(18px, 4vw, 30px);">Serviços</div>
+    </div>
+    <div id="js-home-services-grid" style="display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
+
+    </div>
+    <div style="display:flex;justify-content:center;">
+      <a href="servicos.html" class="btn-outline">VER TODOS OS SERVIÇOS<span class="arrow">→</span></a>
+    </div>
+  </div>
+
+  <!-- CLIENTES STRIP -->
+  <div data-reveal style="width:100%;padding:70px var(--pad-x);box-sizing:border-box;background:#101010;border-top:1px solid #1E1E1E;border-bottom:1px solid #1E1E1E;display:flex;flex-direction:column;gap:26px;align-items:center;text-align:center;">
+    <div class="eyebrow">QUEM JÁ CONFIOU</div>
+    <div class="h1" style="font-size:clamp(18px, 4vw, 26px);">Clientes atendidos</div>
+    <div class="body-txt" style="max-width:520px;">Marcas de diferentes portes e segmentos já passaram pela SCOPO.</div>
+    <a href="portfolio.html" class="btn-outline">VER PORTFÓLIO COMPLETO<span class="arrow">→</span></a>
+  </div>
+
+  <!-- FINAL CTA -->
+  <div data-reveal style="width:100%;padding:100px var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;">
+    <div class="h1" data-text-key="home_final_cta_title" style="font-size:clamp(19px, 4vw, 32px);max-width:700px;">Vamos criar algo com propósito?</div>
+    <div class="body-txt" data-text-key="home_final_cta_subtitle" style="max-width:520px;">Conte pra gente o que sua marca precisa. A resposta é rápida e sem compromisso.</div>
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary">CHAMAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="height:2px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 45%, transparent);opacity:.45;"></div>
+  <div style="width:100%;background:#0A0A0A radial-gradient(ellipse 750px 400px at 10% 0%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 72%);border-top:1px solid #1E1E1E;padding:70px var(--pad-x) 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
+    <div style="display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:16px;max-width:300px;">
+        <img src="assets/logo.png" data-logo style="height:36px;width:auto;">
+        <div class="footlink" data-text-key="footer_tagline" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">MENU</div>
+        <a href="index.html" class="footlink">Home</a>
+        <a href="servicos.html" class="footlink">Serviços</a>
+        <a href="portfolio.html" class="footlink">Portfólio</a>
+        <a href="sobre.html" class="footlink">Sobre</a>
+        <a href="contato.html" class="footlink">Contato</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">SERVIÇOS</div>
+        <div id="js-footer-services" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">CONTATO</div>
+        <a href="https://wa.me/5567991941891" data-wa target="_blank" class="footlink">(67) 99194-1891</a>
+        <div id="js-footer-social" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1E1E1E;padding-top:24px;color:#5A5A5A;font-family:'Work Sans',sans-serif;font-size:12px;">© 2026 SCOPO. Todos os direitos reservados.</div>
+  </div>
+
+  </div>
+
+
+  <div class="floating-cta" id="js-floating-cta">
+    <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary" style="padding:14px 22px;font-size:14px;border-radius:999px;display:flex;align-items:center;gap:8px;">FALAR NO WHATSAPP<span class="arrow">→</span></a>
+  </div>
+
+  <div class="cursor-ring" id="cursorRing"></div>
+  <div class="cursor-dot" id="cursorDot">!</div>
+
+</div>
+<script src="assets/script.js"></script>
+<script src="assets/apply-content.js"></script>
+<script src="assets/enhance.js"></script>
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<script>
+  if (window.netlifyIdentity) {
+    window.netlifyIdentity.on("init", function (user) {
+      // if this page was opened from an invite/confirmation/recovery email link,
+      // the widget auto-detects the token in the URL hash and opens the
+      // "set your password" modal on its own — nothing else to do here.
+    });
+  }
+</script>
 </body>
 </html>
