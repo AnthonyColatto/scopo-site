@@ -7,7 +7,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-01.jpg"
+        {
+          "arquivo": "assets/projeto-01.jpg"
+        }
       ]
     },
     {
@@ -25,7 +27,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-03.jpg"
+        {
+          "arquivo": "assets/projeto-03.jpg"
+        }
       ]
     },
     {
@@ -43,7 +47,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-05.jpg"
+        {
+          "arquivo": "assets/projeto-05.jpg"
+        }
       ]
     },
     {
@@ -53,7 +59,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-06.jpg"
+        {
+          "arquivo": "assets/projeto-06.jpg"
+        }
       ]
     },
     {
@@ -63,7 +71,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-07.jpg"
+        {
+          "arquivo": "assets/projeto-07.jpg"
+        }
       ]
     },
     {
@@ -73,7 +83,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-08.jpg"
+        {
+          "arquivo": "assets/projeto-08.jpg"
+        }
       ]
     },
     {
@@ -83,7 +95,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-09.jpg"
+        {
+          "arquivo": "assets/projeto-09.jpg"
+        }
       ]
     },
     {
@@ -93,7 +107,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-10.jpg"
+        {
+          "arquivo": "assets/projeto-10.jpg"
+        }
       ]
     },
     {
@@ -103,7 +119,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-11.jpg"
+        {
+          "arquivo": "assets/projeto-11.jpg"
+        }
       ]
     },
     {
@@ -113,7 +131,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-12.jpg"
+        {
+          "arquivo": "assets/projeto-12.jpg"
+        }
       ]
     },
     {
@@ -123,7 +143,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-13.jpg"
+        {
+          "arquivo": "assets/projeto-13.jpg"
+        }
       ]
     },
     {
@@ -133,7 +155,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-14.jpg"
+        {
+          "arquivo": "assets/projeto-14.jpg"
+        }
       ]
     },
     {
@@ -143,7 +167,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-15.jpg"
+        {
+          "arquivo": "assets/projeto-15.jpg"
+        }
       ]
     },
     {
@@ -153,7 +179,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-16.jpg"
+        {
+          "arquivo": "assets/projeto-16.jpg"
+        }
       ]
     },
     {
@@ -163,7 +191,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-17.jpg"
+        {
+          "arquivo": "assets/projeto-17.jpg"
+        }
       ]
     },
     {
@@ -173,7 +203,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-18.jpg"
+        {
+          "arquivo": "assets/projeto-18.jpg"
+        }
       ]
     },
     {
@@ -183,7 +215,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-19.jpg"
+        {
+          "arquivo": "assets/projeto-19.jpg"
+        }
       ]
     },
     {
@@ -193,7 +227,9 @@
       "description": "",
       "gallery_urls": [],
       "gallery_items": [
-        "assets/projeto-20.jpg"
+        {
+          "arquivo": "assets/projeto-20.jpg"
+        }
       ]
     }
   ]
