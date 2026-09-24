@@ -1,24 +1,14 @@
 {
   "items": [
     {
-      "title": "Semana Black DEca",
-      "tag": "Varejo",
-      "image": "assets/10x10-tag.jpg",
-      "description": "What is Lorem Ipsum?\nLorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley, the librarian at St Bride Printing Library in London, took a 1914 Cicero translation and scrambled it to make dummy text for Letraset's Body Type sheets. It has survived not only many decades, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised thanks to these sheets and more recently with desktop publishing software like Aldus PageMaker and Microsoft Word including versions of Lorem Ipsum.",
+      "title": "Projeto 01",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-01.jpg",
+      "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/produto-01-feed.png"
-        },
-        {
-          "arquivo": "assets/produto-02-feed.png"
-        },
-        {
-          "arquivo": "assets/mobile-site-black.png"
-        },
-        {
-          "arquivo": "assets/full-banner-black.png"
-        }
-      ]
+        "assets/projeto-01.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 02",
@@ -26,10 +16,9 @@
       "image": "assets/projeto-02.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-02.jpg"
-        }
-      ]
+        "assets/projeto-02.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 03",
@@ -37,10 +26,9 @@
       "image": "assets/projeto-03.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-03.jpg"
-        }
-      ]
+        "assets/projeto-03.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 04",
@@ -48,10 +36,9 @@
       "image": "assets/projeto-04.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-04.jpg"
-        }
-      ]
+        "assets/projeto-04.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 05",
@@ -59,10 +46,9 @@
       "image": "assets/projeto-05.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-05.jpg"
-        }
-      ]
+        "assets/projeto-05.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 06",
@@ -70,10 +56,9 @@
       "image": "assets/projeto-06.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-06.jpg"
-        }
-      ]
+        "assets/projeto-06.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 07",
@@ -81,10 +66,9 @@
       "image": "assets/projeto-07.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-07.jpg"
-        }
-      ]
+        "assets/projeto-07.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 08",
@@ -92,10 +76,9 @@
       "image": "assets/projeto-08.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-08.jpg"
-        }
-      ]
+        "assets/projeto-08.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 09",
@@ -103,10 +86,9 @@
       "image": "assets/projeto-09.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-09.jpg"
-        }
-      ]
+        "assets/projeto-09.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 10",
@@ -114,10 +96,9 @@
       "image": "assets/projeto-10.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-10.jpg"
-        }
-      ]
+        "assets/projeto-10.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 11",
@@ -125,10 +106,9 @@
       "image": "assets/projeto-11.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-11.jpg"
-        }
-      ]
+        "assets/projeto-11.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 12",
@@ -136,10 +116,9 @@
       "image": "assets/projeto-12.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-12.jpg"
-        }
-      ]
+        "assets/projeto-12.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 13",
@@ -147,10 +126,9 @@
       "image": "assets/projeto-13.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-13.jpg"
-        }
-      ]
+        "assets/projeto-13.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 14",
@@ -158,10 +136,9 @@
       "image": "assets/projeto-14.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-14.jpg"
-        }
-      ]
+        "assets/projeto-14.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 15",
@@ -169,10 +146,9 @@
       "image": "assets/projeto-15.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-15.jpg"
-        }
-      ]
+        "assets/projeto-15.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 16",
@@ -180,10 +156,9 @@
       "image": "assets/projeto-16.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-16.jpg"
-        }
-      ]
+        "assets/projeto-16.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 17",
@@ -191,10 +166,9 @@
       "image": "assets/projeto-17.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-17.jpg"
-        }
-      ]
+        "assets/projeto-17.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 18",
@@ -202,10 +176,9 @@
       "image": "assets/projeto-18.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-18.jpg"
-        }
-      ]
+        "assets/projeto-18.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 19",
@@ -213,10 +186,9 @@
       "image": "assets/projeto-19.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-19.jpg"
-        }
-      ]
+        "assets/projeto-19.jpg"
+      ],
+      "gallery_urls": []
     },
     {
       "title": "Projeto 20",
@@ -224,10 +196,9 @@
       "image": "assets/projeto-20.jpg",
       "description": "",
       "gallery": [
-        {
-          "arquivo": "assets/projeto-20.jpg"
-        }
-      ]
+        "assets/projeto-20.jpg"
+      ],
+      "gallery_urls": []
     }
   ]
 }

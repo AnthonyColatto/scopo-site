@@ -8,9 +8,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
 <style>
-  .project-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;}
-  .project-media{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;border-radius:10px;background:#111;}
-  .project-media img,.project-media video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
+  /* freeform gallery: each item keeps its own real aspect ratio (square,
+     vertical or horizontal) — nothing gets force-cropped into a square */
+  .project-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;align-items:start;}
+  .project-media{position:relative;width:100%;overflow:hidden;border-radius:10px;background:#111;display:flex;align-items:center;justify-content:center;}
+  .project-media img,.project-media video{width:100%;height:auto;max-height:640px;object-fit:contain;display:block;}
+  .project-media iframe{width:100%;aspect-ratio:16/9;border:0;display:block;}
 </style>
 </head>
 <body>
@@ -21,8 +24,8 @@
   <div style="position:relative;z-index:1;display:flex;flex-direction:column;width:100%;">
 
   <div style="height:3px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 50%, transparent);"></div>
-  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
-    <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:32px;width:auto;display:block;"></a>
+  <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:radial-gradient(ellipse 420px 220px at 0% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%), rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
+    <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:42px;width:auto;display:block;"></a>
     <div class="nav-links" style="display:flex;align-items:center;gap:40px;">
       <a href="index.html" class="navlink">HOME</a>
       <a href="servicos.html" class="navlink">SERVIÇOS</a>
@@ -44,10 +47,11 @@
     <div class="project-gallery" id="js-project-gallery"></div>
   </div>
 
-  <div style="width:100%;background:#0A0A0A;border-top:1px solid #1E1E1E;padding:70px var(--pad-x) 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
+  <div style="height:2px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 45%, transparent);opacity:.45;"></div>
+  <div style="width:100%;background:#0A0A0A radial-gradient(ellipse 750px 400px at 10% 0%, color-mix(in srgb, var(--brand) 7%, transparent), transparent 72%);border-top:1px solid #1E1E1E;padding:70px var(--pad-x) 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
     <div style="display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;">
       <div style="display:flex;flex-direction:column;gap:16px;max-width:300px;">
-        <img src="assets/logo.png" data-logo style="height:28px;width:auto;">
+        <img src="assets/logo.png" data-logo style="height:36px;width:auto;">
         <div class="footlink" data-text-key="footer_tagline" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">

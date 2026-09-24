@@ -16,7 +16,7 @@ collections:
         fields:
           - { label: "Cor Principal (Botões e Detalhes)", name: "brand_color", widget: "color" }
           - { label: "Número do WhatsApp (só números, com DDI+DDD, ex: 5567991941891)", name: "whatsapp_number", widget: "string" }
-          - { label: "Logo", name: "logo", widget: "image", hint: "Formato ideal: PNG com fundo transparente, altura de uns 120px (largura livre)." }
+          - { label: "Logo", name: "logo", widget: "image", hint: "Formato ideal: PNG com fundo transparente, CORTADO BEM JUSTO na marca (sem margem/espaço vazio sobrando nas bordas) — senão ela aparece pequena e com o traço fininho no site. Altura de uns 120-150px de resolução, largura livre." }
           - name: "texture"
             label: "Textura de Fundo (padrão pronto)"
             widget: "select"
@@ -25,7 +25,8 @@ collections:
               - { label: "Grade sutil (recomendado)", value: "grid" }
               - { label: "Pontilhado", value: "dots" }
               - { label: "Nenhuma (fundo liso)", value: "none" }
-          - { label: "Textura de Fundo Personalizada (opcional)", name: "textura_custom", widget: "image", required: false, hint: "Se enviar uma imagem aqui, ela substitui a opção acima e se repete (como um ladrilho) por todo o fundo do site. Formato ideal: imagem QUADRADA e sem emenda visível nas bordas (\"tileable\"), entre 400×400px e 800×800px, em JPG ou PNG (PNG se precisar de transparência), arquivo leve — até 300KB — pra não pesar o carregamento do site. Deixe em branco pra usar a opção padrão acima." }
+          - { label: "Textura de Fundo Personalizada — imagem ou GIF (opcional)", name: "textura_custom", widget: "image", required: false, hint: "Se enviar uma imagem aqui, ela substitui a opção acima e se repete (como um ladrilho) por todo o fundo do site. Pode ser um GIF animado (ele anima normalmente). Formato ideal: QUADRADA e sem emenda visível nas bordas (\"tileable\"), entre 400×400px e 800×800px, arquivo leve — até 300KB. Ignorado se você preencher o campo de vídeo abaixo." }
+          - { label: "Textura de Fundo em Vídeo (opcional)", name: "textura_video", widget: "file", required: false, hint: "Sobrepõe as duas opções acima. Um vídeo curto e em loop (tipo partículas, fumaça, ruído sutil) rodando por trás do conteúdo, no escurinho. Formato MP4, SEM ÁUDIO, até uns 8-10 segundos de duração e no máximo 3-4MB pra não pesar o carregamento — quanto mais leve, melhor. Fica sutil e escurecido atrás do texto, não é pra chamar mais atenção que o conteúdo." }
           - { label: "Som ao clicar em botões e cards", name: "sound_enabled", widget: "boolean", default: true }
           - { label: "Som de clique personalizado (opcional)", name: "click_sound", widget: "file", required: false, hint: "Envie um som curtinho (até 1 segundo, tipo um \"clique\", \"tock\" ou bipe) em MP3 ou WAV, arquivo bem leve (até 200KB). Se não enviar nada, usa o bipe padrão do site." }
           - { label: "Cursor personalizado (bolinha que segue o mouse)", name: "custom_cursor", widget: "boolean", default: true }
@@ -70,14 +71,15 @@ collections:
               - { label: "Foto de Capa", name: "image", widget: "image", required: false, hint: "Formato ideal: QUADRADA (proporção 1:1), mínimo 800×800px. A prévia no Portfólio é sempre um quadrado — centralize o que importa da imagem (texto, logo, produto) porque as bordas podem ser levemente cortadas em telas muito estreitas ou largas." }
               - { label: "Vídeo (opcional — se preenchido, aparece no lugar da foto)", name: "video", widget: "file", required: false, hint: "Formato ideal: MP4, QUADRADO (1:1), poucos segundos, até ~20MB." }
               - { label: "Descrição do Projeto (aparece na página do projeto)", name: "description", widget: "text", required: false }
-              - name: "gallery"
-                label: "Galeria (fotos e vídeos do projeto)"
-                label_singular: "Item da galeria"
+              - { label: "Galeria — Fotos e Vídeos (envie quantos quiser de uma vez)", name: "gallery", widget: "file", multiple: true, required: false, hint: "Selecione vários arquivos de uma só vez no seletor pra subir tudo junto. Aceita foto ou vídeo, em QUALQUER formato — quadrado, vertical ou horizontal — nada é cortado, aparece do jeitinho que você enviar." }
+              - name: "gallery_urls"
+                label: "Galeria — Vídeos por Link (opcional)"
+                label_singular: "Link de vídeo"
                 widget: "list"
                 required: false
-                summary: "{{fields.arquivo}}"
+                summary: "{{fields.url}}"
                 fields:
-                  - { label: "Foto ou vídeo", name: "arquivo", widget: "file", hint: "Formato ideal: imagem QUADRADA, mínimo 1000×1000px (vídeos também podem ser quadrados). Qualquer proporção enviada é cortada automaticamente pro quadrado." }
+                  - { label: "Link do vídeo (YouTube, Vimeo ou link direto .mp4)", name: "url", widget: "string", hint: "Use isso quando preferir linkar um vídeo em vez de fazer upload do arquivo (ex: vídeo já publicado no YouTube)." }
 
       - name: "clients"
         label: "Clientes Atendidos"

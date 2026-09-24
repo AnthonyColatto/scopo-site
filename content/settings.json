@@ -1,28 +1,18 @@
 {
   "cursor_symbol": "!",
-  "cursor_icon": "assets/icone-mouse.png",
   "custom_cursor": true,
   "social_links": [
-    {
-      "nome": "Instagram",
-      "link": "https://instagram.com"
-    },
-    {
-      "nome": "LinkedIn",
-      "link": "https://linkedin.com"
-    }
+    { "nome": "Instagram", "link": "https://instagram.com" },
+    { "nome": "LinkedIn", "link": "https://linkedin.com" }
   ],
   "banners": [
-    {
-      "arquivo": "assets/banner.png"
-    }
+    { "arquivo": "assets/banner-home.jpg" },
+    { "arquivo": "assets/video-institucional.mp4" }
   ],
   "brand_color": "#f5df00",
-  "logo": "assets/logo_prancheta-1.png",
+  "logo": "assets/logo.png",
   "sound_enabled": true,
-  "banner_portfolio": "assets/banner.png",
+  "banner_portfolio": "assets/banner-portfolio.jpg",
   "whatsapp_number": "5567991941891",
-  "click_sound": "assets/videoplayback.m4a",
-  "textura_custom": "",
   "texture": "grid"
 }

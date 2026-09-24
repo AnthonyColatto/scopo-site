@@ -22,18 +22,51 @@
     } catch (e) {}
   }
 
+  // shared vignette so the video/image texture reads the same way the
+  // built-in grid/dots patterns do (dark toward the edges, subtle up top)
+  var TEXTURE_VIGNETTE_TOP =
+    "radial-gradient(ellipse 900px 500px at 50% -10%, color-mix(in srgb, var(--brand) 5%, transparent), transparent 70%)";
+  var TEXTURE_VIGNETTE_BOTTOM =
+    "radial-gradient(ellipse 1400px 700px at 50% 110%, rgba(0,0,0,0.7), transparent 60%)";
+
   function applyTexture(settings) {
     var el = document.querySelector(".bg-texture");
     if (!el) return;
     el.classList.remove("bg-texture--grid", "bg-texture--dots", "bg-texture--none");
+
+    var video = settings && settings.textura_video;
+    if (video) {
+      // video texture: a muted, looping <video> laid behind everything,
+      // dimmed so it reads as ambient motion rather than a foreground clip
+      el.style.background = TEXTURE_VIGNETTE_TOP + ", " + TEXTURE_VIGNETTE_BOTTOM;
+      var v = el.querySelector("video.js-bg-video");
+      if (!v) {
+        v = document.createElement("video");
+        v.className = "js-bg-video";
+        v.muted = true;
+        v.loop = true;
+        v.autoplay = true;
+        v.playsInline = true;
+        v.style.cssText =
+          "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5;";
+        el.insertBefore(v, el.firstChild);
+      }
+      if (v.getAttribute("src") !== video) {
+        v.setAttribute("src", video);
+        v.play().catch(function () {});
+      }
+      return;
+    }
+    // no video texture: drop any previously-injected <video> element
+    var oldVideo = el.querySelector("video.js-bg-video");
+    if (oldVideo) oldVideo.remove();
+
     var custom = settings && settings.textura_custom;
     if (custom) {
-      // custom uploaded texture: tiles across the background, keeping the same
-      // top/bottom vignette gradients used by the built-in grid/dots patterns
+      // custom uploaded texture (image or animated GIF): tiles across the
+      // background, keeping the same vignette used by the built-in patterns
       el.style.background =
-        "radial-gradient(ellipse 900px 500px at 50% -10%, color-mix(in srgb, var(--brand) 5%, transparent), transparent 70%), " +
-        'url("' + custom + '") repeat, ' +
-        "radial-gradient(ellipse 1400px 700px at 50% 110%, rgba(0,0,0,0.7), transparent 60%)";
+        TEXTURE_VIGNETTE_TOP + ", " + 'url("' + custom + '") repeat, ' + TEXTURE_VIGNETTE_BOTTOM;
       return;
     }
     el.style.background = "";

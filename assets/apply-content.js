@@ -66,6 +66,17 @@
     return /\.(mp4|webm|mov|m4v)$/i.test(url || "");
   }
 
+  // turns a pasted YouTube/Vimeo link into an embeddable URL; returns null
+  // for anything else (a direct .mp4 link, or not a link at all)
+  function embedUrlFor(url) {
+    if (!url) return null;
+    var yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{6,})/i);
+    if (yt) return "https://www.youtube.com/embed/" + yt[1];
+    var vim = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+    if (vim) return "https://player.vimeo.com/video/" + vim[1];
+    return null;
+  }
+
   // Home banners: 0, 1 or more stacked media items (image or video), fully admin-controlled
   function renderBanners(settings) {
     var wrap = document.getElementById("js-home-banners");
@@ -246,11 +257,26 @@
     if (tagEl) tagEl.textContent = p.tag || "EM BREVE";
     if (descEl) descEl.textContent = p.description || "";
 
-    var mediaItems = (p.gallery && p.gallery.length ? p.gallery.map(function (g) { return g.arquivo; }) : [p.video || p.image]).filter(Boolean);
+    // gallery = uploaded files (multiple:true → plain array of paths, but
+    // older content may still have the list-of-{arquivo} shape, so accept both);
+    // gallery_urls = pasted links (YouTube/Vimeo get embedded, a direct .mp4
+    // link plays like an uploaded video); falls back to the cover photo/video
+    // when no gallery has been filled in at all.
+    var uploaded = (p.gallery || []).map(function (g) {
+      return typeof g === "string" ? g : g && g.arquivo;
+    }).filter(Boolean);
+    var linked = (p.gallery_urls || []).map(function (g) {
+      return typeof g === "string" ? g : g && g.url;
+    }).filter(Boolean);
+    var mediaItems = uploaded.concat(linked);
+    if (!mediaItems.length) mediaItems = [p.video || p.image].filter(Boolean);
 
     galleryEl.innerHTML = mediaItems
       .map(function (url) {
-        var inner = isVideoFile(url)
+        var embed = embedUrlFor(url);
+        var inner = embed
+          ? '<iframe src="' + embed + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen loading="lazy"></iframe>'
+          : isVideoFile(url)
           ? '<video controls muted playsinline preload="metadata" src="' + url + '"></video>'
           : '<img src="' + url + '" alt="' + (p.title || "Projeto") + '" loading="lazy">';
         return '<div class="project-media">' + inner + "</div>";
