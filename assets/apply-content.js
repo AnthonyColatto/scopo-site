@@ -197,12 +197,21 @@
             '" alt="' +
             (p.title || "Projeto") +
             '" style="width:100%;height:100%;object-fit:cover;display:block;">';
+        // wrapped in its own data-reveal div (rather than putting data-reveal
+        // directly on .card) so the entrance fade-in and the card's own hover
+        // lift never fight over the same `transform` transition
         return (
+          '<div data-reveal style="transition-delay:' +
+          (idx % 8) * 0.07 +
+          's;">' +
           '<a href="projeto.html?id=' +
           idx +
           '" class="card" style="display:flex;flex-direction:column;overflow:hidden;text-decoration:none;">' +
           '<div class="thumb">' +
           thumbInner +
+          '<div class="card-frame-tag">CUT ' +
+          String(idx + 1).padStart(2, "0") +
+          "</div>" +
           '<div class="thumb-overlay">Ver projeto →</div></div>' +
           '<div style="padding:18px;display:flex;flex-direction:column;gap:8px;">' +
           '<span class="tag">' +
@@ -210,7 +219,7 @@
           "</span>" +
           '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:15px;font-weight:700;">' +
           (p.title || "") +
-          "</div></div></a>"
+          "</div></div></a></div>"
         );
       })
       .join("");
@@ -251,15 +260,25 @@
 
   function renderClients(data) {
     var grid = document.getElementById("js-clients-grid");
-    if (!grid || !data || !data.items) return;
-    grid.innerHTML = data.items
+    if (!grid || !data || !data.items || !data.items.length) {
+      if (grid) grid.innerHTML = "";
+      return;
+    }
+    var items = data.items;
+    // repeat the list so the strip is comfortably wide, then duplicate the
+    // whole thing once more so a translateX(-50%) loop is perfectly seamless
+    var repeatCount = Math.max(1, Math.ceil(8 / items.length));
+    var repeated = [];
+    for (var i = 0; i < repeatCount; i++) repeated = repeated.concat(items);
+    var doubled = repeated.concat(repeated);
+    grid.innerHTML = doubled
       .map(function (c) {
         return (
           '<img class="client-box" src="' +
           (c.logo || "") +
           '" alt="' +
           (c.name || "Cliente") +
-          '" style="width:100%;max-width:100%;display:block;object-fit:contain;padding:14px;box-sizing:border-box;">'
+          '" style="width:190px;max-width:190px;display:block;object-fit:contain;padding:14px;box-sizing:border-box;">'
         );
       })
       .join("");

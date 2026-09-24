@@ -41,23 +41,32 @@
 
   <!-- HERO -->
   <div style="width:100%;padding:110px var(--pad-x) 90px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:26px;position:relative;overflow:hidden;">
+    <div class="hero-hud" aria-hidden="true">
+      <div class="hud-corner hud-corner--tl"></div>
+      <div class="hud-corner hud-corner--tr"></div>
+      <div class="hud-corner hud-corner--bl"></div>
+      <div class="hud-corner hud-corner--br"></div>
+      <div class="hud-rec"><span class="hud-dot"></span>REC <span class="js-hud-timecode">00:00:00</span></div>
+      <div class="hud-label">SCOPO_REEL — TAKE 01</div>
+      <div class="hud-scrubber"><div class="hud-scrubber-track"><div class="hud-scrubber-fill"></div></div></div>
+    </div>
     <div data-parallax="0.05" id="heroGlow" style="position:absolute;width:560px;height:560px;border-radius:50%;left:50%;top:-260px;margin-left:-280px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 11%, transparent),transparent 70%);filter:blur(10px);pointer-events:none;z-index:0;"></div>
     <div class="parallax-blob" data-parallax="0.02" style="width:380px;height:380px;left:4%;top:0px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 16%, transparent),transparent 70%);"></div>
     <div class="parallax-blob" data-parallax="0.12" style="width:240px;height:240px;right:6%;top:140px;background:radial-gradient(circle,rgba(255,255,255,0.11),transparent 70%);"></div>
-    <div class="eyebrow" data-text-key="home_hero_eyebrow" style="position:relative;z-index:1;">AGÊNCIA DE MARKETING</div>
-    <div class="h1" id="js-hero-title" data-default-main="Estratégia, criatividade e resultado" data-default-highlight="na medida certa." style="font-size:clamp(26px, 5vw, 44px);line-height:1.18;max-width:760px;position:relative;z-index:1;">Estratégia, criatividade e resultado <span style="color:var(--brand);">na medida certa.</span></div>
-    <div class="body-txt" data-text-key="home_hero_subtitle" style="max-width:560px;font-size:17px;position:relative;z-index:1;">A SCOPO cuida de vídeo, design, mídia e performance da sua marca de ponta a ponta — pra você vender mais e aparecer melhor.</div>
-    <div style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;">
+    <div class="eyebrow hero-in" data-text-key="home_hero_eyebrow" style="position:relative;z-index:1;animation-delay:.05s;">AGÊNCIA DE MARKETING</div>
+    <div class="h1 hero-in" id="js-hero-title" data-default-main="Estratégia, criatividade e resultado" data-default-highlight="na medida certa." style="font-size:clamp(26px, 5vw, 44px);line-height:1.18;max-width:760px;position:relative;z-index:1;animation-delay:.16s;">Estratégia, criatividade e resultado <span style="color:var(--brand);">na medida certa.</span></div>
+    <div class="body-txt hero-in" data-text-key="home_hero_subtitle" style="max-width:560px;font-size:17px;position:relative;z-index:1;animation-delay:.28s;">A SCOPO cuida de vídeo, design, mídia e performance da sua marca de ponta a ponta — pra você vender mais e aparecer melhor.</div>
+    <div class="hero-in" style="display:flex;gap:18px;margin-top:10px;flex-wrap:wrap;justify-content:center;position:relative;z-index:1;animation-delay:.4s;">
       <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary"><span data-text-key="home_hero_cta">FALAR COM UM ESPECIALISTA</span><span class="arrow">→</span></a>
       <a href="portfolio.html" class="btn-outline">VER PORTFÓLIO<span class="arrow">→</span></a>
     </div>
   </div>
 
   <!-- BANNERS / MÍDIA DE DESTAQUE (dinâmico: 0, 1 ou mais itens) -->
-  <div id="js-home-banners" style="width:100%;display:flex;flex-direction:column;gap:24px;"></div>
+  <div id="js-home-banners" data-reveal style="width:100%;display:flex;flex-direction:column;gap:24px;"></div>
 
   <!-- VALUE STRIP -->
-  <div style="width:100%;padding:0 var(--pad-x) 100px;box-sizing:border-box;display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
+  <div data-reveal style="width:100%;padding:0 var(--pad-x) 100px;box-sizing:border-box;display:grid;grid-template-columns:repeat(var(--g3,3),minmax(0,1fr));gap:24px;">
     <div class="card" style="padding:36px;display:flex;flex-direction:column;gap:12px;">
       <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:34px;font-weight:800;">01</div>
       <div style="color:#FFFFFF;font-family:'Poppins',sans-serif;font-size:19px;font-weight:700;">Estratégia primeiro</div>
@@ -76,7 +85,7 @@
   </div>
 
   <!-- SERVICES PREVIEW -->
-  <div style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
+  <div data-reveal style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:flex;flex-direction:column;gap:50px;">
     <div style="display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;">
       <div class="eyebrow">O QUE FAZEMOS</div>
       <div class="h1" style="font-size:clamp(18px, 4vw, 30px);">Serviços</div>
@@ -90,7 +99,7 @@
   </div>
 
   <!-- CLIENTES STRIP -->
-  <div style="width:100%;padding:70px var(--pad-x);box-sizing:border-box;background:#101010;border-top:1px solid #1E1E1E;border-bottom:1px solid #1E1E1E;display:flex;flex-direction:column;gap:26px;align-items:center;text-align:center;">
+  <div data-reveal style="width:100%;padding:70px var(--pad-x);box-sizing:border-box;background:#101010;border-top:1px solid #1E1E1E;border-bottom:1px solid #1E1E1E;display:flex;flex-direction:column;gap:26px;align-items:center;text-align:center;">
     <div class="eyebrow">QUEM JÁ CONFIOU</div>
     <div class="h1" style="font-size:clamp(18px, 4vw, 26px);">Clientes atendidos</div>
     <div class="body-txt" style="max-width:520px;">Marcas de diferentes portes e segmentos já passaram pela SCOPO.</div>
@@ -98,7 +107,7 @@
   </div>
 
   <!-- FINAL CTA -->
-  <div style="width:100%;padding:100px var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;">
+  <div data-reveal style="width:100%;padding:100px var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:24px;">
     <div class="h1" data-text-key="home_final_cta_title" style="font-size:clamp(19px, 4vw, 32px);max-width:700px;">Vamos criar algo com propósito?</div>
     <div class="body-txt" data-text-key="home_final_cta_subtitle" style="max-width:520px;">Conte pra gente o que sua marca precisa. A resposta é rápida e sem compromisso.</div>
     <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary">CHAMAR NO WHATSAPP<span class="arrow">→</span></a>

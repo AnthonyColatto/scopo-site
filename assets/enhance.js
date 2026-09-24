@@ -44,6 +44,7 @@
   var SETTINGS = {};
   function applyToggles(settings) {
     SETTINGS = settings || {};
+    setupCustomClickSound(SETTINGS);
 
     var dotEl = document.getElementById("cursorDot");
     if (dotEl && SETTINGS.cursor_icon) {
@@ -139,7 +140,34 @@
   }
 
   var audioCtx;
+  var customClickAudio = null;
+  var customClickAudioSrc = null;
+  // called whenever settings load/change so a newly-uploaded click sound
+  // (or one that was removed) is picked up without a page reload
+  function setupCustomClickSound(settings) {
+    var src = settings && settings.click_sound;
+    if (src) {
+      if (src !== customClickAudioSrc) {
+        customClickAudio = new Audio(src);
+        customClickAudio.preload = "auto";
+        customClickAudioSrc = src;
+      }
+    } else {
+      customClickAudio = null;
+      customClickAudioSrc = null;
+    }
+  }
   function playClickSound() {
+    if (customClickAudio) {
+      try {
+        // cloneNode lets rapid clicks overlap instead of cutting each other off
+        var a = customClickAudio.cloneNode();
+        a.volume = 1;
+        var p = a.play();
+        if (p && p.catch) p.catch(function () {});
+        return;
+      } catch (e) {}
+    }
     try {
       audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
       if (audioCtx.state === "suspended") audioCtx.resume();
@@ -175,6 +203,83 @@
     onScroll();
   }
 
+  // hero "video editor" HUD: a running timecode, purely decorative
+  // (a page can have more than one hero using the HUD, so it's a class)
+  function setupHudTimecode() {
+    var els = document.querySelectorAll(".js-hud-timecode");
+    if (!els.length) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var start = performance.now();
+    function pad(n) {
+      return (n < 10 ? "0" : "") + n;
+    }
+    function tick() {
+      var totalCs = Math.floor((performance.now() - start) / 10);
+      var cs = totalCs % 100;
+      var totalSec = Math.floor(totalCs / 100);
+      var sec = totalSec % 60;
+      var min = Math.floor(totalSec / 60);
+      var text = pad(min) + ":" + pad(sec) + ":" + pad(cs);
+      els.forEach(function (el) {
+        el.textContent = text;
+      });
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // "Scene reveal" on scroll: sections fade/scale/blur in like cuts on a
+  // timeline as they enter the viewport (see [data-reveal] in style.css).
+  // Content rendered later by apply-content.js (projects, clients — anything
+  // that arrives asynchronously from content/*.json, possibly more than once
+  // if the fetch differs from cache) also carries [data-reveal], so this
+  // keeps watching the DOM with a MutationObserver instead of scanning once;
+  // otherwise anything inserted after this runs would be stuck at opacity:0.
+  function setupScrollReveal() {
+    var noIO = !("IntersectionObserver" in window);
+    var io = noIO
+      ? null
+      : new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("is-revealed");
+                io.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.15, rootMargin: "0px 0px -8% 0px" }
+        );
+
+    function observe(el) {
+      if (el.__scopoRevealSeen) return;
+      el.__scopoRevealSeen = true;
+      if (noIO) {
+        el.classList.add("is-revealed");
+      } else {
+        io.observe(el);
+      }
+    }
+
+    document.querySelectorAll("[data-reveal]").forEach(observe);
+
+    if ("MutationObserver" in window) {
+      var mo = new MutationObserver(function (mutations) {
+        mutations.forEach(function (m) {
+          m.addedNodes &&
+            m.addedNodes.forEach(function (node) {
+              if (node.nodeType !== 1) return;
+              if (node.matches && node.matches("[data-reveal]")) observe(node);
+              if (node.querySelectorAll) {
+                node.querySelectorAll("[data-reveal]").forEach(observe);
+              }
+            });
+        });
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    }
+  }
+
   var cachedSettings = getCache("scopo_cache_settings");
   var cachedTexts = getCache("scopo_cache_texts");
   if (cachedSettings || cachedTexts) {
@@ -199,4 +304,6 @@
   setupHoverPreview();
   setupClickSound();
   setupFloatingCta();
+  setupHudTimecode();
+  setupScrollReveal();
 })();
