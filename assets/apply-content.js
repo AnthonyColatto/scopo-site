@@ -91,7 +91,7 @@
       .map(function (b) {
         var wrapStyle = "width:100%;padding:0 var(--pad-x) 40px;box-sizing:border-box;";
         var inner = isVideoFile(b.arquivo)
-          ? '<video controls preload="none" style="width:100%;height:auto;border-radius:10px;display:block;background:#000;"><source src="' +
+          ? '<video autoplay muted loop playsinline controls preload="auto" style="width:100%;height:auto;border-radius:10px;display:block;background:#000;"><source src="' +
             b.arquivo +
             '"></video>'
           : '<img src="' +
@@ -100,6 +100,17 @@
         return '<div style="' + wrapStyle + '">' + inner + "</div>";
       })
       .join("");
+    // belt-and-suspenders: some browsers only honor autoplay set via markup
+    // parsed at document load, not via innerHTML — force it explicitly too
+    wrap.querySelectorAll("video").forEach(function (v) {
+      v.muted = true;
+      // a <video><source> pair built via innerHTML doesn't always get picked
+      // up by the browser's source-selection step on its own — load() forces
+      // it to (re)run, otherwise play() can silently no-op (readyState stays 0)
+      v.load();
+      var p = v.play();
+      if (p && p.catch) p.catch(function () {});
+    });
   }
 
   // Footer social links: fully optional, admin-controlled
@@ -257,17 +268,34 @@
     if (tagEl) tagEl.textContent = p.tag || "EM BREVE";
     if (descEl) descEl.textContent = p.description || "";
 
-    // gallery = uploaded files (multiple:true → plain array of paths, but
-    // older content may still have the list-of-{arquivo} shape, so accept both);
+    // pulls a usable file-path string out of a gallery entry no matter its
+    // shape — tolerates the current list-of-{arquivo} items, plain strings,
+    // and anything malformed left over from an earlier config, so one bad
+    // entry can never throw and blank out the whole gallery
+    function pickPath(entry, key) {
+      try {
+        if (!entry) return null;
+        if (typeof entry === "string") return entry || null;
+        if (typeof entry === "object" && typeof entry[key] === "string") return entry[key] || null;
+      } catch (e) {}
+      return null;
+    }
+    // only ever iterate real arrays — a field saved in an unexpected shape
+    // (a stray string, an object) must never throw and blank the gallery
+    function toArray(v) {
+      return Array.isArray(v) ? v : [];
+    }
+
+    // gallery_items = uploaded files, added one at a time in the admin (same
+    // pattern as the Home banners); "gallery" is kept too for any project
+    // whose media was saved under the old field name, so nothing gets lost;
     // gallery_urls = pasted links (YouTube/Vimeo get embedded, a direct .mp4
     // link plays like an uploaded video); falls back to the cover photo/video
     // when no gallery has been filled in at all.
-    var uploaded = (p.gallery || []).map(function (g) {
-      return typeof g === "string" ? g : g && g.arquivo;
-    }).filter(Boolean);
-    var linked = (p.gallery_urls || []).map(function (g) {
-      return typeof g === "string" ? g : g && g.url;
-    }).filter(Boolean);
+    var uploaded = toArray(p.gallery_items).map(function (g) { return pickPath(g, "arquivo"); })
+      .concat(toArray(p.gallery).map(function (g) { return pickPath(g, "arquivo"); }))
+      .filter(Boolean);
+    var linked = toArray(p.gallery_urls).map(function (g) { return pickPath(g, "url"); }).filter(Boolean);
     var mediaItems = uploaded.concat(linked);
     if (!mediaItems.length) mediaItems = [p.video || p.image].filter(Boolean);
 

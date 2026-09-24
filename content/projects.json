@@ -1,63 +1,200 @@
 {
   "items": [
     {
-      "title": "Comboio Alvorada",
-      "tag": "Campanha de Varejo",
-      "image": "",
-      "description": "Campanha de Varejo\nCliente Alvorada Materiais de Construção\n\n360 - Mídias OFF - PDV - Digital\nCampanha de forte impacto desenvolvida com senso e gatilho de oportunidade.",
-      "gallery": "",
+      "title": "Projeto 01",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-01.jpg",
+      "description": "",
       "gallery_urls": [],
-      "video": ""
+      "gallery_items": [
+        "assets/projeto-01.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 02",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-02.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": []
     },
     {
       "title": "Projeto 03",
       "tag": "EM BREVE",
       "image": "assets/projeto-03.jpg",
       "description": "",
-      "gallery": [
+      "gallery_urls": [],
+      "gallery_items": [
         "assets/projeto-03.jpg"
-      ],
-      "gallery_urls": []
+      ]
     },
     {
       "title": "Projeto 04",
       "tag": "EM BREVE",
       "image": "assets/projeto-04.jpg",
       "description": "",
-      "gallery": [
-        "assets/projeto-04.jpg"
-      ],
-      "gallery_urls": []
+      "gallery_urls": [],
+      "gallery_items": []
     },
     {
       "title": "Projeto 05",
       "tag": "EM BREVE",
       "image": "assets/projeto-05.jpg",
       "description": "",
-      "gallery": [
+      "gallery_urls": [],
+      "gallery_items": [
         "assets/projeto-05.jpg"
-      ],
-      "gallery_urls": []
+      ]
     },
     {
       "title": "Projeto 06",
       "tag": "EM BREVE",
       "image": "assets/projeto-06.jpg",
       "description": "",
-      "gallery": [
+      "gallery_urls": [],
+      "gallery_items": [
         "assets/projeto-06.jpg"
-      ],
-      "gallery_urls": []
+      ]
     },
     {
       "title": "Projeto 07",
       "tag": "EM BREVE",
       "image": "assets/projeto-07.jpg",
       "description": "",
-      "gallery": [
+      "gallery_urls": [],
+      "gallery_items": [
         "assets/projeto-07.jpg"
-      ],
-      "gallery_urls": []
+      ]
+    },
+    {
+      "title": "Projeto 08",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-08.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-08.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 09",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-09.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-09.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 10",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-10.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-10.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 11",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-11.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-11.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 12",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-12.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-12.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 13",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-13.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-13.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 14",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-14.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-14.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 15",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-15.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-15.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 16",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-16.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-16.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 17",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-17.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-17.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 18",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-18.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-18.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 19",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-19.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-19.jpg"
+      ]
+    },
+    {
+      "title": "Projeto 20",
+      "tag": "EM BREVE",
+      "image": "assets/projeto-20.jpg",
+      "description": "",
+      "gallery_urls": [],
+      "gallery_items": [
+        "assets/projeto-20.jpg"
+      ]
     }
   ]
 }

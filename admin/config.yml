@@ -71,9 +71,16 @@ collections:
               - { label: "Foto de Capa", name: "image", widget: "image", required: false, hint: "Formato ideal: QUADRADA (proporção 1:1), mínimo 800×800px. A prévia no Portfólio é sempre um quadrado — centralize o que importa da imagem (texto, logo, produto) porque as bordas podem ser levemente cortadas em telas muito estreitas ou largas." }
               - { label: "Vídeo (opcional — se preenchido, aparece no lugar da foto)", name: "video", widget: "file", required: false, hint: "Formato ideal: MP4, QUADRADO (1:1), poucos segundos, até ~20MB." }
               - { label: "Descrição do Projeto (aparece na página do projeto)", name: "description", widget: "text", required: false }
-              - { label: "Galeria — Fotos e Vídeos (envie quantos quiser de uma vez)", name: "gallery", widget: "file", multiple: true, required: false, hint: "Selecione vários arquivos de uma só vez no seletor pra subir tudo junto. Aceita foto ou vídeo, em QUALQUER formato — quadrado, vertical ou horizontal — nada é cortado, aparece do jeitinho que você enviar." }
+              - name: "gallery_items"
+                label: "Galeria — Fotos e Vídeos (adicione um por vez, quantos quiser)"
+                label_singular: "Item da galeria"
+                widget: "list"
+                required: false
+                summary: "{{fields.arquivo}}"
+                fields:
+                  - { label: "Foto ou vídeo", name: "arquivo", widget: "file", hint: "Aceita foto ou vídeo, em QUALQUER formato — quadrado, vertical ou horizontal. Nada é cortado, aparece do jeitinho que você enviar. Clique em \"Adicionar Item da galeria\" pra incluir mais de um." }
               - name: "gallery_urls"
-                label: "Galeria — Vídeos por Link (opcional)"
+                label: "Galeria — Vídeos por Link (adicione um por vez, opcional)"
                 label_singular: "Link de vídeo"
                 widget: "list"
                 required: false

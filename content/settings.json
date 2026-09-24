@@ -1,6 +1,5 @@
 {
   "cursor_symbol": "!",
-  "cursor_icon": "assets/simbolo_prancheta-1555.png",
   "custom_cursor": true,
   "social_links": [
     {
@@ -12,20 +11,11 @@
       "link": "https://linkedin.com"
     }
   ],
-  "banners": [
-    {
-      "arquivo": "assets/banner.png"
-    },
-    {
-      "arquivo": "assets/logo-animação.mp4"
-    }
-  ],
-  "brand_color": "#ffdb00",
-  "logo": "assets/logo-para-rodapé.png",
+  "banners": [],
+  "brand_color": "#f5df00",
+  "logo": "assets/logo.png",
   "sound_enabled": true,
-  "textura_video": "assets/tela-de-fundo-scopo-animada-2.mp4",
-  "banner_portfolio": "assets/banner.png",
+  "banner_portfolio": "assets/banner-portfolio.jpg",
   "whatsapp_number": "5567991941891",
-  "click_sound": "assets/videoplayback.m4a",
   "texture": "grid"
 }
