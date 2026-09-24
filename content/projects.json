@@ -1,14 +1,30 @@
 {
   "items": [
     {
-      "title": "Projeto 01",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-01.jpg",
-      "description": "",
-      "gallery_urls": [],
+      "title": "Comboio Alvorada",
+      "tag": "Campanha de Varejo",
+      "image": "assets/comboio-capa.png",
+      "description": "Oportunidade do ano,\nNúmero 1 em Pisos e Revestimentos do MS\n\nCOMBOIO ALVORADA\nSÓ ATÉ 22 de março. Perdeu, já era!\n\nCampanha de Oportunidade - Cliente Alvorada\nDesign - Implantação - Mídia - PDV - Conteúdos - Produção - Animação\n",
+      "gallery_urls": [
+        {
+          "url": "https://www.youtube.com/watch?v=IpRVAxh67N4"
+        }
+      ],
       "gallery_items": [
         {
-          "arquivo": "assets/projeto-01.jpg"
+          "arquivo": "assets/comboio-capa.png"
+        },
+        {
+          "arquivo": "assets/comboio-triplo_01.jpg"
+        },
+        {
+          "arquivo": "assets/google-ads-comboio-320x100.jpg"
+        },
+        {
+          "arquivo": "assets/google-ads-comboio-728x90.jpg"
+        },
+        {
+          "arquivo": "assets/ofertas-comboio-stories.jpg"
         }
       ]
     },
