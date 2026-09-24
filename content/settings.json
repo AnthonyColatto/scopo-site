@@ -12,7 +12,11 @@
       "link": "https://linkedin.com"
     }
   ],
-  "banners": [],
+  "banners": [
+    {
+      "arquivo": "assets/banner.png"
+    }
+  ],
   "brand_color": "#f5df00",
   "logo": "assets/logo.png",
   "sound_enabled": true,
