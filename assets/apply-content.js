@@ -259,13 +259,52 @@
           (c.logo || "") +
           '" alt="' +
           (c.name || "Cliente") +
-          '" style="object-fit:contain;padding:14px;box-sizing:border-box;">'
+          '" style="width:100%;max-width:100%;display:block;object-fit:contain;padding:14px;box-sizing:border-box;">'
         );
       })
       .join("");
   }
 
-  function applyAll(settings, projects, clients, services) {
+  // Team section (Sobre page): fully optional — the whole section is hidden
+  // whenever no member is registered in the admin.
+  function renderTeam(data) {
+    var section = document.getElementById("js-team-section");
+    var grid = document.getElementById("js-team-grid");
+    if (!section || !grid) return;
+    var items = ((data && data.items) || []).filter(function (m) {
+      return m && (m.nome || m.foto || m.cargo);
+    });
+    if (!items.length) {
+      section.style.display = "none";
+      grid.innerHTML = "";
+      return;
+    }
+    section.style.display = "flex";
+    grid.innerHTML = items
+      .map(function (m) {
+        var photo = m.foto
+          ? '<img src="' + m.foto + '" alt="' + (m.nome || "") +
+            '" style="width:120px;height:120px;border-radius:50%;object-fit:cover;display:block;margin:0 auto;">'
+          : '<div style="width:120px;height:120px;border-radius:50%;background:#161616;border:1px solid #262626;margin:0 auto;"></div>';
+        return (
+          '<div class="card" style="padding:28px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;">' +
+          photo +
+          '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:16px;font-weight:700;">' +
+          (m.nome || "") +
+          "</div>" +
+          '<div style="color:var(--brand);font-family:\'Work Sans\',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.5px;">' +
+          (m.cargo || "") +
+          "</div>" +
+          (m.descricao
+            ? '<div class="body-txt" style="font-size:13px;">' + m.descricao + "</div>"
+            : "") +
+          "</div>"
+        );
+      })
+      .join("");
+  }
+
+  function applyAll(settings, projects, clients, services, team) {
     applySettings(settings);
     renderBanners(settings);
     renderSocialLinks(settings);
@@ -273,6 +312,7 @@
     renderClients(clients);
     renderProjectDetail(projects);
     renderServices(services);
+    renderTeam(team);
   }
 
   // 1) instant paint from whatever was cached on a previous visit (no network wait)
@@ -280,8 +320,9 @@
   var cachedProjects = getCache("scopo_cache_projects");
   var cachedClients = getCache("scopo_cache_clients");
   var cachedServices = getCache("scopo_cache_services");
-  if (cachedSettings || cachedProjects || cachedClients || cachedServices) {
-    applyAll(cachedSettings, cachedProjects, cachedClients, cachedServices);
+  var cachedTeam = getCache("scopo_cache_team");
+  if (cachedSettings || cachedProjects || cachedClients || cachedServices || cachedTeam) {
+    applyAll(cachedSettings, cachedProjects, cachedClients, cachedServices, cachedTeam);
   }
 
   // 2) always fetch the live content too, so admin edits still show up; re-render
@@ -291,19 +332,22 @@
     fetchJSON("content/projects.json").catch(function () { return null; }),
     fetchJSON("content/clients.json").catch(function () { return null; }),
     fetchJSON("content/services.json").catch(function () { return null; }),
+    fetchJSON("content/team.json").catch(function () { return null; }),
   ]).then(function (results) {
-    var settings = results[0], projects = results[1], clients = results[2], services = results[3];
+    var settings = results[0], projects = results[1], clients = results[2], services = results[3], team = results[4];
     var changed =
       JSON.stringify(settings) !== JSON.stringify(cachedSettings) ||
       JSON.stringify(projects) !== JSON.stringify(cachedProjects) ||
       JSON.stringify(clients) !== JSON.stringify(cachedClients) ||
-      JSON.stringify(services) !== JSON.stringify(cachedServices);
-    if (changed || !(cachedSettings || cachedProjects || cachedClients || cachedServices)) {
-      applyAll(settings, projects, clients, services);
+      JSON.stringify(services) !== JSON.stringify(cachedServices) ||
+      JSON.stringify(team) !== JSON.stringify(cachedTeam);
+    if (changed || !(cachedSettings || cachedProjects || cachedClients || cachedServices || cachedTeam)) {
+      applyAll(settings, projects, clients, services, team);
     }
     if (settings) setCache("scopo_cache_settings", settings);
     if (projects) setCache("scopo_cache_projects", projects);
     if (clients) setCache("scopo_cache_clients", clients);
     if (services) setCache("scopo_cache_services", services);
+    if (team) setCache("scopo_cache_team", team);
   });
 })();

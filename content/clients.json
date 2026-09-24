@@ -1,44 +1,52 @@
 {
   "items": [
     {
-      "name": "Altali",
-      "logo": "assets/altali_logo-horizontal-03.png"
+      "name": "Cliente 01",
+      "logo": "assets/cliente-01.png"
     },
     {
-      "name": "Alvorada",
-      "logo": "assets/negativa-alvorada.png"
+      "name": "Cliente 02",
+      "logo": "assets/cliente-02.png"
     },
     {
-      "name": "Sítio do Golias",
-      "logo": "assets/sítio-do-golias-branca-logotipo.png"
+      "name": "Cliente 03",
+      "logo": "assets/cliente-03.png"
     },
     {
-      "name": "Ls Tractor Comak",
-      "logo": "assets/camada-1.png"
+      "name": "Cliente 04",
+      "logo": "assets/cliente-04.png"
     },
     {
-      "name": "Opta",
-      "logo": "assets/arte-4.png"
+      "name": "Cliente 05",
+      "logo": "assets/cliente-05.png"
     },
     {
-      "name": "Villa Golden",
-      "logo": "assets/arte-3.png"
+      "name": "Cliente 06",
+      "logo": "assets/cliente-06.png"
     },
     {
-      "name": "Parts",
-      "logo": "assets/objeto-inteligente-de-vetor-copiar.png"
+      "name": "Cliente 07",
+      "logo": "assets/cliente-07.png"
     },
     {
-      "name": "Alvorada Golden",
-      "logo": "assets/arte-15.png"
+      "name": "Cliente 08",
+      "logo": "assets/cliente-08.png"
     },
     {
-      "name": "Orto e Farma",
-      "logo": "assets/logo-todos-os-modelos-de-uso-cmyk-15.png"
+      "name": "Cliente 09",
+      "logo": "assets/cliente-09.png"
     },
     {
-      "name": "Linha Setup",
-      "logo": "assets/linha-setup-logo-02.png"
+      "name": "Cliente 10",
+      "logo": "assets/cliente-10.png"
+    },
+    {
+      "name": "Cliente 11",
+      "logo": "assets/cliente-11.png"
+    },
+    {
+      "name": "Cliente 12",
+      "logo": "assets/cliente-12.png"
     }
   ]
 }

@@ -25,8 +25,19 @@
   function applyTexture(settings) {
     var el = document.querySelector(".bg-texture");
     if (!el) return;
-    var t = (settings && settings.texture) || "grid";
     el.classList.remove("bg-texture--grid", "bg-texture--dots", "bg-texture--none");
+    var custom = settings && settings.textura_custom;
+    if (custom) {
+      // custom uploaded texture: tiles across the background, keeping the same
+      // top/bottom vignette gradients used by the built-in grid/dots patterns
+      el.style.background =
+        "radial-gradient(ellipse 900px 500px at 50% -10%, color-mix(in srgb, var(--brand) 5%, transparent), transparent 70%), " +
+        'url("' + custom + '") repeat, ' +
+        "radial-gradient(ellipse 1400px 700px at 50% 110%, rgba(0,0,0,0.7), transparent 60%)";
+      return;
+    }
+    el.style.background = "";
+    var t = (settings && settings.texture) || "grid";
     el.classList.add("bg-texture--" + t);
   }
 

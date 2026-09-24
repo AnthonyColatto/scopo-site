@@ -18,12 +18,14 @@ collections:
           - { label: "Número do WhatsApp (só números, com DDI+DDD, ex: 5567991941891)", name: "whatsapp_number", widget: "string" }
           - { label: "Logo", name: "logo", widget: "image", hint: "Formato ideal: PNG com fundo transparente, altura de uns 120px (largura livre)." }
           - name: "texture"
-            label: "Textura de Fundo"
+            label: "Textura de Fundo (padrão pronto)"
             widget: "select"
+            hint: "Só é usado se você NÃO enviar uma textura personalizada no campo abaixo."
             options:
               - { label: "Grade sutil (recomendado)", value: "grid" }
               - { label: "Pontilhado", value: "dots" }
               - { label: "Nenhuma (fundo liso)", value: "none" }
+          - { label: "Textura de Fundo Personalizada (opcional)", name: "textura_custom", widget: "image", required: false, hint: "Se enviar uma imagem aqui, ela substitui a opção acima e se repete (como um ladrilho) por todo o fundo do site. Formato ideal: imagem QUADRADA e sem emenda visível nas bordas (\"tileable\"), entre 400×400px e 800×800px, em JPG ou PNG (PNG se precisar de transparência), arquivo leve — até 300KB — pra não pesar o carregamento do site. Deixe em branco pra usar a opção padrão acima." }
           - { label: "Som ao clicar em botões e cards", name: "sound_enabled", widget: "boolean", default: true }
           - { label: "Cursor personalizado (bolinha que segue o mouse)", name: "custom_cursor", widget: "boolean", default: true }
           - { label: "Símbolo dentro da bolinha do cursor (1 caractere, ex: ! ou →)", name: "cursor_symbol", widget: "string", required: false, hint: "Só aparece se não houver um ícone (abaixo) definido." }
@@ -87,6 +89,26 @@ collections:
             fields:
               - { label: "Nome do Cliente", name: "name", widget: "string" }
               - { label: "Logo do Cliente", name: "logo", widget: "image", hint: "Formato ideal: PNG com fundo transparente, altura de uns 90px (largura livre)." }
+
+  - name: "sobre"
+    label: "Página Sobre"
+    files:
+      - name: "team"
+        label: "Equipe"
+        file: "content/team.json"
+        fields:
+          - name: "items"
+            label: "Membros da Equipe"
+            widget: "list"
+            required: false
+            minimize_collapsed: true
+            summary: "{{fields.nome}} — {{fields.cargo}}"
+            hint: "Aparece como uma seção \"Nosso time\" na página Sobre. Deixe essa lista vazia (sem nenhum membro) pra essa seção não aparecer no site."
+            fields:
+              - { label: "Foto", name: "foto", widget: "image", required: false, hint: "Formato ideal: QUADRADA, mínimo 500×500px, rosto centralizado (a foto aparece redonda no site)." }
+              - { label: "Nome", name: "nome", widget: "string" }
+              - { label: "Cargo", name: "cargo", widget: "string" }
+              - { label: "Descrição (opcional)", name: "descricao", widget: "text", required: false }
 
   - name: "servicos"
     label: "Serviços"
@@ -164,6 +186,8 @@ collections:
           - { label: "Sobre — Valor 2, descrição", name: "sobre_valor2_desc", widget: "text", required: false }
           - { label: "Sobre — Valor 3, título", name: "sobre_valor3_title", widget: "string", required: false }
           - { label: "Sobre — Valor 3, descrição", name: "sobre_valor3_desc", widget: "text", required: false }
+          - { label: "Sobre — Selo da seção Equipe", name: "sobre_equipe_eyebrow", widget: "string", required: false }
+          - { label: "Sobre — Título da seção Equipe", name: "sobre_equipe_title", widget: "string", required: false }
           - { label: "Sobre — Título da chamada final", name: "sobre_cta_title", widget: "string", required: false }
           - { label: "Sobre — Frase da chamada final", name: "sobre_cta_subtitle", widget: "text", required: false }
 
