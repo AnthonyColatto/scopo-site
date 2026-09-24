@@ -2,12 +2,22 @@
   "cursor_symbol": "!",
   "custom_cursor": true,
   "social_links": [
-    { "nome": "Instagram", "link": "https://instagram.com" },
-    { "nome": "LinkedIn", "link": "https://linkedin.com" }
+    {
+      "nome": "Instagram",
+      "link": "https://instagram.com"
+    },
+    {
+      "nome": "LinkedIn",
+      "link": "https://linkedin.com"
+    }
   ],
   "banners": [
-    { "arquivo": "assets/banner-home.jpg" },
-    { "arquivo": "assets/video-institucional.mp4" }
+    {
+      "arquivo": "assets/banner.png"
+    },
+    {
+      "arquivo": "assets/video-institucional.mp4"
+    }
   ],
   "brand_color": "#f5df00",
   "logo": "assets/logo.png",
