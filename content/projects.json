@@ -1,23 +1,17 @@
 {
   "items": [
     {
-      "title": "Black Niver",
-      "tag": "Campanha",
-      "image": "assets/10x10-tag.jpg",
-      "description": "What is Lorem Ipsum?\nLorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, when designers at Letraset and James Mosley, the librarian at St Bride Printing Library in London, took a 1914 Cicero translation and scrambled it to make dummy text for Letraset's Body Type sheets. It has survived not only many decades, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised thanks to these sheets and more recently with desktop publishing software like Aldus PageMaker and Microsoft Word including versions of Lorem Ipsum.",
-      "gallery": "assets/full-banner-black.png",
-      "gallery_urls": [],
-      "video": ""
-    },
-    {
-      "title": "Projeto 02",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-02.jpg",
-      "description": "",
+      "title": "Comboio Alvorada",
+      "tag": "Campanha de Varejo",
+      "image": "assets/mobile-comboio-2026.jpg",
+      "description": "Campanha de Varejo\nCliente Alvorada Materiais de Construção\n\n360 - Mídias OFF - PDV - Digital\nCampanha de forte impacto desenvolvida com senso e gatilho de oportunidade.",
       "gallery": [
-        "assets/projeto-02.jpg"
+        "assets/projeto-02.jpg",
+        "assets/ofertas-comboio-stories.jpg",
+        "assets/comboio-triplo_01.jpg"
       ],
-      "gallery_urls": []
+      "gallery_urls": [],
+      "video": "https://www.youtube.com/watch?v=IpRVAxh67N4"
     },
     {
       "title": "Projeto 03",
@@ -66,136 +60,6 @@
       "description": "",
       "gallery": [
         "assets/projeto-07.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 08",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-08.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-08.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 09",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-09.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-09.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 10",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-10.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-10.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 11",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-11.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-11.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 12",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-12.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-12.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 13",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-13.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-13.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 14",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-14.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-14.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 15",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-15.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-15.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 16",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-16.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-16.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 17",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-17.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-17.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 18",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-18.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-18.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 19",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-19.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-19.jpg"
-      ],
-      "gallery_urls": []
-    },
-    {
-      "title": "Projeto 20",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-20.jpg",
-      "description": "",
-      "gallery": [
-        "assets/projeto-20.jpg"
       ],
       "gallery_urls": []
     }
