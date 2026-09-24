@@ -1,12 +1,13 @@
 {
   "items": [
     {
-      "title": "Projeto 01",
-      "tag": "EM BREVE",
-      "image": "assets/projeto-01.jpg",
+      "title": "Black Niver",
+      "tag": "Campanha",
+      "image": "assets/10x10-tag.jpg",
       "description": "",
       "gallery": [
-        "assets/projeto-01.jpg"
+        "assets/projeto-01.jpg",
+        "assets/produto-01-feed.png"
       ],
       "gallery_urls": []
     },
