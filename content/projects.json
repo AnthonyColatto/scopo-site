@@ -8,9 +8,14 @@
       "gallery": [
         "assets/projeto-01.jpg",
         "assets/produto-01-feed.png",
-        "assets/produto-02-feed.png"
+        "assets/produto-02-feed.png",
+        "assets/mobile-site-black.png",
+        "assets/full-banner-black.png",
+        "assets/full-banner-black.png",
+        "assets/full-banner-black.png"
       ],
-      "gallery_urls": []
+      "gallery_urls": [],
+      "video": "assets/10x10-tag.jpg"
     },
     {
       "title": "Projeto 02",
