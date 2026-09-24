@@ -3,13 +3,17 @@
     {
       "title": "Projeto 01",
       "tag": "EM BREVE",
-      "image": "assets/projeto-01.jpg",
+      "image": "assets/produto-02-feed.png",
       "description": "",
       "gallery": [
         {
-          "arquivo": "assets/projeto-01.jpg"
+          "arquivo": "assets/produto-02-feed.png"
+        },
+        {
+          "arquivo": "assets/produto-02-feed.png"
         }
-      ]
+      ],
+      "video": "https://www.youtube.com/watch?v=ieE_RyI_-R0"
     },
     {
       "title": "Projeto 02",
