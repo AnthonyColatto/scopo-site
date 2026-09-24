@@ -12,18 +12,11 @@
       "link": "https://linkedin.com"
     }
   ],
-  "banners": [
-    {
-      "arquivo": "assets/banner.png"
-    },
-    {
-      "arquivo": "assets/banner-2.png"
-    }
-  ],
+  "banners": [],
   "brand_color": "#f5df00",
   "logo": "assets/logo.png",
   "sound_enabled": true,
-  "banner_portfolio": "assets/banner-portfolio.jpg",
+  "banner_portfolio": "assets/banner.png",
   "whatsapp_number": "5567991941891",
   "click_sound": "assets/videoplayback.m4a",
   "textura_custom": "assets/fundo.jpg",
