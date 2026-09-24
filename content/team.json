@@ -1,15 +1,16 @@
 {
   "items": [
     {
-      "foto": "assets/foto-perfil-ellyn.jpg",
+      "foto": "assets/foto-perfil.jpg",
       "nome": "Anthony Colatto",
       "cargo": "Proprietário / Diretor de Marketing",
-      "descricao": "Profissional com 20 anos de experiência em Gestão de Marketing, unindo estratégia, criatividade e execução.\n\nAtua no planejamento estratégico e tático, gestão de marcas e desenvolvimento de campanhas, com experiência em Design Sênior, Direção de Arte, tráfego pago, redes sociais, edição e animação de vídeos.\n\nÀ frente da SCOPO MKT, transforma objetivos de negócio em estratégias de comunicação que geram posicionamento e resultados."
+      "descricao": "20 anos de experiência em Gestão de Marketing, Planejamento Estratégico e Tático. Atua na direção de marcas e campanhas, unindo estratégia, criatividade e execução, com expertise em Design, Tráfego Pago, Redes Sociais, Edição e Animação."
     },
     {
       "nome": "Ellyn Khester",
       "cargo": "Trade Marketing / Mídia e Produção ",
-      "descricao": "Trade Marketing, Mídia e Produção, especializada na gestão e contratação de mídia e desenvolvimento de projetos para o varejo.\n\nFormada em Arquitetura, une visão técnica, criatividade e conhecimento de comportamento de consumo para desenvolver projetos arquitetônicos e experiências de marca focadas no varejo."
+      "descricao": "Trade Marketing, Mídia e Produção, especializada na gestão e contratação de mídia e desenvolvimento de projetos para o varejo.\n\nFormada em Arquitetura, une visão técnica, criatividade e conhecimento de comportamento de consumo para desenvolver projetos arquitetônicos e experiências de marca focadas no varejo.",
+      "foto": "assets/foto-perfil-ellyn.jpg"
     }
   ]
 }
