@@ -1,3 +1,10 @@
 {
-  "items": []
+  "items": [
+    {
+      "foto": "assets/foto-perfil.jpg",
+      "nome": "Anthony Colatto",
+      "cargo": "Proprietário",
+      "descricao": "What is Lorem Ipsum?\nLorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since 1966, "
+    }
+  ]
 }
