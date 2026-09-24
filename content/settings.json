@@ -1,5 +1,6 @@
 {
   "cursor_symbol": "!",
+  "cursor_icon": "assets/simbolo_prancheta-1555.png",
   "custom_cursor": true,
   "social_links": [
     {
@@ -16,12 +17,13 @@
       "arquivo": "assets/banner.png"
     },
     {
-      "arquivo": "assets/video-institucional.mp4"
+      "arquivo": "assets/versâo.mp4"
     }
   ],
-  "brand_color": "#f500e8",
-  "logo": "assets/logo.png",
+  "brand_color": "#ffdb00",
+  "logo": "assets/logo-para-rodapé.png",
   "sound_enabled": true,
+  "textura_video": "assets/tela-de-fundo-scopo-animada.mp4",
   "banner_portfolio": "assets/banner-portfolio.jpg",
   "whatsapp_number": "5567991941891",
   "texture": "grid"
