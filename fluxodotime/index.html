@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Fluxo do Time · SCOPO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="texture" aria-hidden="true"></div>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="brand"><img src="logo.png" alt="SCOPO"><span class="sep"></span><span>Fluxo do time</span></div>
+    <nav class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="pauta" aria-selected="true">Pauta viva</button>
+      <button role="tab" data-tab="quadros" aria-selected="false">Quadros</button>
+      <button role="tab" data-tab="calendario" aria-selected="false">Calendário</button>
+      <button role="tab" data-tab="mapa" aria-selected="false">Mapa mental</button>
+      <button role="tab" data-tab="verba" aria-selected="false" class="admin-only">Verba e NFs</button>
+      <button role="tab" data-tab="semana" aria-selected="false">Minha semana</button>
+      <button role="tab" data-tab="ciclo" aria-selected="false">Ciclo do mês</button>
+      <button role="tab" data-tab="time" aria-selected="false">Time</button>
+      <button role="tab" data-tab="modelos" aria-selected="false">Modelos</button>
+      <button role="tab" data-tab="admin" aria-selected="false" class="admin-only">Admin</button>
+    </nav>
+    <div class="me"><span id="meBox"><label for="meSel">Você é</label><select id="meSel"></select></span><button class="icon-btn" id="openSettings" title="Sua conta">Conta</button></div>
+  </div>
+</div>
+
+<main>
+  <div id="bootBanner"></div>
+  <section class="view" id="v-pauta"></section>
+  <section class="view" id="v-quadros" hidden></section>
+  <section class="view" id="v-calendario" hidden></section>
+  <section class="view" id="v-mapa" hidden></section>
+  <section class="view" id="v-verba" hidden></section>
+  <section class="view" id="v-admin" hidden></section>
+  <section class="view" id="v-semana" hidden></section>
+  <section class="view" id="v-ciclo" hidden></section>
+  <section class="view" id="v-time" hidden></section>
+  <section class="view" id="v-modelos" hidden></section>
+</main>
+
+<div id="modalRoot"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="config.js"></script>
+<script src="defaults.js"></script>
+<script src="store.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
