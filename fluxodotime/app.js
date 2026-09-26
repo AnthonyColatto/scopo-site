@@ -43,7 +43,7 @@
 
   /* ================= estado ================= */
   var Store = null;
-  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [], visitas: [] };
+  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [], visitas: [], eventos_org: [], campanhas: [] };
   var R = {}; // dados como vieram da base; S é o que esta pessoa pode ver
   var loaded = {};
   var view = LS.get("tab", "pauta");
@@ -62,7 +62,11 @@
       pagamentos: c.pagamentos || D.pagamentos || ["Boleto", "PIX"],
       categoriasCofre: c.categoriasCofre || D.categoriasCofre || ["Outros"],
       lojas: c.lojas || D.lojas || [],
-      setoresVisita: c.setoresVisita || D.setoresVisita || ["Limpeza"]
+      setoresVisita: c.setoresVisita || D.setoresVisita || ["Limpeza"],
+      tiposEventoOrg: c.tiposEventoOrg || D.tiposEventoOrg || ["Evento"],
+      itensCustoEvento: c.itensCustoEvento || D.itensCustoEvento || ["Buffet"],
+      canaisCampanha: c.canaisCampanha || D.canaisCampanha || ["Redes sociais"],
+      checklistCampanha: c.checklistCampanha || D.checklistCampanha || []
     };
   }
   function pessoas() { return S.pessoas.slice().sort(byOrder); }
@@ -235,8 +239,8 @@
     if (fs) {
       fs.innerHTML = '<button type="button" data-f="meu" aria-pressed="' + focoMeu() + '" title="Mostra só o que é seu">Só meu</button><button type="button" data-f="geral" aria-pressed="' + !focoMeu() + '" title="' + (adm ? "Visão de gestão: tudo do time" : "Tudo que foi liberado para você") + '">' + (adm ? "Geral" : "Tudo") + "</button>";
     }
-    if (!adm && (view === "verba" || view === "admin")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    if (!adm && (view === "verba" || view === "admin" || view === "eventosorg" || view === "campanhas")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -1028,6 +1032,10 @@
     if (calF.ciclo) [-1, 0, 1].forEach(function (o) { cycleFor(y, m + o).forEach(function (c) { if (passP(c.quem || []) && passC(c.conta)) push(c.d, { k: "ciclo", id: c.id, t: c.titulo, sort: "40" }); }); });
     if (calF.vencimentos && isAdmin() && !focoMeu()) S.nfs.forEach(function (n) { var d = parse(n.vencimento); if (d && n.status !== "paga" && passC(n.conta)) push(d, { k: "venc", id: n.id, t: brl(n.valor) + " · " + (n.fornecedor || n.descricao || "NF"), sort: "45" }); });
     if (calF.visitas !== false) S.visitas.forEach(function (v) { var d = parse(v.data); if (d && passP(v.resp) && passC(v.conta)) push(d, { k: "visita", id: v.id, t: "Visita · " + (v.loja || ""), sort: "30", conta: v.conta }); });
+    if (isAdmin() && !focoMeu()) {
+      S.eventos_org.forEach(function (e) { var d = parse(e.data); if (d && e.status !== "cancelado" && passC(e.conta)) push(d, { k: "evorg", id: e.id, t: "★ " + (e.nome || "Evento"), sort: "20", conta: e.conta }); });
+      S.campanhas.forEach(function (c) { var d = parse(c.inicio); if (d && c.status !== "cancelada" && passC(c.conta)) push(d, { k: "camp", id: c.id, t: "Campanha · " + c.nome, sort: "25", conta: c.conta }); });
+    }
     if (calF.reunioes) {
       var g = pessoaMe(); var reus = g ? (g.semana || []).filter(function (s) { return s.tipo === "reuniao"; }) : [];
       var start = new Date(y, m - 1, 20), end = new Date(y, m + 1, 12);
@@ -1088,6 +1096,8 @@
         else if (k === "cartao") { openCard(id); modalClose = function () { openCardId = null; renderCalendario(); }; }
         else if (k === "ciclo") openCicloEditor(S.ciclo.find(function (x) { return x.id === id; }));
         else if (k === "reuniao") showView("semana");
+        else if (k === "evorg") { var eo = S.eventos_org.find(function (x) { return x.id === id; }); if (eo) openEventoOrg(eo); }
+        else if (k === "camp") { var cp = S.campanhas.find(function (x) { return x.id === id; }); if (cp) openCampanha(cp); }
         else if (k === "visita") { var vv = S.visitas.find(function (x) { return x.id === id; }); if (vv) openVisita(vv); }
         else if (k === "venc") { var nf = S.nfs.find(function (x) { return x.id === id; }); if (nf) openNF(nf); }
         return;
@@ -1914,7 +1924,11 @@
     ["tiposEvento", "Tipos de evento", "Usados no Calendário."],
     ["categoriasCofre", "Categorias de acessos", "Organizam a aba Acessos."],
     ["lojas", "Lojas", "Usadas nas visitas e no relatório da diretoria."],
-    ["setoresVisita", "Setores do checklist de visita", "Cada setor recebe Ótimo, Bom, Regular ou Ruim na visita."]
+    ["setoresVisita", "Setores do checklist de visita", "Cada setor recebe Ótimo, Bom, Regular ou Ruim na visita."],
+    ["tiposEventoOrg", "Tipos de evento (aba Eventos)", ""],
+    ["itensCustoEvento", "Itens de custo de evento", "Aparecem como sugestão na estimativa de custos."],
+    ["canaisCampanha", "Canais de campanha", ""],
+    ["checklistCampanha", "Checklist padrão de campanha", "Toda campanha nova começa com estes itens."]
   ];
   // onde cada lista é usada, para renomear junto
   var LIST_USE = {
@@ -1924,9 +1938,10 @@
     tiposEvento: [["eventos", "tipo"]],
     pagamentos: [["nfs", "pagamento"], ["contratos", "pagamento"]],
     categoriasCofre: [["cofre", "categoria"]],
-    lojas: [["visitas", "loja"]]
+    lojas: [["visitas", "loja"]],
+    tiposEventoOrg: [["eventos_org", "tipo"]]
   };
-  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre, lojas: L.lojas, setoresVisita: L.setoresVisita }, patch); return Store.set("config", "listas", doc).catch(fail); }
+  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre, lojas: L.lojas, setoresVisita: L.setoresVisita, tiposEventoOrg: L.tiposEventoOrg, itensCustoEvento: L.itensCustoEvento, canaisCampanha: L.canaisCampanha, checklistCampanha: L.checklistCampanha }, patch); return Store.set("config", "listas", doc).catch(fail); }
   function renameEverywhere(key, from, to) {
     var n = 0;
     (LIST_USE[key] || []).forEach(function (u) { S[u[0]].forEach(function (d) { if (d[u[1]] === from) { var p = {}; p[u[1]] = to; Store.upd(u[0], d.id, p).catch(fail); n++; } }); });
@@ -2343,6 +2358,355 @@
   }
 
   /* ================================================================
+     RELATÓRIO (base comum para PDFs de eventos e campanhas)
+     ================================================================ */
+  var REPORT_CSS =
+    "@page{size:A4;margin:14mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    "body{margin:0;font-family:'Work Sans',Arial,sans-serif;color:#141414;font-size:11.5px;line-height:1.45;background:#fff}" +
+    "@media screen{body{max-width:1100px;margin:0 auto;padding:24px}}" +
+    "h1,h2,h3{font-family:'Poppins',Arial,sans-serif;margin:0}.muted{color:#6b6b6b;font-weight:400}" +
+    ".cover{background:#0a0a0a;color:#fff;padding:22px 26px;border-radius:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;border-bottom:4px solid #F5DF00}" +
+    ".cover img{height:24px;display:block;margin-bottom:14px}.cover h1{font-size:24px;font-weight:800}.cover .sub{color:#bdbdbd;margin-top:4px}.cover .meta{text-align:right;color:#bdbdbd;font-size:11px}" +
+    ".kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.kpi{border:1px solid #e3e3e3;border-radius:8px;padding:10px 12px}.kpi span{display:block;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:#6b6b6b;font-weight:600}.kpi b{font-family:'Poppins',Arial;font-size:18px}" +
+    "h2.sec{font-size:15px;margin:20px 0 8px;padding-bottom:5px;border-bottom:3px solid #F5DF00}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #e7e7e7;padding:6px 7px;text-align:left;vertical-align:top}th{font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:#6b6b6b;background:#f6f6f6}td.r,th.r{text-align:right}tfoot td{font-weight:700;background:#fafafa}" +
+    ".pill{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:600;font-size:10px;white-space:nowrap;background:#eee;color:#555}" +
+    ".p-realizada,.p-realizado{background:#d8f5e3;color:#11623a}.p-noar,.p-confirmado{background:#fff4b3;color:#6b5a00}.p-producao{background:#fff1d1;color:#8a5a00}.p-planejada,.p-planejamento{background:#e8e8ff;color:#3b3b8f}.p-cancelada,.p-cancelado{background:#ffdcdc;color:#9a1c1c}" +
+    ".box{border:1px solid #e7e7e7;border-radius:8px;padding:12px 14px;margin-top:12px;break-inside:avoid}.box h3{font-size:14px;margin-bottom:4px}" +
+    ".txt{margin:6px 0;padding:8px 10px;background:#fafafa;border-left:3px solid #F5DF00;white-space:pre-wrap}" +
+    ".imgs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}.imgs img{width:100%;height:120px;object-fit:cover;border-radius:6px}" +
+    ".tags span{display:inline-block;border:1px solid #ddd;border-radius:10px;padding:1px 8px;margin:0 4px 4px 0;font-size:10.5px}" +
+    ".ck{columns:2;font-size:11px;margin-top:6px}.ck div{break-inside:avoid}.ok{color:#11623a}.no{color:#999}" +
+    ".months{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.month{border:1px solid #e3e3e3;border-radius:8px;padding:8px;min-height:90px;break-inside:avoid}.month b{font-family:'Poppins',Arial;font-size:12px;display:block;margin-bottom:4px}.month div{font-size:10.5px;margin-bottom:3px}" +
+    ".pb{break-before:page}.names{columns:3;font-size:10.5px}.foot{margin-top:20px;font-size:10px;color:#8a8a8a;text-align:center}" +
+    ".tip{background:#fff8c6;border:1px solid #f0dc50;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px}@media print{.tip{display:none}}";
+  function abrirRelatorio(o) {
+    var w = window.open("", "_blank");
+    if (!w) { toast("O navegador bloqueou a janela. Libere pop-ups para este site."); return; }
+    w.document.write("<p style='font-family:sans-serif;padding:30px'>Montando o relatório…</p>");
+    var anexos = o.imagens || [];
+    Promise.all(anexos.map(function (a) { return Store.fileUrl(a).then(function (u) { a._u = u; }, function () {}); })).then(function () {
+      var logo = new URL("logo.png", location.href).href;
+      var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(o.titulo) + '</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap"><style>' + REPORT_CSS + "</style></head><body>" +
+        '<div class="tip">Na janela de impressão, escolha <b>Salvar como PDF</b> como destino.</div>' +
+        '<div class="cover"><div><img src="' + esc(logo) + '" alt="SCOPO"><h1>' + esc(o.heading) + '</h1><div class="sub">' + esc(o.sub || "") + '</div></div><div class="meta">Gerado em ' + fmt(new Date()) + "/" + new Date().getFullYear() + "<br>por " + esc(me) + "</div></div>" +
+        (o.kpis ? '<div class="kpis">' + o.kpis.map(function (k) { return '<div class="kpi"><span>' + esc(k[0]) + "</span><b>" + k[1] + "</b></div>"; }).join("") + "</div>" : "") +
+        o.body() + '<div class="foot">SCOPO · Fluxo do Time · ' + esc(o.titulo) + "</div></body></html>";
+      w.document.open(); w.document.write(html); w.document.close();
+      var done = false, fin = function () { if (!done) { done = true; setTimeout(function () { try { w.focus(); w.print(); } catch (e) {} }, 300); } };
+      var imgs = w.document.images, pend = imgs.length;
+      if (!pend) setTimeout(fin, 600);
+      Array.prototype.forEach.call(imgs, function (im) { if (im.complete) { if (--pend <= 0) fin(); } else { im.onload = im.onerror = function () { if (--pend <= 0) fin(); }; } });
+      setTimeout(fin, 5000);
+    });
+  }
+  function imgsHTML(list, max) { return (list || []).filter(function (a) { return a._u; }).slice(0, max || 4).map(function (a) { return '<img src="' + esc(a._u) + '" alt="">'; }).join(""); }
+  function soImagens(list, max) { return (list || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, max || 4); }
+
+  /* ================================================================
+     EVENTOS (profissionais, treinamento, endomarketing) · só admins
+     ================================================================ */
+  var EVO_ST = [["planejamento", "Planejamento"], ["confirmado", "Confirmado"], ["realizado", "Realizado"], ["cancelado", "Cancelado"]];
+  var evoF = { ano: new Date().getFullYear(), status: "", tipo: "" };
+  function evoTotais(e) {
+    var est = 0, real = 0;
+    (e.custos || []).forEach(function (c) { est += (Number(c.qtd) || 0) * (Number(c.unit) || 0); real += Number(c.real) || 0; });
+    var captado = (e.cooperada && e.cooperada.tem ? Number(e.cooperada.valor) || 0 : 0) + (e.patrocinios || []).reduce(function (t, p) { return t + (Number(p.valor) || 0); }, 0);
+    var base = real || est, pessoas = Number(e.presentes) || Number(e.confirmados) || Number(e.publico) || 0;
+    return { est: est, real: real, captado: captado, liquido: base - captado, porPessoa: pessoas ? (base - captado) / pessoas : null, pessoas: pessoas };
+  }
+  function renderEventosOrg() {
+    var el = $("#v-eventosorg"), L = listas();
+    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    var anos = {}; anos[new Date().getFullYear()] = 1; S.eventos_org.forEach(function (e) { if (e.data) anos[e.data.slice(0, 4)] = 1; });
+    var list = S.eventos_org.filter(function (e) { return (!evoF.ano || (e.data || "").slice(0, 4) === String(evoF.ano)) && (!evoF.status || e.status === evoF.status) && (!evoF.tipo || e.tipo === evoF.tipo); })
+      .sort(function (a, b) { return (a.data || "9999").localeCompare(b.data || "9999"); });
+    var tot = { est: 0, real: 0, cap: 0 }; list.forEach(function (e) { var t = evoTotais(e); tot.est += t.est; tot.real += t.real; tot.cap += t.captado; });
+    var t0 = iso(today());
+    el.innerHTML =
+      '<div class="view-head"><div><div class="eyebrow">Eventos</div><h2>Eventos de profissionais, treinamento e endomarketing</h2><p class="muted">Estime os custos antes, registre o que foi gasto e o que foi captado depois, e gere o resumo em PDF.</p></div><button class="btn" id="evoNew">+ Novo evento <span class="arrow">→</span></button></div>' +
+      '<div class="row"><select id="evoA" style="width:auto">' + Object.keys(anos).sort().map(function (a) { return "<option" + (String(evoF.ano) === a ? " selected" : "") + ">" + a + "</option>"; }).join("") + '<option value=""' + (!evoF.ano ? " selected" : "") + ">Todos os anos</option></select>" +
+      '<select id="evoS" style="width:auto"><option value="">Todos os status</option>' + EVO_ST.map(function (s) { return '<option value="' + s[0] + '"' + (evoF.status === s[0] ? " selected" : "") + ">" + s[1] + "</option>"; }).join("") + "</select>" +
+      '<select id="evoT" style="width:auto"><option value="">Todos os tipos</option>' + L.tiposEventoOrg.map(function (t) { return "<option" + (t === evoF.tipo ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="vtiles"><div class="vtile"><span>Eventos</span><b>' + list.length + '</b></div><div class="vtile"><span>Custo estimado</span><b>' + brl(tot.est) + '</b></div><div class="vtile"><span>Custo realizado</span><b>' + brl(tot.real) + '</b></div><div class="vtile"><span>Cooperada + patrocínio</span><b>' + brl(tot.cap) + "</b></div></div>" +
+      (list.length ? '<div class="evo-grid">' + list.map(function (e) {
+        var t = evoTotais(e), d = parse(e.data), passado = e.data && e.data < t0;
+        return '<button class="evo-card" data-evo="' + esc(e.id) + '"><div class="evo-top"><span class="evo-date">' + (d ? "<b>" + pad(d.getDate()) + "</b>" + MONTHS[d.getMonth()].slice(0, 3) : "<b>—</b>sem data") + '</span><span class="pill-st st-' + esc(e.status || "planejamento") + '">' + esc(stLabel(EVO_ST, e.status || "planejamento")) + "</span></div>" +
+          "<b class=\"evo-name\">" + esc(e.nome || "Evento") + '</b><span class="hint">' + esc([e.tipo, e.local].filter(Boolean).join(" · ")) + "</span>" +
+          '<div class="evo-nums"><span>Estimado <b>' + brl(t.est) + "</b></span><span>Real <b>" + (t.real ? brl(t.real) : "—") + "</b></span>" + (t.captado ? "<span>Captado <b>" + brl(t.captado) + "</b></span>" : "") + "</div>" +
+          (passado && e.status !== "realizado" && e.status !== "cancelado" ? '<span class="hint late-txt">Já passou: registre o pós-evento</span>' : "") + "</button>";
+      }).join("") + "</div>" : '<div class="empty">Nenhum evento neste filtro.</div>');
+    $("#evoNew").onclick = function () { openEventoOrg(null); };
+    $("#evoA").onchange = function () { evoF.ano = this.value; renderEventosOrg(); };
+    $("#evoS").onchange = function () { evoF.status = this.value; renderEventosOrg(); };
+    $("#evoT").onchange = function () { evoF.tipo = this.value; renderEventosOrg(); };
+    el.onclick = function (e) { var b = e.target.closest("[data-evo]"); if (b) openEventoOrg(S.eventos_org.find(function (x) { return x.id === b.dataset.evo; })); };
+  }
+  function openEventoOrg(ev) {
+    var L = listas(), isNew = !ev, id = isNew ? Store.uid() : ev.id;
+    var d = JSON.parse(JSON.stringify(Object.assign({ nome: "", tipo: L.tiposEventoOrg[0] || "", conta: "Ambas", data: "", horario: "", local: "", publico: "", objetivo: "", status: "planejamento",
+      custos: L.itensCustoEvento.slice(0, 3).map(function (n) { return { item: n, qtd: 1, unit: 0, real: 0, fornecedor: "" }; }),
+      cooperada: { tem: false, industria: "", valor: 0 }, patrocinios: [], convidados: "", confirmados: "", presentes: "", resumo: "", anexos: [], listaAnexos: [] }, ev || {})));
+    function sync() {
+      var m = $("#modalRoot .modal"); if (!m) return;
+      ["nome", "tipo", "conta", "data", "horario", "local", "publico", "objetivo", "status", "convidados", "confirmados", "presentes", "resumo", "convidadosNomes"].forEach(function (k) { var i = $('[data-ef="' + k + '"]', m); if (i) d[k] = i.value; });
+      d.custos = $$("[data-crow]", m).map(function (r) { var g = function (k) { return $('[data-k="' + k + '"]', r).value; }; return { item: g("item").trim(), qtd: Number(String(g("qtd")).replace(",", ".")) || 0, unit: parseBRL(g("unit")), real: parseBRL(g("real")), fornecedor: g("fornecedor").trim() }; });
+      d.patrocinios = $$("[data-prow2]", m).map(function (r) { var g = function (k) { return $('[data-k="' + k + '"]', r).value; }; return { empresa: g("empresa").trim(), valor: parseBRL(g("valor")), contrapartida: g("contrapartida").trim() }; });
+      d.cooperada = { tem: $("#eCoopTem").checked, industria: $("#eCoopInd").value.trim(), valor: parseBRL($("#eCoopVal").value) };
+    }
+    function totaisHTML() {
+      var t = evoTotais(d);
+      return '<div class="vtiles small"><div class="vtile"><span>Estimado</span><b>' + brl(t.est) + '</b></div><div class="vtile"><span>Realizado</span><b>' + (t.real ? brl(t.real) : "—") + '</b></div><div class="vtile"><span>Cooperada + patrocínio</span><b>' + brl(t.captado) + '</b></div><div class="vtile"><span>Custo líquido</span><b>' + brl(t.liquido) + "</b>" + (t.porPessoa != null ? "<small>" + brl(t.porPessoa) + " por pessoa</small>" : "") + "</div></div>";
+    }
+    function draw() {
+      var faltam = L.itensCustoEvento.filter(function (n) { return !d.custos.some(function (c) { return c.item === n; }); });
+      var html = '<header><h3>' + (isNew ? "Novo evento" : esc(d.nome || "Evento")) + '</h3><button class="x" data-close>✕</button></header><div class="body">' +
+        '<div class="grid2"><div class="field"><label>Nome do evento</label><input type="text" data-ef="nome" value="' + esc(d.nome) + '" placeholder="ex: Encontro de Profissionais AM"></div>' +
+        '<div class="field"><label>Tipo</label><select data-ef="tipo">' + opt(L.tiposEventoOrg, d.tipo) + "</select></div>" +
+        '<div class="field"><label>Conta</label><select data-ef="conta">' + opt(L.contas, d.conta) + "</select></div>" +
+        '<div class="field"><label>Status</label><select data-ef="status">' + EVO_ST.map(function (s) { return '<option value="' + s[0] + '"' + (d.status === s[0] ? " selected" : "") + ">" + s[1] + "</option>"; }).join("") + "</select></div>" +
+        '<div class="field"><label>Data</label><input type="date" data-ef="data" value="' + esc(d.data) + '"></div>' +
+        '<div class="field"><label>Horário</label><input type="text" data-ef="horario" value="' + esc(d.horario) + '" placeholder="19h às 22h"></div>' +
+        '<div class="field"><label>Local</label><input type="text" data-ef="local" value="' + esc(d.local) + '"></div>' +
+        '<div class="field"><label>Público estimado</label><input type="number" min="0" data-ef="publico" value="' + esc(d.publico) + '"></div></div>' +
+        '<div class="field"><label>Objetivo</label><textarea data-ef="objetivo" style="min-height:50px" placeholder="O que o evento precisa entregar">' + esc(d.objetivo) + "</textarea></div>" +
+        '<div class="field"><div class="section-title"><label>Estimativa de custos</label><button class="btn ghost small" data-add="custo">+ Item</button></div>' +
+        '<div class="tbl-wrap"><table class="tbl ev-costs"><thead><tr><th>Item</th><th class="r">Qtd</th><th class="r">Valor unit.</th><th class="r">Estimado</th><th class="r">Real (depois)</th><th>Fornecedor</th><th></th></tr></thead><tbody>' +
+        d.custos.map(function (c, i) { return '<tr data-crow="' + i + '"><td><input type="text" data-k="item" list="evItens" value="' + esc(c.item) + '"></td><td class="r"><input type="text" inputmode="decimal" data-k="qtd" class="num-in" value="' + esc(c.qtd) + '"></td><td class="r"><input type="text" inputmode="decimal" data-k="unit" class="money" value="' + (c.unit ? numBR(c.unit) : "") + '" placeholder="0,00"></td><td class="r num">' + brl((Number(c.qtd) || 0) * (Number(c.unit) || 0)) + '</td><td class="r"><input type="text" inputmode="decimal" data-k="real" class="money" value="' + (c.real ? numBR(c.real) : "") + '" placeholder="0,00"></td><td><input type="text" data-k="fornecedor" value="' + esc(c.fornecedor) + '"></td><td><button class="x" data-del="custo" data-i="' + i + '">✕</button></td></tr>'; }).join("") +
+        '</tbody></table></div><datalist id="evItens">' + L.itensCustoEvento.map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist>" +
+        (faltam.length ? '<div class="chips" style="margin-top:6px"><span class="hint" style="align-self:center">Adicionar rápido:</span>' + faltam.map(function (n) { return '<button type="button" data-quick="' + esc(n) + '">+ ' + esc(n) + "</button>"; }).join("") + "</div>" : "") + "</div>" +
+        '<div class="field"><label>Verba cooperada e patrocínio</label>' +
+        '<div class="coop-row"><label class="ct"><input type="checkbox" id="eCoopTem"' + (d.cooperada.tem ? " checked" : "") + '> tem verba cooperada</label><input type="text" id="eCoopInd" placeholder="Indústria" value="' + esc(d.cooperada.industria) + '"><input type="text" inputmode="decimal" id="eCoopVal" class="money" placeholder="Valor" value="' + (d.cooperada.valor ? numBR(d.cooperada.valor) : "") + '"></div>' +
+        '<div class="section-title" style="margin-top:8px"><span class="hint">Empresas patrocinadoras</span><button class="btn ghost small" data-add="patro">+ Patrocinador</button></div>' +
+        d.patrocinios.map(function (p, i) { return '<div class="pair-row patro" data-prow2="' + i + '"><input type="text" data-k="empresa" value="' + esc(p.empresa) + '" placeholder="Empresa"><input type="text" inputmode="decimal" data-k="valor" class="money" value="' + (p.valor ? numBR(p.valor) : "") + '" placeholder="Valor"><input type="text" data-k="contrapartida" value="' + esc(p.contrapartida) + '" placeholder="Contrapartida (logo no telão, estande…)"><button class="x" data-del="patro" data-i="' + i + '">✕</button></div>'; }).join("") + "</div>" +
+        '<div id="evTot">' + totaisHTML() + "</div>" +
+        '<div class="evo-post"><div class="lbl">Depois do evento</div>' +
+        '<div class="grid2"><div class="field"><label>Convidados</label><input type="number" min="0" data-ef="convidados" value="' + esc(d.convidados) + '"></div><div class="field"><label>Confirmados</label><input type="number" min="0" data-ef="confirmados" value="' + esc(d.confirmados) + '"></div><div class="field"><label>Presentes</label><input type="number" min="0" data-ef="presentes" value="' + esc(d.presentes) + '"></div></div>' +
+        '<div class="field"><label>Resumo e resultados</label><textarea data-ef="resumo" style="min-height:80px" placeholder="Como foi, destaques, o que melhorar, resultado comercial">' + esc(d.resumo) + "</textarea></div>" +
+        '<div class="field"><label>Nomes dos convidados (opcional, um por linha)</label><textarea data-ef="convidadosNomes" style="min-height:70px" placeholder="Cole aqui a lista, se quiser que ela saia no PDF">' + esc(d.convidadosNomes || "") + "</textarea></div>" +
+        '<div class="field" id="evLista"></div><div class="field" id="evFotos"></div></div>' +
+        '</div><footer><span class="row">' + (isNew ? "" : '<span id="evoDelW"><button class="btn ghost small" id="evoDel">Excluir</button></span><button class="btn ghost small" id="evoVerba">Levar custos reais para a Verba</button><button class="btn ghost small" id="evoPdf">Resumo em PDF</button>') + '</span><button class="btn" id="evoSave">Salvar <span class="arrow">→</span></button></footer>';
+      if ($("#mb")) $("#modalRoot .modal").innerHTML = html; else openModal(html, { wide: true });
+      var m = $("#modalRoot .modal");
+      attachBlock($("#evLista"), { titulo: "Lista de convidados (planilha, PDF ou Word)", lista: d.listaAnexos || [], pasta: "eventos/" + id, accept: ".xlsx,.xls,.csv,.pdf,.docx,.doc", podeEditar: true, dropTarget: m, onChange: function (l) { d.listaAnexos = l; } });
+      attachBlock($("#evFotos"), { titulo: "Fotos e materiais do evento", lista: d.anexos || [], pasta: "eventos/" + id, accept: "image/*,video/*,.pdf", podeEditar: true, onChange: function (l) { d.anexos = l; } });
+      $("[data-close]", m).onclick = closeModal;
+      $$("[data-add]", m).forEach(function (b) { b.onclick = function () { sync(); if (b.dataset.add === "custo") d.custos.push({ item: "", qtd: 1, unit: 0, real: 0, fornecedor: "" }); else d.patrocinios.push({ empresa: "", valor: 0, contrapartida: "" }); draw(); }; });
+      $$("[data-del]", m).forEach(function (b) { b.onclick = function () { sync(); (b.dataset.del === "custo" ? d.custos : d.patrocinios).splice(+b.dataset.i, 1); draw(); }; });
+      $$("[data-quick]", m).forEach(function (b) { b.onclick = function () { sync(); d.custos.push({ item: b.dataset.quick, qtd: 1, unit: 0, real: 0, fornecedor: "" }); draw(); }; });
+      m.oninput = function (e) { if (e.target.closest(".ev-costs,.coop-row,[data-prow2],.evo-post,[data-ef='publico']")) { sync(); $("#evTot").innerHTML = totaisHTML(); $$("[data-crow]", m).forEach(function (r, i) { r.children[3].textContent = brl((d.custos[i].qtd || 0) * (d.custos[i].unit || 0)); }); } };
+      var save = function (then) {
+        sync(); if (!d.nome.trim()) { toast("Dê um nome ao evento"); return; }
+        var doc = Object.assign({}, d); doc.atualizadoEm = new Date().toISOString(); doc.criadoPor = d.criadoPor || me;
+        Store.set("eventos_org", id, doc).then(function () { isNew = false; if (then) then(doc); else toast("Evento salvo"); }, fail);
+      };
+      $("#evoSave").onclick = function () { save(); closeModal(); };
+      if ($("#evoPdf")) $("#evoPdf").onclick = function () { save(function (doc) { relatorioEvento(Object.assign({ id: id }, doc)); }); };
+      if ($("#evoVerba")) $("#evoVerba").onclick = function () {
+        sync(); var itens = d.custos.filter(function (c) { return c.real > 0 && !c.lancado; });
+        if (!itens.length && !(d.cooperada.tem && d.cooperada.valor && !d.cooperada.lancado)) { toast("Nada novo para lançar: preencha a coluna Real."); return; }
+        var comp = (d.data || iso(today())).slice(0, 7), jobs = [];
+        itens.forEach(function (c) { c.lancado = true; jobs.push(Store.add("nfs", { fornecedor: c.fornecedor || c.item, descricao: d.nome + " · " + c.item, categoria: L.categoriasVerba.indexOf("Eventos") >= 0 ? "Eventos" : L.categoriasVerba[0], conta: d.conta, valor: c.real, competencia: comp, emissao: "", vencimento: "", numero: "", pagamento: "", status: "aguardando", contrato: "", obs: "Evento: " + d.nome, anexos: [], criadoEm: new Date().toISOString(), criadoPor: me })); });
+        if (d.cooperada.tem && d.cooperada.valor && !d.cooperada.lancado) { d.cooperada.lancado = true; jobs.push(Store.add("cooperada", { fornecedor: d.cooperada.industria || "Indústria", conta: d.conta, valor: d.cooperada.valor, recebido: 0, competencia: comp, prazo: "", status: "acordado", acao: "Evento: " + d.nome, obs: "", anexos: [], criadoPor: me })); }
+        Promise.all(jobs).then(function () { save(function () { toast(jobs.length + " lançamento" + (jobs.length > 1 ? "s" : "") + " criado" + (jobs.length > 1 ? "s" : "") + " em Verba e NFs"); draw(); }); }, fail);
+      };
+      if ($("#evoDel")) $("#evoDel").onclick = function () { delConfirm("#evoDelW", "Excluir o evento?", function () { (d.anexos || []).concat(d.listaAnexos || []).forEach(function (a) { Store.removeFile(a); }); Store.del("eventos_org", id).catch(fail); closeModal(); }); };
+    }
+    draw();
+  }
+  function relatorioEvento(e) {
+    var t = evoTotais(e), dt = parse(e.data);
+    var fotos = soImagens(e.anexos, 8);
+    var nomes = String(e.convidadosNomes || "").split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+    abrirRelatorio({
+      titulo: "Evento · " + (e.nome || ""), heading: e.nome || "Evento",
+      sub: [e.tipo, dt ? DOW_LONG[dt.getDay()] + ", " + fmt(dt) + "/" + dt.getFullYear() : "", e.horario, e.local, e.conta].filter(Boolean).join(" · "),
+      imagens: fotos,
+      kpis: [["Custo estimado", brl(t.est)], ["Custo realizado", t.real ? brl(t.real) : "—"], ["Cooperada + patrocínio", brl(t.captado)], ["Custo líquido", brl(t.liquido) + (t.porPessoa != null ? '<div class="muted" style="font-size:10px">' + brl(t.porPessoa) + " por pessoa</div>" : "")]],
+      body: function () {
+        return '<div class="box"><h3>Status: <span class="pill p-' + esc(e.status) + '">' + esc(stLabel(EVO_ST, e.status)) + "</span></h3>" + (e.objetivo ? '<div class="txt">' + esc(e.objetivo) + "</div>" : "") +
+          '<div class="muted">Público estimado: ' + (e.publico || "—") + " · Convidados: " + (e.convidados || "—") + " · Confirmados: " + (e.confirmados || "—") + " · Presentes: " + (e.presentes || "—") + "</div></div>" +
+          '<h2 class="sec">Custos</h2><table><thead><tr><th>Item</th><th>Fornecedor</th><th class="r">Qtd</th><th class="r">Unitário</th><th class="r">Estimado</th><th class="r">Real</th><th class="r">Diferença</th></tr></thead><tbody>' +
+          (e.custos || []).map(function (c) { var es = (c.qtd || 0) * (c.unit || 0), df = c.real ? c.real - es : null; return "<tr><td>" + esc(c.item) + "</td><td>" + esc(c.fornecedor || "") + '</td><td class="r">' + (c.qtd || "") + '</td><td class="r">' + brl(c.unit) + '</td><td class="r">' + brl(es) + '</td><td class="r">' + (c.real ? brl(c.real) : "—") + '</td><td class="r" style="color:' + (df > 0 ? "#9a1c1c" : "#11623a") + '">' + (df == null ? "" : (df > 0 ? "+" : "") + brl(df)) + "</td></tr>"; }).join("") +
+          '</tbody><tfoot><tr><td colspan="4">Total</td><td class="r">' + brl(t.est) + '</td><td class="r">' + (t.real ? brl(t.real) : "—") + '</td><td class="r">' + (t.real ? brl(t.real - t.est) : "") + "</td></tr></tfoot></table>" +
+          ((e.cooperada && e.cooperada.tem) || (e.patrocinios || []).length ? '<h2 class="sec">Verba cooperada e patrocínio</h2><table><thead><tr><th>Empresa</th><th>Tipo</th><th>Contrapartida</th><th class="r">Valor</th></tr></thead><tbody>' +
+            (e.cooperada && e.cooperada.tem ? "<tr><td>" + esc(e.cooperada.industria || "—") + "</td><td>Verba cooperada</td><td></td><td class=\"r\">" + brl(e.cooperada.valor) + "</td></tr>" : "") +
+            (e.patrocinios || []).map(function (p) { return "<tr><td>" + esc(p.empresa) + "</td><td>Patrocínio</td><td>" + esc(p.contrapartida || "") + '</td><td class="r">' + brl(p.valor) + "</td></tr>"; }).join("") +
+            '</tbody><tfoot><tr><td colspan="3">Total captado</td><td class="r">' + brl(t.captado) + "</td></tr></tfoot></table>" : "") +
+          (e.resumo ? '<h2 class="sec">Resumo e resultados</h2><div class="txt">' + esc(e.resumo) + "</div>" : "") +
+          (fotos.length ? '<h2 class="sec">Fotos</h2><div class="imgs">' + imgsHTML(fotos, 8) + "</div>" : "") +
+          ((e.listaAnexos || []).length ? '<p class="muted" style="margin-top:10px">Lista de convidados anexada no sistema: ' + esc(e.listaAnexos.map(function (a) { return a.nome; }).join(", ")) + "</p>" : "") +
+          (nomes.length ? '<h2 class="sec">Convidados</h2><div class="names">' + nomes.map(function (n) { return "<div>" + esc(n) + "</div>"; }).join("") + "</div>" : "");
+      }
+    });
+  }
+
+  /* ================================================================
+     CAMPANHAS (planejamento anual) · só admins
+     ================================================================ */
+  var CA_ST = [["planejada", "Planejada"], ["producao", "Em produção"], ["noar", "No ar"], ["realizada", "Realizada"], ["cancelada", "Cancelada"]];
+  var caF = { ano: new Date().getFullYear(), conta: "", modo: LS.get("caModo", "ano"), mes: new Date().getMonth() };
+  var caThumbs = {};
+  function caMes(c) { return c.mes || (c.inicio || "").slice(0, 7); }
+  function campanhasAno(ano) {
+    return S.campanhas.filter(function (c) { return String(caMes(c)).slice(0, 4) === String(ano) && (!caF.conta || c.conta === caF.conta || c.conta === "Ambas"); })
+      .sort(function (a, b) { return (caMes(a) + (a.inicio || "")).localeCompare(caMes(b) + (b.inicio || "")) || (a.nome || "").localeCompare(b.nome || ""); });
+  }
+  function caProg(c) { var cl = c.checklist || []; return cl.length ? Math.round(cl.filter(function (x) { return x.ok; }).length / cl.length * 100) : null; }
+  function caCardHTML(c, grande) {
+    var kv = soImagens(c.kv, 1)[0], p = caProg(c);
+    return '<button class="ca-card st-' + esc(c.status || "planejada") + (grande ? " big" : "") + '" data-ca="' + esc(c.id) + '">' +
+      (kv ? '<span class="ca-thumb" data-cath="' + esc(c.id) + '"></span>' : "") +
+      '<span class="ca-body"><b>' + esc(c.nome) + '</b><span class="ca-meta"><span class="pill-st st-' + esc(c.status || "planejada") + '">' + esc(stLabel(CA_ST, c.status || "planejada")) + "</span>" + (c.conta ? '<span class="tag ' + esc(c.conta) + '">' + esc(c.conta) + "</span>" : "") + "</span>" +
+      (grande ? (c.mecanica ? '<span class="hint">' + esc(c.mecanica.slice(0, 160)) + "</span>" : "") + ((c.canais || []).length ? '<span class="hint">' + esc(c.canais.join(" · ")) + "</span>" : "") : "") +
+      (p != null ? '<span class="ca-prog"><i style="width:' + p + '%"></i></span>' : "") + "</span></button>";
+  }
+  function hydrateCaThumbs() {
+    $$("[data-cath]").forEach(function (el) {
+      var c = S.campanhas.find(function (x) { return x.id === el.dataset.cath; }); var a = c && soImagens(c.kv, 1)[0]; if (!a) return;
+      if (caThumbs[a.ref]) { el.style.backgroundImage = "url(\"" + caThumbs[a.ref] + "\")"; return; }
+      Store.fileUrl(a).then(function (u) { caThumbs[a.ref] = u; el.style.backgroundImage = "url(\"" + u + "\")"; }).catch(function () {});
+    });
+  }
+  function renderCampanhas() {
+    var el = $("#v-campanhas"), L = listas();
+    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    var list = campanhasAno(caF.ano);
+    var cnt = function (st) { return list.filter(function (c) { return c.status === st; }).length; };
+    var prev = list.reduce(function (t, c) { return t + (Number(c.verbaPrevista) || 0); }, 0), real = list.reduce(function (t, c) { return t + (Number(c.verbaReal) || 0); }, 0);
+    var mesAtual = new Date().getFullYear() === Number(caF.ano) ? new Date().getMonth() : -1;
+    var body;
+    if (caF.modo === "ano") {
+      body = '<div class="ca-year">' + MONTHS.map(function (mn, i) {
+        var ym = caF.ano + "-" + pad(i + 1), cs = list.filter(function (c) { return caMes(c) === ym; });
+        return '<div class="ca-month' + (i === mesAtual ? " now" : "") + '"><header><button class="linkbtn ca-mname" data-mes="' + i + '">' + mn[0].toUpperCase() + mn.slice(1) + '</button><span class="hint">' + (cs.length || "") + '</span><button class="x" data-newin="' + ym + '" title="Nova campanha em ' + mn + '">＋</button></header>' + cs.map(function (c) { return caCardHTML(c, false); }).join("") + "</div>";
+      }).join("") + "</div>";
+    } else {
+      var ym = caF.ano + "-" + pad(caF.mes + 1), cs = list.filter(function (c) { return caMes(c) === ym; });
+      body = '<div class="row" style="justify-content:space-between"><div class="seg"><button id="caMP">←</button><button disabled style="min-width:120px">' + MONTHS[caF.mes][0].toUpperCase() + MONTHS[caF.mes].slice(1) + '</button><button id="caMN">→</button></div><div class="row"><button class="btn ghost small" id="caPdfMes">PDF do mês</button><button class="btn small" data-newin="' + ym + '">+ Campanha em ' + MONTHS[caF.mes] + "</button></div></div>" +
+        (cs.length ? '<div class="ca-mgrid">' + cs.map(function (c) { return caCardHTML(c, true); }).join("") + "</div>" : '<div class="empty">Nenhuma campanha em ' + MONTHS[caF.mes] + ".</div>");
+    }
+    el.innerHTML =
+      '<div class="view-head"><div><div class="eyebrow">Campanhas</div><h2>Planejamento de campanhas ' + esc(caF.ano) + '</h2><p class="muted">O ano inteiro num lugar só: o que está programado, o que está em produção e o que já foi realizado, com KV, checklist e resultado.</p></div>' +
+      '<div class="row"><button class="btn ghost" id="caPdfAno">PDF do ano</button><button class="btn" id="caNew">+ Nova campanha <span class="arrow">→</span></button></div></div>' +
+      '<div class="row"><div class="seg"><button id="caAP">←</button><button disabled>' + esc(caF.ano) + '</button><button id="caAN">→</button></div>' +
+      '<div class="seg"><button data-modo="ano" aria-pressed="' + (caF.modo === "ano") + '">Ano</button><button data-modo="mes" aria-pressed="' + (caF.modo === "mes") + '">Mês</button></div>' +
+      '<select id="caC" style="width:auto"><option value="">Todas as contas</option>' + L.contas.filter(function (c) { return c !== "Ambas"; }).map(function (c) { return "<option" + (c === caF.conta ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="vtiles"><div class="vtile"><span>Campanhas no ano</span><b>' + list.length + '</b></div><div class="vtile"><span>Realizadas</span><b>' + cnt("realizada") + '</b><small>' + cnt("noar") + " no ar agora</small></div><div class=\"vtile\"><span>Programadas</span><b>" + (cnt("planejada") + cnt("producao")) + "</b><small>" + cnt("producao") + ' em produção</small></div><div class="vtile"><span>Verba prevista</span><b>' + brl(prev) + "</b><small>realizada " + brl(real) + "</small></div></div>" +
+      body;
+    $("#caAP").onclick = function () { caF.ano = Number(caF.ano) - 1; renderCampanhas(); };
+    $("#caAN").onclick = function () { caF.ano = Number(caF.ano) + 1; renderCampanhas(); };
+    $("#caC").onchange = function () { caF.conta = this.value; renderCampanhas(); };
+    $$("[data-modo]", el).forEach(function (b) { b.onclick = function () { caF.modo = b.dataset.modo; LS.set("caModo", caF.modo); renderCampanhas(); }; });
+    $("#caNew").onclick = function () { openCampanha(null, caF.modo === "mes" ? caF.ano + "-" + pad(caF.mes + 1) : (mesAtual >= 0 ? caF.ano + "-" + pad(mesAtual + 1) : caF.ano + "-01")); };
+    $("#caPdfAno").onclick = function () { relatorioCampanhasAno(caF.ano); };
+    if ($("#caPdfMes")) $("#caPdfMes").onclick = function () { relatorioCampanhasMes(caF.ano, caF.mes); };
+    if ($("#caMP")) { $("#caMP").onclick = function () { caF.mes = (caF.mes + 11) % 12; if (caF.mes === 11) caF.ano = Number(caF.ano) - 1; renderCampanhas(); }; $("#caMN").onclick = function () { caF.mes = (caF.mes + 1) % 12; if (caF.mes === 0) caF.ano = Number(caF.ano) + 1; renderCampanhas(); }; }
+    el.onclick = function (e) {
+      var b = e.target.closest("[data-ca]"); if (b) { openCampanha(S.campanhas.find(function (x) { return x.id === b.dataset.ca; })); return; }
+      var n = e.target.closest("[data-newin]"); if (n) { openCampanha(null, n.dataset.newin); return; }
+      var mm = e.target.closest("[data-mes]"); if (mm) { caF.mes = +mm.dataset.mes; caF.modo = "mes"; LS.set("caModo", "mes"); renderCampanhas(); }
+    };
+    hydrateCaThumbs();
+  }
+  function openCampanha(c, ymPadrao) {
+    var L = listas(), isNew = !c, id = isNew ? Store.uid() : c.id;
+    var d = JSON.parse(JSON.stringify(Object.assign({ nome: "", mes: ymPadrao || iso(today()).slice(0, 7), inicio: "", fim: "", conta: "Ambas", status: "planejada", mecanica: "", oferta: "", canais: [], verbaPrevista: 0, verbaReal: 0, resultado: "",
+      checklist: L.checklistCampanha.map(function (t) { return { id: Store.uid(), t: t, ok: false }; }), kv: [], execucao: [] }, c || {})));
+    function sync() {
+      var m = $("#modalRoot .modal"); if (!m) return;
+      ["nome", "mes", "inicio", "fim", "conta", "status", "mecanica", "oferta", "resultado"].forEach(function (k) { var i = $('[data-cf="' + k + '"]', m); if (i) d[k] = i.value; });
+      d.verbaPrevista = parseBRL($('[data-cf="verbaPrevista"]', m).value); d.verbaReal = parseBRL($('[data-cf="verbaReal"]', m).value);
+    }
+    function draw() {
+      var ok = d.checklist.filter(function (x) { return x.ok; }).length;
+      var html = '<header><h3>' + (isNew ? "Nova campanha" : esc(d.nome || "Campanha")) + '</h3><button class="x" data-close>✕</button></header><div class="body">' +
+        '<div class="grid2"><div class="field"><label>Nome da campanha</label><input type="text" data-cf="nome" value="' + esc(d.nome) + '" placeholder="ex: Descontão"></div>' +
+        '<div class="field"><label>Mês</label><input type="month" data-cf="mes" value="' + esc(d.mes) + '"></div>' +
+        '<div class="field"><label>Início (opcional)</label><input type="date" data-cf="inicio" value="' + esc(d.inicio) + '"></div>' +
+        '<div class="field"><label>Fim (opcional)</label><input type="date" data-cf="fim" value="' + esc(d.fim) + '"></div>' +
+        '<div class="field"><label>Conta</label><select data-cf="conta">' + opt(L.contas, d.conta) + "</select></div>" +
+        '<div class="field"><label>Status</label><select data-cf="status">' + CA_ST.map(function (s) { return '<option value="' + s[0] + '"' + (d.status === s[0] ? " selected" : "") + ">" + s[1] + "</option>"; }).join("") + "</select></div>" +
+        '<div class="field"><label>Verba prevista (R$)</label><input type="text" inputmode="decimal" data-cf="verbaPrevista" value="' + (d.verbaPrevista ? numBR(d.verbaPrevista) : "") + '" placeholder="0,00"></div>' +
+        '<div class="field"><label>Verba realizada (R$)</label><input type="text" inputmode="decimal" data-cf="verbaReal" value="' + (d.verbaReal ? numBR(d.verbaReal) : "") + '" placeholder="0,00"></div></div>' +
+        '<div class="field"><label>Mecânica e mensagem</label><textarea data-cf="mecanica" style="min-height:70px" placeholder="Como funciona a campanha, conceito, mensagem principal">' + esc(d.mecanica) + "</textarea></div>" +
+        '<div class="field"><label>Oferta e produtos</label><textarea data-cf="oferta" style="min-height:50px" placeholder="Produtos foco, descontos, condições">' + esc(d.oferta) + "</textarea></div>" +
+        '<div class="field"><label>Canais</label><div class="chips" id="caCan">' + L.canaisCampanha.map(function (n) { return '<button type="button" data-p="' + esc(n) + '" aria-pressed="' + (d.canais.indexOf(n) >= 0) + '">' + esc(n) + "</button>"; }).join("") + "</div></div>" +
+        '<div class="field"><label>Checklist do que foi feito ' + (d.checklist.length ? ok + "/" + d.checklist.length : "") + "</label>" + (d.checklist.length ? '<div class="progress"><i style="width:' + Math.round(ok / d.checklist.length * 100) + '%"></i></div>' : "") +
+          '<ul class="cl">' + d.checklist.map(function (x) { return '<li class="' + (x.ok ? "ok" : "") + '"><button class="check ' + (x.ok ? "on" : "") + '" data-clt="' + esc(x.id) + '"></button><span>' + esc(x.t) + '</span><button class="x" data-cld="' + esc(x.id) + '">✕</button></li>'; }).join("") + "</ul>" +
+          '<div class="row"><input type="text" id="caClNew" placeholder="Adicionar item" style="flex:1"><button class="btn ghost small" id="caClAdd">Adicionar</button></div></div>' +
+        '<div class="field" id="caKv"></div>' +
+        '<div class="field"><label>Resultado</label><textarea data-cf="resultado" style="min-height:60px" placeholder="Vendas, alcance, o que funcionou, o que mudar na próxima">' + esc(d.resultado) + "</textarea></div>" +
+        '<div class="field" id="caExec"></div>' +
+        '</div><footer><span class="row">' + (isNew ? "" : '<span id="caDelW"><button class="btn ghost small" id="caDel">Excluir</button></span><button class="btn ghost small" id="caDup">Duplicar para outro mês</button>') +
+        (d.status !== "realizada" ? '<button class="btn ghost small" id="caDone">Marcar como realizada</button>' : "") + '</span><button class="btn" id="caSave">Salvar <span class="arrow">→</span></button></footer>';
+      if ($("#mb")) $("#modalRoot .modal").innerHTML = html; else openModal(html, { wide: true });
+      var m = $("#modalRoot .modal");
+      attachBlock($("#caKv"), { titulo: "KV e referências", lista: d.kv, pasta: "campanhas/" + id, accept: "image/*,.pdf", podeEditar: true, dropTarget: m, onChange: function (l) { d.kv = l; } });
+      attachBlock($("#caExec"), { titulo: "Execução (fotos, peças, prints)", lista: d.execucao, pasta: "campanhas/" + id, accept: "image/*,video/*,.pdf", podeEditar: true, onChange: function (l) { d.execucao = l; } });
+      $("[data-close]", m).onclick = closeModal;
+      $("#caCan").onclick = function (e) { var b = e.target.closest("[data-p]"); if (!b) return; var i = d.canais.indexOf(b.dataset.p); if (i >= 0) d.canais.splice(i, 1); else d.canais.push(b.dataset.p); b.setAttribute("aria-pressed", String(i < 0)); };
+      $("#caClAdd").onclick = function () { var t = $("#caClNew").value.trim(); if (!t) return; sync(); d.checklist.push({ id: Store.uid(), t: t, ok: false }); draw(); setTimeout(function () { var n = $("#caClNew"); if (n) n.focus(); }, 0); };
+      $("#caClNew").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); $("#caClAdd").click(); } };
+      $$("[data-clt]", m).forEach(function (b) { b.onclick = function () { sync(); d.checklist.forEach(function (x) { if (x.id === b.dataset.clt) x.ok = !x.ok; }); draw(); }; });
+      $$("[data-cld]", m).forEach(function (b) { b.onclick = function () { sync(); d.checklist = d.checklist.filter(function (x) { return x.id !== b.dataset.cld; }); draw(); }; });
+      var save = function (msg) {
+        sync(); if (!d.nome.trim()) { toast("Dê um nome à campanha"); return false; }
+        var doc = Object.assign({}, d); doc.atualizadoEm = new Date().toISOString(); doc.criadoPor = d.criadoPor || me;
+        Store.set("campanhas", id, doc).then(function () { toast(msg || "Campanha salva"); }, fail); return true;
+      };
+      $("#caSave").onclick = function () { if (save()) closeModal(); };
+      if ($("#caDone")) $("#caDone").onclick = function () { sync(); d.status = "realizada"; if (save("Campanha marcada como realizada")) closeModal(); };
+      if ($("#caDup")) $("#caDup").onclick = function () {
+        sync();
+        var w = $("#caDup"); w.outerHTML = '<span class="row" id="caDupW"><input type="month" id="caDupM" value="' + esc(d.mes) + '" style="width:auto"><button class="btn small" id="caDupOk">Duplicar</button></span>';
+        $("#caDupOk").onclick = function () {
+          var ym = $("#caDupM").value; if (!ym) return;
+          var copia = JSON.parse(JSON.stringify(d)); copia.mes = ym; copia.inicio = ""; copia.fim = ""; copia.status = "planejada"; copia.verbaReal = 0; copia.resultado = ""; copia.execucao = [];
+          copia.checklist = copia.checklist.map(function (x) { return { id: Store.uid(), t: x.t, ok: false }; }); copia.criadoPor = me; copia.atualizadoEm = new Date().toISOString();
+          Store.set("campanhas", Store.uid(), copia).then(function () { toast("Campanha duplicada para " + mesLabel(ym)); }, fail); closeModal();
+        };
+      };
+      if ($("#caDel")) $("#caDel").onclick = function () { delConfirm("#caDelW", "Excluir a campanha?", function () { (d.kv || []).concat(d.execucao || []).forEach(function (a) { Store.removeFile(a); }); Store.del("campanhas", id).catch(fail); closeModal(); }); };
+    }
+    draw();
+  }
+  function caBlocoPDF(c, imgs) {
+    var p = caProg(c);
+    return '<div class="box"><h3>' + esc(c.nome) + ' <span class="pill p-' + esc(c.status) + '">' + esc(stLabel(CA_ST, c.status)) + '</span> <span class="muted">' + esc(c.conta || "") + (c.inicio ? " · " + fmt(parse(c.inicio)) + (c.fim ? " a " + fmt(parse(c.fim)) : "") : "") + "</span></h3>" +
+      ((c.canais || []).length ? '<div class="tags">' + c.canais.map(function (x) { return "<span>" + esc(x) + "</span>"; }).join("") + "</div>" : "") +
+      (c.mecanica ? '<div class="txt">' + esc(c.mecanica) + "</div>" : "") + (c.oferta ? '<div class="muted"><b>Oferta:</b> ' + esc(c.oferta) + "</div>" : "") +
+      ((c.verbaPrevista || c.verbaReal) ? '<div class="muted">Verba prevista ' + brl(c.verbaPrevista) + (c.verbaReal ? " · realizada " + brl(c.verbaReal) : "") + "</div>" : "") +
+      ((c.checklist || []).length ? '<div class="ck">' + c.checklist.map(function (x) { return '<div class="' + (x.ok ? "ok" : "no") + '">' + (x.ok ? "✔ " : "○ ") + esc(x.t) + "</div>"; }).join("") + '</div><div class="muted">' + p + "% do checklist</div>" : "") +
+      (c.resultado ? '<div class="txt"><b>Resultado:</b> ' + esc(c.resultado) + "</div>" : "") +
+      (imgs ? '<div class="imgs">' + imgsHTML(soImagens(c.kv, 2).concat(soImagens(c.execucao, 2)), 4) + "</div>" : "") + "</div>";
+  }
+  function relatorioCampanhasMes(ano, mes) {
+    var ym = ano + "-" + pad(mes + 1), cs = campanhasAno(ano).filter(function (c) { return caMes(c) === ym; });
+    if (!cs.length) { toast("Nenhuma campanha neste mês."); return; }
+    var imgs = []; cs.forEach(function (c) { imgs = imgs.concat(soImagens(c.kv, 2), soImagens(c.execucao, 2)); });
+    var prev = cs.reduce(function (t, c) { return t + (Number(c.verbaPrevista) || 0); }, 0);
+    abrirRelatorio({ titulo: "Campanhas · " + mesLabel(ym), heading: "Campanhas de " + MONTHS[mes] + " " + ano, sub: (caF.conta || "AM e AG"), imagens: imgs,
+      kpis: [["Campanhas", cs.length], ["Realizadas", cs.filter(function (c) { return c.status === "realizada"; }).length], ["No ar / em produção", cs.filter(function (c) { return c.status === "noar" || c.status === "producao"; }).length], ["Verba prevista", brl(prev)]],
+      body: function () { return cs.map(function (c) { return caBlocoPDF(c, true); }).join(""); } });
+  }
+  function relatorioCampanhasAno(ano) {
+    var cs = campanhasAno(ano); if (!cs.length) { toast("Nenhuma campanha neste ano."); return; }
+    var feitas = cs.filter(function (c) { return c.status === "realizada"; }), prog = cs.filter(function (c) { return ["planejada", "producao", "noar"].indexOf(c.status || "planejada") >= 0; }), canc = cs.filter(function (c) { return c.status === "cancelada"; });
+    var imgs = []; feitas.forEach(function (c) { imgs = imgs.concat(soImagens(c.kv, 1)); });
+    var prev = cs.reduce(function (t, c) { return t + (Number(c.verbaPrevista) || 0); }, 0), real = cs.reduce(function (t, c) { return t + (Number(c.verbaReal) || 0); }, 0);
+    abrirRelatorio({ titulo: "Campanhas " + ano, heading: "Planejamento de campanhas " + ano, sub: (caF.conta || "AM e AG") + " · executadas e programadas", imagens: imgs,
+      kpis: [["Campanhas", cs.length], ["Realizadas", feitas.length + (cs.length ? " (" + Math.round(feitas.length / cs.length * 100) + "%)" : "")], ["Programadas", prog.length + (canc.length ? '<div class="muted" style="font-size:10px">' + canc.length + " cancelada(s)</div>" : "")], ["Verba prevista · real", brl(prev) + '<div class="muted" style="font-size:10px">real ' + brl(real) + "</div>"]],
+      body: function () {
+        return '<h2 class="sec">Visão do ano</h2><div class="months">' + MONTHS.map(function (mn, i) {
+          var ms = cs.filter(function (c) { return caMes(c) === ano + "-" + pad(i + 1); });
+          return '<div class="month"><b>' + mn[0].toUpperCase() + mn.slice(1) + "</b>" + (ms.length ? ms.map(function (c) { return '<div><span class="pill p-' + esc(c.status) + '">' + esc(stLabel(CA_ST, c.status)) + "</span> " + esc(c.nome) + "</div>"; }).join("") : '<div class="muted">—</div>') + "</div>";
+        }).join("") + "</div>" +
+        (feitas.length ? '<h2 class="sec pb">Campanhas executadas</h2>' + feitas.map(function (c) { return caBlocoPDF(c, true); }).join("") : "") +
+        (prog.length ? '<h2 class="sec pb">Campanhas programadas</h2>' + prog.map(function (c) { return caBlocoPDF(c, false); }).join("") : "");
+      } });
+  }
+
+  /* ================================================================
      CONTA (antigo Ajustes)
      ================================================================ */
   $("#openSettings").onclick = function () {
@@ -2363,7 +2727,7 @@
   $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); });
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || view === "verba" || view === "cofre" || view === "visitas")) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas"].indexOf(view) >= 0)) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;

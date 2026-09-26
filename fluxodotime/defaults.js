@@ -44,7 +44,11 @@ window.GESTAO_DEFAULTS = (function () {
       pagamentos: ["Boleto", "PIX", "Transferência", "Cartão", "Faturado"],
       categoriasCofre: ["Redes sociais", "Anúncios", "Site e hospedagem", "Email", "Ferramentas", "Fornecedores", "Outros"],
       lojas: [],
-      setoresVisita: ["Fachada", "Limpeza", "Banheiros", "Precificação", "Exposição", "PDV e comunicação", "Tabloide exposto", "Rádio e TV interna", "Atendimento"]
+      setoresVisita: ["Fachada", "Limpeza", "Banheiros", "Precificação", "Exposição", "PDV e comunicação", "Tabloide exposto", "Rádio e TV interna", "Atendimento"],
+      tiposEventoOrg: ["Evento de profissionais", "Treinamento", "Endomarketing", "Inauguração", "Outro"],
+      itensCustoEvento: ["Buffet", "Bebidas", "Cadeiras", "Mesas", "Palestrante", "Local", "Som e iluminação", "Decoração", "Brindes", "Material gráfico", "Foto e vídeo", "Recepção e staff", "Transporte"],
+      canaisCampanha: ["Tabloide", "Redes sociais", "Anúncios Meta", "Google / YouTube", "Rádio", "TV", "Outdoor", "PDV nas lojas", "WhatsApp", "Email", "Evento"],
+      checklistCampanha: ["KV aprovado", "Peças de redes sociais", "Anúncios no ar", "Tabloide", "Spot de rádio", "PDV nas lojas", "Time de vendas treinado", "Resultado registrado"]
     },
     // usado só na prévia e no modo sem banco: quem é admin
     acessos: { lista: [
