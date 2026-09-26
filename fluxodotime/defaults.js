@@ -41,7 +41,8 @@ window.GESTAO_DEFAULTS = (function () {
         "Produção de vídeo", "Produção gráfica e impressos", "PDV e materiais", "Brindes", "Eventos",
         "Prestadores PJ", "Ferramentas e assinaturas", "Outros"
       ],
-      pagamentos: ["Boleto", "PIX", "Transferência", "Cartão", "Faturado"]
+      pagamentos: ["Boleto", "PIX", "Transferência", "Cartão", "Faturado"],
+      categoriasCofre: ["Redes sociais", "Anúncios", "Site e hospedagem", "Email", "Ferramentas", "Fornecedores", "Outros"]
     },
     // usado só na prévia e no modo sem banco: quem é admin
     acessos: { lista: [

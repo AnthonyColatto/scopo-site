@@ -22,13 +22,14 @@
       <button role="tab" data-tab="calendario" aria-selected="false">Calendário</button>
       <button role="tab" data-tab="mapa" aria-selected="false">Mapa mental</button>
       <button role="tab" data-tab="verba" aria-selected="false" class="admin-only">Verba e NFs</button>
+      <button role="tab" data-tab="cofre" aria-selected="false" hidden>Acessos</button>
       <button role="tab" data-tab="semana" aria-selected="false">Minha semana</button>
       <button role="tab" data-tab="ciclo" aria-selected="false">Ciclo do mês</button>
       <button role="tab" data-tab="time" aria-selected="false">Time</button>
       <button role="tab" data-tab="modelos" aria-selected="false">Modelos</button>
       <button role="tab" data-tab="admin" aria-selected="false" class="admin-only">Admin</button>
     </nav>
-    <div class="me"><span id="meBox"><label for="meSel">Você é</label><select id="meSel"></select></span><button class="icon-btn" id="openSettings" title="Sua conta">Conta</button></div>
+    <div class="me"><div class="seg foco" id="focoSeg" role="group" aria-label="Foco"></div><span id="meBox"><label for="meSel">Você é</label><select id="meSel"></select></span><button class="icon-btn" id="openSettings" title="Sua conta">Conta</button></div>
   </div>
 </div>
 
@@ -39,6 +40,7 @@
   <section class="view" id="v-calendario" hidden></section>
   <section class="view" id="v-mapa" hidden></section>
   <section class="view" id="v-verba" hidden></section>
+  <section class="view" id="v-cofre" hidden></section>
   <section class="view" id="v-admin" hidden></section>
   <section class="view" id="v-semana" hidden></section>
   <section class="view" id="v-ciclo" hidden></section>

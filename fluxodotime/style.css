@@ -493,3 +493,20 @@ body:not(.is-admin) .admin-only{display:none!important}
 .vtile.teto b{color:var(--brand)}
 .vtile.teto.empty b{color:var(--ink-3);font-size:16px}
 .teto-row{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+
+/* ---------- foco ---------- */
+.seg.foco button{padding:5px 10px;font-size:12px}
+/* ---------- acessos (cofre) ---------- */
+.cf-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:10px}
+@media (max-width:420px){.cf-grid{grid-template-columns:1fr}}
+.cf-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:8px;align-content:start}
+.cf-card header{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.cf-card header b{font-family:var(--head);font-weight:600;font-size:15px}
+.cf-link{font-size:13px;overflow-wrap:anywhere}
+.cf-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 8px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px}
+.cf-lbl{font-size:10.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--ink-3);min-width:70px}
+.cf-val{flex:1;min-width:0;font-size:13.5px;overflow-wrap:anywhere}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.cf-row .icon-btn{padding:3px 8px;font-size:11.5px}
+.cf-obs{white-space:pre-wrap}
+.cf-card footer{border-top:1px solid var(--line);padding-top:8px}

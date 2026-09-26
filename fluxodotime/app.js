@@ -43,7 +43,8 @@
 
   /* ================= estado ================= */
   var Store = null;
-  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [] };
+  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [] };
+  var R = {}; // dados como vieram da base; S é o que esta pessoa pode ver
   var loaded = {};
   var view = LS.get("tab", "pauta");
   var me = LS.get("me", "Tony");
@@ -58,13 +59,26 @@
       etiquetas: c.etiquetas || D.etiquetas || [],
       tiposEvento: c.tiposEvento || D.tiposEvento || ["Reunião", "Outro"],
       categoriasVerba: c.categoriasVerba || D.categoriasVerba || ["Outros"],
-      pagamentos: c.pagamentos || D.pagamentos || ["Boleto", "PIX"]
+      pagamentos: c.pagamentos || D.pagamentos || ["Boleto", "PIX"],
+      categoriasCofre: c.categoriasCofre || D.categoriasCofre || ["Outros"]
     };
   }
   function pessoas() { return S.pessoas.slice().sort(byOrder); }
-  function nomes() { return pessoas().map(function (p) { return p.nome; }); }
+  // lista de nomes do time, sem as rotinas: membros não leem a ficha dos outros, mas precisam dos nomes
+  function equipeDoc() { var c = S.config.find(function (x) { return x.id === "equipe"; }); return (c && c.lista) || []; }
+  function nomes() {
+    var eq = equipeDoc().map(function (e) { return e.nome; });
+    var n = eq.length ? eq.slice() : [];
+    pessoas().forEach(function (p) { if (n.indexOf(p.nome) < 0) n.push(p.nome); });
+    return n;
+  }
+  function pessoaMe() { return pessoas().find(function (p) { return p.nome === me; }) || null; }
   function respOpts() { var n = nomes(); EXTRA_RESP.forEach(function (x) { if (n.indexOf(x) < 0) n.push(x); }); return n; }
-  function gestor() { return pessoas().find(function (p) { return p.gestor; }) || pessoas()[0]; }
+  function gestor() {
+    var g = pessoas().find(function (p) { return p.gestor; }); if (g) return g;
+    var e = equipeDoc().find(function (x) { return x.gestor; });
+    return e ? { nome: e.nome, semana: [], gestor: true } : pessoas()[0];
+  }
 
   /* ================= acessos e permissões =================
      Espelha as regras do banco (supabase-setup.sql). No Supabase quem manda é o banco;
@@ -96,6 +110,31 @@
     return meu(col, cur) && meu(col, next);
   }
   function canEdit(col, doc) { return canWrite(col, doc, doc, "upd"); }
+  // o que cada um enxerga (mesma regra do banco: fluxo_pode_ler)
+  function canRead(col, d) {
+    if (isAdmin()) return true;
+    d = d || {};
+    if (["pauta", "cartoes", "eventos", "pessoas"].indexOf(col) >= 0) return meu(col, d);
+    if (col === "ciclo") return (d.quem || []).indexOf(me) >= 0;
+    if (col === "mapas") return d.compartilhado === true;
+    if (col === "cofre") return (d.acesso || []).indexOf(me) >= 0;
+    if (["modelos", "quadros", "config"].indexOf(col) >= 0) return true;
+    return false;
+  }
+  function refilter() {
+    Object.keys(R).forEach(function (col) { S[col] = isAdmin() ? R[col] : R[col].filter(function (d) { return canRead(col, d); }); });
+  }
+  // foco: "meu" mostra só o que é da pessoa; "geral" mostra tudo que ela pode ver
+  var foco = LS.get("foco", "");
+  function focoMeu() { return (foco || (isAdmin() ? "geral" : "meu")) === "meu"; }
+  var equipeSyncing = false;
+  function syncEquipe() {
+    if (!isAdmin() || !loaded.pessoas || !loaded.config || !S.pessoas.length || equipeSyncing) return;
+    var lista = pessoas().map(function (p) { return { nome: p.nome, papel: p.papel || "", gestor: !!p.gestor }; });
+    if (JSON.stringify(lista) === JSON.stringify(equipeDoc())) return;
+    equipeSyncing = true;
+    Store.set("config", "equipe", { lista: lista }).then(function () { equipeSyncing = false; }, function () { equipeSyncing = false; });
+  }
   function denyToast() { toast("Você só pode alterar o que é seu. Fale com a Ellyn ou o Tony."); }
   function guardStore() {
     var raw = { add: Store.add, set: Store.set, upd: Store.upd, del: Store.del };
@@ -138,7 +177,7 @@
   /* ================= "agora" ================= */
   function toMin(h) { var m = /^(\d{1,2}):(\d{2})/.exec(h || ""); return m ? (+m[1]) * 60 + (+m[2]) : null; }
   function nowBlock() {
-    var g = gestor(); if (!g) return ["", ""];
+    var g = pessoaMe() || (isAdmin() ? gestor() : null); if (!g) return ["", ""];
     var d = new Date(), wd = d.getDay(), mins = d.getHours() * 60 + d.getMinutes();
     if (wd === 0 || wd === 6) return ["Fim de semana", "Sem rotina. Lembrou de algo? Joga na pauta e fecha o celular."];
     var key = DOW[wd];
@@ -157,7 +196,7 @@
     if (mins > 18 * 60 + 15 || !cur) return mins > 18 * 60 ? ["Fora do horário", "A rotina acabou. Anote na pauta e deixe para amanhã."] : ["Almoço", "Pausa."];
     return [DOW[wd] + " " + cur.hora + " · " + cur.titulo, cur.desc];
   }
-  function nowHTML() { var n = nowBlock(); return '<div class="now"><span class="dot"></span><div><b>' + esc(n[0]) + "</b><span>" + esc(n[1]) + "</span></div></div>"; }
+  function nowHTML() { var n = nowBlock(); if (!n[0]) return ""; return '<div class="now"><span class="dot"></span><div><b>' + esc(n[0]) + "</b><span>" + esc(n[1]) + "</span></div></div>"; }
 
   /* ================= navegação ================= */
   function showView(v) {
@@ -178,14 +217,22 @@
     if (opts.indexOf(me) < 0 && opts.length) me = opts[0];
     sel.innerHTML = opts.map(function (n) { return "<option" + (n === me ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
   }
-  $("#meSel").addEventListener("change", function (e) { me = e.target.value; LS.set("me", me); $$("section.view").forEach(function (s) { delete s.dataset.built; }); render(); });
+  $("#meSel").addEventListener("change", function (e) { me = e.target.value; LS.set("me", me); refilter(); $$("section.view").forEach(function (s) { delete s.dataset.built; }); render(); });
+  $("#focoSeg").addEventListener("click", function (e) { var b = e.target.closest("[data-f]"); if (!b) return; foco = b.dataset.f; LS.set("foco", foco); render(); });
 
   function render() {
     renderMe();
     var adm = isAdmin();
     document.body.classList.toggle("is-admin", adm);
+    var tt = $('[data-tab="time"]'); if (tt) tt.textContent = adm ? "Time" : "Meu fluxo";
+    var tc = $('[data-tab="cofre"]'); if (tc) tc.hidden = !(adm || S.cofre.length);
+    if (view === "cofre" && !(adm || S.cofre.length)) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
+    var fs = $("#focoSeg");
+    if (fs) {
+      fs.innerHTML = '<button type="button" data-f="meu" aria-pressed="' + focoMeu() + '" title="Mostra só o que é seu">Só meu</button><button type="button" data-f="geral" aria-pressed="' + !focoMeu() + '" title="' + (adm ? "Visão de gestão: tudo do time" : "Tudo que foi liberado para você") + '">' + (adm ? "Geral" : "Tudo") + "</button>";
+    }
     if (!adm && (view === "verba" || view === "admin")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -224,6 +271,7 @@
     return true;
   }
   var addConta = "Ambas";
+  var addRespSel = ""; // só guarda quando a pessoa escolhe; senão o padrão é quem está usando
   var confirmDel = null;
 
   function renderPauta() {
@@ -248,6 +296,7 @@
           .then(function () { toast("Na pauta"); }, fail);
         $("#addTitle").value = ""; $("#addPrazo").value = ""; $("#addTitle").focus();
       });
+      $("#addResp").addEventListener("change", function () { addRespSel = this.value; });
       $("#addConta").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; addConta = b.dataset.v; $$("#addConta button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); });
       ["fR", "fC", "fP", "fV", "fDe", "fAte"].forEach(function (id) { $("#" + id).addEventListener("change", function () { pautaF.reuniao = $("#fR").value; pautaF.conta = $("#fC").value; pautaF.resp = $("#fP").value; pautaF.venc = $("#fV").value; pautaF.de = $("#fDe").value; pautaF.ate = $("#fAte").value; LS.set("fR", pautaF.reuniao); LS.set("fV", pautaF.venc); $("#fPer").hidden = pautaF.venc !== "periodo"; drawPautaList(); }); });
       $("#fClear").addEventListener("click", function () { pautaF = { reuniao: "*", conta: "", resp: "", venc: "", de: "", ate: "" }; LS.set("fR", "*"); LS.set("fV", ""); renderPauta(); });
@@ -256,7 +305,7 @@
     }
     // opções (podem mudar)
     $("#addConta").innerHTML = L.contas.map(function (c) { return '<button type="button" data-v="' + esc(c) + '" aria-pressed="' + (c === addConta) + '">' + esc(c) + "</button>"; }).join("");
-    var keepResp = $("#addResp").value || me;
+    var keepResp = addRespSel || me;
     $("#addResp").innerHTML = respOpts().map(function (n) { return "<option" + (n === keepResp ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
     var keepR = $("#addReuniao").value;
     $("#addReuniao").innerHTML = '<option value="">Sem reunião</option>' + L.reunioes.map(function (r) { return "<option" + (r === keepR ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("");
@@ -294,7 +343,7 @@
     if (!$("#pList")) return;
     var f = pautaF, t0 = today();
     var wEnd = new Date(t0); wEnd.setDate(t0.getDate() + (7 - t0.getDay()) % 7);
-    var vis = S.pauta.filter(function (i) { return (f.reuniao === "*" || i.reuniao === f.reuniao) && (!f.conta || i.conta === f.conta) && (!f.resp || i.resp === f.resp) && vencOk(i); });
+    var vis = S.pauta.filter(function (i) { return (f.reuniao === "*" || i.reuniao === f.reuniao) && (!f.conta || i.conta === f.conta) && (!f.resp || i.resp === f.resp) && (!focoMeu() || i.resp === me) && vencOk(i); });
     var open = vis.filter(function (i) { return i.status !== "feito"; });
     var byDate = function (a, b) { return (a.prazo || "9999").localeCompare(b.prazo || "9999") || (a.criadoEm || "").localeCompare(b.criadoEm || ""); };
     var late = open.filter(function (i) { var p = parse(i.prazo); return p && p < t0; }).sort(byDate);
@@ -427,7 +476,7 @@
     if (!q) { el.innerHTML = head + '<div class="empty">' + (loaded.quadros ? "Nenhum quadro ainda. Crie o primeiro." : "Carregando…") + "</div>"; bindBoardBar(); return; }
     var sx = $(".kanban-wrap") ? $(".kanban-wrap").scrollLeft : 0;
     var cols = (q.colunas || []).map(function (col, ci) {
-      var cs = cardsOf(q.id, col.id).filter(function (c) { return (!boardF.conta || c.conta === boardF.conta) && (!boardF.pessoa || (c.resp || []).indexOf(boardF.pessoa) >= 0); });
+      var cs = cardsOf(q.id, col.id).filter(function (c) { return (!boardF.conta || c.conta === boardF.conta) && (!boardF.pessoa || (c.resp || []).indexOf(boardF.pessoa) >= 0) && (!focoMeu() || (c.resp || []).indexOf(me) >= 0); });
       var menu = colMenu === col.id;
       var empty = cardsOf(q.id, col.id).length === 0;
       return '<div class="col" data-col="' + esc(col.id) + '">' +
@@ -689,8 +738,8 @@
      MINHA SEMANA
      ================================================================ */
   function renderSemana() {
-    var el = $("#v-semana"), g = gestor();
-    if (!g) { el.innerHTML = '<div class="empty">Carregando…</div>'; return; }
+    var el = $("#v-semana"), g = pessoaMe() || (isAdmin() ? gestor() : null);
+    if (!g) { el.innerHTML = '<div class="empty">' + (loaded.pessoas ? "Sua rotina ainda não foi montada. Peça ao Tony ou à Ellyn para montar seu fluxo." : "Carregando…") + "</div>"; return; }
     var wd = new Date().getDay(), mins = new Date().getHours() * 60 + new Date().getMinutes();
     var slots = g.semana || [];
     var sortS = function (a, b) { var x = toMin(a.hora), y = toMin(b.hora); if (x == null && y == null) return 0; if (x == null) return -1; if (y == null) return 1; return x - y; };
@@ -705,18 +754,18 @@
         (ss.length ? ss.map(function (s, k) { return slotHTML(s, k === curIdx && mins < 18 * 60 + 15); }).join("") : '<div class="slot"><p>Livre</p></div>') + "</article>";
     }).join("");
     el.innerHTML =
-      '<div class="view-head"><div><div class="eyebrow">Minha semana</div><h2>Manhã no celular, tarde na mesa</h2><p class="muted">Quinta de manhã é a exceção, por causa das reuniões. Tudo aqui é editável: horários, blocos e descrições.</p></div>' +
-      '<div class="row">' + nowHTML() + '<button class="btn admin-only" id="editWeek">Editar minha semana <span class="arrow">→</span></button></div></div>' +
+      '<div class="view-head"><div><div class="eyebrow">Minha semana</div><h2>' + (g.gestor ? "Manhã no celular, tarde na mesa" : "Semana de " + esc(g.nome)) + '</h2><p class="muted">' + (g.gestor ? "Quinta de manhã é a exceção, por causa das reuniões. Tudo aqui é editável: horários, blocos e descrições." : "Seus blocos fixos, ritos e combinados. Os marcados com o gestor são os pontos de contato.") + "</p></div>" +
+      '<div class="row">' + nowHTML() + (isAdmin() || g.nome === me ? '<button class="btn" id="editWeek">Editar minha semana <span class="arrow">→</span></button>' : "") + "</div></div>" +
       '<div class="legend">' + [["celular", "Celular (manhã)"], ["reuniao", "Reunião com a empresa"], ["rito", "Rito com o time"], ["foco", "Foco (não marque nada)"], ["projeto", "Projeto"]].map(function (x) { return '<span><i class="k-' + x[0] + '"></i>' + x[1] + "</span>"; }).join("") + "</div>" +
       (daily.length ? '<div><div class="lbl" style="margin-bottom:6px">Todo dia</div><div class="dailybar">' + daily.map(function (s) { return slotHTML(s); }).join("") + "</div></div>" : "") +
       '<div class="week">' + days + "</div>" +
-      '<div class="rules">' +
+      (!g.gestor ? "" : '<div class="rules">' +
         '<div class="rule"><b>Entrada única</b><p>Chegou pedido no Whats, no corredor ou na reunião? Vai para a Pauta viva em 1 minuto. Tarefa de criação e conteúdo vira cartão no quadro.</p></div>' +
         '<div class="rule"><b>Whats é só aviso</b><p>Demanda diária pode ir pelo Whats, mas só vale depois de virar cartão ou tarefa com prazo.</p></div>' +
         '<div class="rule"><b>Semana de visita ao interior</b><p>Depois do dia 15. No dia da viagem, os blocos de foco passam para a manhã seguinte.</p></div>' +
         '<div class="rule"><b>Sexta, 30 minutos</b><p>Fechamento: limpar a pauta, olhar os quadros, deixar a segunda montada. É o hábito que segura o resto.</p></div>' +
-      "</div>";
-    $("#editWeek").onclick = function () { openPersonEditor(g); };
+      "</div>");
+    if ($("#editWeek")) $("#editWeek").onclick = function () { openPersonEditor(g); };
   }
 
   /* ================================================================
@@ -727,7 +776,7 @@
     var el = $("#v-ciclo");
     var base = new Date(); base.setDate(1); base.setMonth(base.getMonth() + monthOffset);
     var y = base.getFullYear(), m = base.getMonth();
-    var items = cycleFor(y, m), t0 = today().getTime();
+    var items = cycleFor(y, m).filter(function (it) { return !focoMeu() || (it.quem || []).indexOf(me) >= 0; }), t0 = today().getTime();
     el.innerHTML =
       '<div class="view-head"><div><div class="eyebrow">Ciclo do mês</div><h2>' + MONTHS[m][0].toUpperCase() + MONTHS[m].slice(1) + " de " + y + "</h2>" +
       '<p class="muted">Cada marco tem uma regra de data (dia útil, dia fixo, dias antes de um prazo). Muda a regra e as datas de todos os meses se ajustam. Feriados não entram na conta.</p></div>' +
@@ -915,7 +964,7 @@
         d.entrega = d.entrega.filter(function (x) { return x.texto; }); d.recebe = d.recebe.filter(function (x) { return x.texto; });
         d.frentes = d.frentes.filter(function (f) { return f.nome; });
         var id = d.id; var doc = Object.assign({}, d); delete doc.id;
-        (isNew ? Store.add("pessoas", doc).then(function (nid) { personSel = nid; LS.set("person", nid); }) : Store.set("pessoas", id, doc)).then(function () { toast("Salvo"); }, fail);
+        (isNew ? Store.add("pessoas", doc).then(function (nid) { personSel = nid; LS.set("person", nid); }) : Store.set("pessoas", id, doc)).then(function () { toast("Salvo"); setTimeout(syncEquipe, 300); }, fail);
         closeModal();
       };
       var del = $("#peDel"); if (del) del.onclick = function () {
@@ -966,15 +1015,16 @@
   function calEntries(y, m) {
     var map = {};
     var push = function (d, e) { var k = iso(d); (map[k] = map[k] || []).push(e); };
-    var passP = function (who) { return !calF.pessoa || (Array.isArray(who) ? who.indexOf(calF.pessoa) >= 0 : who === calF.pessoa); };
+    var quem = focoMeu() ? me : calF.pessoa;
+    var passP = function (who) { return !quem || (Array.isArray(who) ? who.indexOf(quem) >= 0 : who === quem); };
     var passC = function (c) { return !calF.conta || c === calF.conta || c === "Ambas"; };
     if (calF.eventos) S.eventos.forEach(function (e) { var d = parse(e.data); if (d && passP(e.quem || []) && passC(e.conta)) push(d, { k: "evento", id: e.id, t: (e.hora ? e.hora + " " : "") + e.titulo, sort: e.hora || "00", conta: e.conta }); });
     if (calF.pauta) S.pauta.forEach(function (i) { var d = parse(i.prazo); if (d && passP(i.resp) && passC(i.conta)) push(d, { k: "pauta", id: i.id, t: i.titulo, done: i.status === "feito", sort: "50", conta: i.conta }); });
     if (calF.cartoes) S.cartoes.forEach(function (c) { var d = parse(c.prazo); if (d && !c.arquivado && passP(c.resp || []) && passC(c.conta)) push(d, { k: "cartao", id: c.id, t: c.titulo, sort: "60", cor: (c.etiquetas || []).length ? labelColor(c.etiquetas[0]) : "", conta: c.conta }); });
     if (calF.ciclo) [-1, 0, 1].forEach(function (o) { cycleFor(y, m + o).forEach(function (c) { if (passP(c.quem || []) && passC(c.conta)) push(c.d, { k: "ciclo", id: c.id, t: c.titulo, sort: "40" }); }); });
-    if (calF.vencimentos && isAdmin()) S.nfs.forEach(function (n) { var d = parse(n.vencimento); if (d && n.status !== "paga" && passC(n.conta)) push(d, { k: "venc", id: n.id, t: brl(n.valor) + " · " + (n.fornecedor || n.descricao || "NF"), sort: "45" }); });
+    if (calF.vencimentos && isAdmin() && !focoMeu()) S.nfs.forEach(function (n) { var d = parse(n.vencimento); if (d && n.status !== "paga" && passC(n.conta)) push(d, { k: "venc", id: n.id, t: brl(n.valor) + " · " + (n.fornecedor || n.descricao || "NF"), sort: "45" }); });
     if (calF.reunioes) {
-      var g = gestor(); var reus = g ? (g.semana || []).filter(function (s) { return s.tipo === "reuniao"; }) : [];
+      var g = pessoaMe(); var reus = g ? (g.semana || []).filter(function (s) { return s.tipo === "reuniao"; }) : [];
       var start = new Date(y, m - 1, 20), end = new Date(y, m + 1, 12);
       for (var d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         var key = DOW[d.getDay()];
@@ -1099,7 +1149,7 @@
   function mmSave() {
     mmDirty = true; clearTimeout(mmSaveT);
     mmSaveT = setTimeout(function () {
-      var doc = { titulo: mm.titulo, ordem: mm.ordem || 1, nos: mm.nos };
+      var doc = { titulo: mm.titulo, ordem: mm.ordem || 1, nos: mm.nos, compartilhado: !!mm.compartilhado };
       Store.set("mapas", mm.id, doc).then(function () { mmDirty = false; }, fail);
     }, 450);
   }
@@ -1146,7 +1196,7 @@
       '<div class="view-head"><div><div class="eyebrow">Mapa mental</div><h2>' + (mm ? esc(mm.titulo) : "Mapas") + '</h2><p class="muted">Clique para selecionar, dois cliques para escrever. Tab cria um filho, Enter cria um irmão, Delete apaga. Arraste o fundo para mover e use a roda do mouse para zoom.</p></div>' +
       '<div class="row">' + (mm ? '<button class="btn" id="mmPresent">Apresentar <span class="arrow">→</span></button>' : "") + "</div></div>" +
       '<div class="boardbar"><div class="boards">' + ms.map(function (x) { return '<button data-map="' + esc(x.id) + '" aria-selected="' + (mm && x.id === mm.id) + '">' + esc(x.titulo) + "</button>"; }).join("") + '<button data-newmap class="admin-only">+ Novo mapa</button></div>' +
-      (mm ? '<div class="row admin-only"><input type="text" id="mmTitle" value="' + esc(mm.titulo) + '" aria-label="Nome do mapa" style="width:auto;min-width:200px"><span id="mmDelW"><button class="icon-btn" id="mmDel">Excluir mapa</button></span></div>' : "") + "</div>" +
+      (mm ? '<div class="row admin-only"><label class="ct"><input type="checkbox" id="mmShare"' + (mm.compartilhado ? " checked" : "") + '> mostrar para o time</label><input type="text" id="mmTitle" value="' + esc(mm.titulo) + '" aria-label="Nome do mapa" style="width:auto;min-width:200px"><span id="mmDelW"><button class="icon-btn" id="mmDel">Excluir mapa</button></span></div>' : "") + "</div>" +
       (mm ? '<div class="mmwrap" id="mmWrap">' +
         '<div class="mmtools admin-only" id="mmTools">' +
           '<button data-mm="child" title="Tab">+ Filho</button><button data-mm="sib" title="Enter">+ Irmão</button><button data-mm="edit" title="F2">Editar</button>' +
@@ -1156,7 +1206,7 @@
         "</div>" +
         '<div class="mmstage" id="mmStage" tabindex="0"><div class="mmworld" id="mmWorld"><svg class="mmlinks" id="mmLinks"></svg></div></div>' +
         '<div class="mmpresent" id="mmPres" hidden><button id="pPrev">←</button><span id="pStep"></span><button id="pNext">→</button><button id="pExit">Sair</button></div>' +
-      "</div>" : '<div class="empty">' + (loaded.mapas ? 'Nenhum mapa ainda. <button class="linkbtn" data-newmap>Criar o primeiro</button>' : "Carregando…") + "</div>");
+      "</div>" : '<div class="empty">' + (loaded.mapas ? (isAdmin() ? 'Nenhum mapa ainda. <button class="linkbtn" data-newmap>Criar o primeiro</button>' : "Nenhum mapa foi compartilhado com você ainda.") : "Carregando…") + "</div>");
     bindMapaBar();
     if (mm) drawMap(true);
   }
@@ -1349,7 +1399,7 @@
       if (node && !mmEditing) { if (present) return; mmSel = node.dataset.id; drawMap(); $("#mmStage").focus(); }
     });
     el.addEventListener("dblclick", function (e) { var node = e.target.closest(".mmnode"); if (node && !present && isAdmin()) { mmSel = node.dataset.id; drawMap(); startEdit(node.dataset.id, true); } });
-    el.addEventListener("change", function (e) { if (e.target.id === "mmTitle" && mm) { mm.titulo = e.target.value.trim() || "Mapa"; mmSave(); var h = $("#v-mapa h2"); if (h) h.textContent = mm.titulo; var bb = $('#v-mapa [data-map="' + mm.id + '"]'); if (bb) bb.textContent = mm.titulo; } });
+    el.addEventListener("change", function (e) { if (e.target.id === "mmShare" && mm) { mm.compartilhado = e.target.checked; mmSave(); toast(mm.compartilhado ? "O time agora vê este mapa" : "Mapa visível só para admins"); return; } if (e.target.id === "mmTitle" && mm) { mm.titulo = e.target.value.trim() || "Mapa"; mmSave(); var h = $("#v-mapa h2"); if (h) h.textContent = mm.titulo; var bb = $('#v-mapa [data-map="' + mm.id + '"]'); if (bb) bb.textContent = mm.titulo; } });
     el.addEventListener("keydown", function (e) {
       if (!mm || mmEditing || !e.target.closest("#mmStage")) return;
       if (present) {
@@ -1855,7 +1905,8 @@
     ["pagamentos", "Formas de pagamento", ""],
     ["reunioes", "Reuniões", "Aparecem no filtro da Pauta viva."],
     ["areas", "Frentes / áreas", "Classificam os itens da pauta."],
-    ["tiposEvento", "Tipos de evento", "Usados no Calendário."]
+    ["tiposEvento", "Tipos de evento", "Usados no Calendário."],
+    ["categoriasCofre", "Categorias de acessos", "Organizam a aba Acessos."]
   ];
   // onde cada lista é usada, para renomear junto
   var LIST_USE = {
@@ -1863,9 +1914,10 @@
     reunioes: [["pauta", "reuniao"], ["ciclo", "reuniao"]],
     areas: [["pauta", "area"], ["ciclo", "area"]],
     tiposEvento: [["eventos", "tipo"]],
-    pagamentos: [["nfs", "pagamento"], ["contratos", "pagamento"]]
+    pagamentos: [["nfs", "pagamento"], ["contratos", "pagamento"]],
+    categoriasCofre: [["cofre", "categoria"]]
   };
-  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos }, patch); return Store.set("config", "listas", doc).catch(fail); }
+  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre }, patch); return Store.set("config", "listas", doc).catch(fail); }
   function renameEverywhere(key, from, to) {
     var n = 0;
     (LIST_USE[key] || []).forEach(function (u) { S[u[0]].forEach(function (d) { if (d[u[1]] === from) { var p = {}; p[u[1]] = to; Store.upd(u[0], d.id, p).catch(fail); n++; } }); });
@@ -1880,7 +1932,7 @@
     el.innerHTML =
       '<div class="view-head"><div><div class="eyebrow">Admin</div><h2>Acessos, listas e categorias</h2><p class="muted">Só Ellyn e Tony (administradores) veem esta aba.</p></div></div>' +
       '<div class="admin-grid">' +
-      '<section class="card pad adm"><h3>Acessos</h3>' +
+      '<section class="card pad adm"><h3>Usuários do sistema</h3>' +
         '<p class="muted">' + (sb ? "Libere o email de cada pessoa e ligue ao nome dela no time. Depois ela entra em scopomkt.com.br/fluxodotime/, clica em <b>Primeiro acesso</b> e cria a própria senha." : "Na prévia não há login. Use <b>Você é</b> no topo para ver o sistema como cada pessoa. Os papéis abaixo valem para essa simulação.") + "</p>" +
         '<div id="admPerfis"><p class="hint">Carregando…</p></div>' +
         '<form class="adm-add" id="admAdd"><input type="' + (sb ? "email" : "text") + '" id="aEmail" placeholder="' + (sb ? "email da pessoa" : "email (opcional na prévia)") + '"' + (sb ? " required" : "") + '><select id="aNome">' + opt(nomes(), "") + '</select><select id="aPapel"><option value="membro">membro</option><option value="admin">admin</option></select><button class="btn small" type="submit">Liberar</button></form>' +
@@ -1974,6 +2026,102 @@
   }
 
   /* ================================================================
+     ACESSOS (links, logins, senhas e chaves)
+     Admin vê tudo. Cada acesso tem a lista de quem mais pode ver.
+     ================================================================ */
+  var cfF = { q: "", cat: "", conta: "" }, cfShow = {}, cfTimers = {};
+  function gerarSenha(n) {
+    var cs = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*?-_", out = "";
+    var arr = new Uint32Array(n || 16); (window.crypto || window.msCrypto).getRandomValues(arr);
+    for (var i = 0; i < arr.length; i++) out += cs[arr[i] % cs.length];
+    return out;
+  }
+  function safeUrl(u) { u = String(u || "").trim(); if (!u) return ""; if (!/^https?:\/\//i.test(u)) u = "https://" + u; return /^https?:\/\/[^\s"'<>]+$/i.test(u) ? u : ""; }
+  function renderCofre() {
+    var el = $("#v-cofre"), L = listas(), adm = isAdmin();
+    var q = cfF.q.toLowerCase();
+    var rows = S.cofre.filter(function (a) {
+      return (!cfF.cat || a.categoria === cfF.cat) && (!cfF.conta || a.conta === cfF.conta) &&
+        (!q || ((a.titulo || "") + " " + (a.url || "") + " " + (a.usuario || "") + " " + (a.obs || "")).toLowerCase().indexOf(q) >= 0);
+    }).sort(function (a, b) { return (a.titulo || "").localeCompare(b.titulo || "", "pt-BR"); });
+    var cats = L.categoriasCofre.slice();
+    rows.forEach(function (a) { if (a.categoria && cats.indexOf(a.categoria) < 0) cats.push(a.categoria); });
+    var field = function (a, k, label, secret) {
+      var v = a[k]; if (!v) return "";
+      var shown = !secret || cfShow[a.id + k];
+      return '<div class="cf-row"><span class="cf-lbl">' + label + '</span><span class="cf-val ' + (secret ? "mono" : "") + '">' + (shown ? esc(v) : "••••••••") + "</span>" +
+        (secret ? '<button class="icon-btn" data-cfshow="' + esc(a.id) + '" data-k="' + k + '">' + (shown ? "ocultar" : "mostrar") + "</button>" : "") +
+        '<button class="icon-btn" data-cfcopy="' + esc(a.id) + '" data-k="' + k + '">copiar</button></div>';
+    };
+    var card = function (a) {
+      var u = safeUrl(a.url);
+      return '<article class="cf-card">' +
+        '<header><div><b>' + esc(a.titulo) + "</b>" + (a.conta ? ' <span class="tag ' + esc(a.conta) + '">' + esc(a.conta) + "</span>" : "") + "</div>" +
+        (adm ? '<button class="icon-btn" data-cfedit="' + esc(a.id) + '">Editar</button>' : "") + "</header>" +
+        (u ? '<a class="cf-link" href="' + esc(u) + '" target="_blank" rel="noopener noreferrer">' + esc(a.url) + " ↗</a>" : "") +
+        field(a, "usuario", "Usuário", false) + field(a, "senha", "Senha", true) + field(a, "chave", "Chave / token", true) +
+        (a.obs ? '<p class="hint cf-obs">' + esc(a.obs) + "</p>" : "") +
+        '<footer class="hint">' + (adm ? ((a.acesso || []).length ? "Também veem: " + esc(a.acesso.join(", ")) : "Só admins") : "Liberado por " + esc(a.atualizadoPor || "admin")) + (a.atualizadoEm ? " · atualizado " + fmt(new Date(a.atualizadoEm)) : "") + "</footer></article>";
+    };
+    el.innerHTML =
+      '<div class="view-head"><div><div class="eyebrow">Acessos</div><h2>Links, logins e chaves</h2><p class="muted">' +
+      (adm ? "Admins veem tudo. Em cada acesso você escolhe quem mais do time pode ver." : "Acessos que foram liberados para você. Não repasse por Whats: quem precisa, pede liberação aqui.") + "</p></div>" +
+      (adm ? '<button class="btn" id="cfNew">+ Novo acesso <span class="arrow">→</span></button>' : "") + "</div>" +
+      '<div class="row"><input type="text" id="cfQ" placeholder="Buscar por nome, site ou usuário" value="' + esc(cfF.q) + '" style="max-width:320px">' +
+      '<select id="cfC" style="width:auto"><option value="">Todas as categorias</option>' + cats.map(function (c) { return "<option" + (c === cfF.cat ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select>" +
+      '<select id="cfA" style="width:auto"><option value="">Todas as contas</option>' + L.contas.map(function (c) { return "<option" + (c === cfF.conta ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select></div>" +
+      (rows.length ? cats.filter(function (c) { return rows.some(function (a) { return (a.categoria || "Outros") === c; }); }).map(function (c) {
+        var list = rows.filter(function (a) { return (a.categoria || "Outros") === c; });
+        return '<div class="group"><h3>' + esc(c) + " <small>" + list.length + '</small></h3><div class="cf-grid">' + list.map(card).join("") + "</div></div>";
+      }).join("") + (function () { var sem = rows.filter(function (a) { return cats.indexOf(a.categoria || "Outros") < 0; }); return sem.length ? '<div class="cf-grid">' + sem.map(card).join("") + "</div>" : ""; })()
+      : '<div class="empty">' + (S.cofre.length ? "Nada com esses filtros." : adm ? "Nenhum acesso guardado ainda. Comece pelos que o time mais pede: Meta Business, Google Ads, hospedagem do site." : "Nenhum acesso liberado para você.") + "</div>") +
+      (adm ? '<p class="hint">Senhas de banco e de cartão: prefira um gerenciador de senhas. Aqui ficam os acessos de trabalho que o time usa.</p>' : "");
+    if ($("#cfNew")) $("#cfNew").onclick = function () { openCofre(null); };
+    $("#cfQ").oninput = function () { cfF.q = this.value; clearTimeout(renderCofre._t); renderCofre._t = setTimeout(function () { renderCofre(); var i = $("#cfQ"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250); };
+    $("#cfC").onchange = function () { cfF.cat = this.value; renderCofre(); };
+    $("#cfA").onchange = function () { cfF.conta = this.value; renderCofre(); };
+    el.onclick = function (e) {
+      var b = e.target.closest("button"); if (!b) return;
+      var find = function (id) { return S.cofre.find(function (x) { return x.id === id; }); };
+      if (b.dataset.cfcopy) { var a = find(b.dataset.cfcopy); if (a) copy(a[b.dataset.k] || ""); return; }
+      if (b.dataset.cfshow) {
+        var key = b.dataset.cfshow + b.dataset.k; cfShow[key] = !cfShow[key];
+        clearTimeout(cfTimers[key]); if (cfShow[key]) cfTimers[key] = setTimeout(function () { cfShow[key] = false; if (view === "cofre") renderCofre(); }, 30000);
+        renderCofre(); return;
+      }
+      if (b.dataset.cfedit) { openCofre(find(b.dataset.cfedit)); }
+    };
+  }
+  function openCofre(a) {
+    var L = listas(), isNew = !a, id = isNew ? Store.uid() : a.id;
+    var d = Object.assign({ titulo: "", categoria: L.categoriasCofre[0] || "Outros", conta: "Ambas", url: "", usuario: "", senha: "", chave: "", obs: "", acesso: [] }, a || {});
+    var acesso = (d.acesso || []).slice();
+    var adminsNomes = Store.mode === "supabase" ? [] : acessosLista().filter(function (x) { return x.papel === "admin"; }).map(function (x) { return x.nome; });
+    var pessoasOpt = nomes().filter(function (n) { return n !== me && adminsNomes.indexOf(n) < 0; });
+    openModal('<header><h3>' + (isNew ? "Novo acesso" : "Editar acesso") + '</h3><button class="x" data-close>✕</button></header><div class="body">' +
+      '<div class="grid2"><div class="field"><label>Nome</label><input type="text" id="cfT" value="' + esc(d.titulo) + '" placeholder="ex: Meta Business · AM" autofocus autocomplete="off"></div>' +
+      '<div class="field"><label>Categoria</label><select id="cfCat">' + opt(L.categoriasCofre, d.categoria) + "</select></div>" +
+      '<div class="field"><label>Conta</label><select id="cfCo">' + opt(L.contas.concat(["SCOPO"]), d.conta) + "</select></div>" +
+      '<div class="field"><label>Link</label><input type="text" id="cfU" value="' + esc(d.url) + '" placeholder="business.facebook.com" autocomplete="off"></div>' +
+      '<div class="field"><label>Usuário / email</label><input type="text" id="cfUs" value="' + esc(d.usuario) + '" autocomplete="off"></div>' +
+      '<div class="field"><label>Senha</label><div class="row" style="flex-wrap:nowrap"><input type="password" id="cfS" value="' + esc(d.senha) + '" autocomplete="new-password"><button type="button" class="icon-btn" id="cfSv">ver</button><button type="button" class="icon-btn" id="cfGen">gerar</button></div></div></div>' +
+      '<div class="field"><label>Chave / token / código (opcional)</label><textarea id="cfK" class="mono" style="min-height:60px" autocomplete="off">' + esc(d.chave) + "</textarea></div>" +
+      '<div class="field"><label>Observações</label><textarea id="cfO" style="min-height:50px" placeholder="ex: 2 fatores no celular da Ellyn; vence em março">' + esc(d.obs) + "</textarea></div>" +
+      '<div class="field"><label>Quem mais pode ver</label><div class="chips" id="cfWho">' + (pessoasOpt.length ? pessoasOpt.map(function (n) { return '<button type="button" data-p="' + esc(n) + '" aria-pressed="' + (acesso.indexOf(n) >= 0) + '">' + esc(n) + "</button>"; }).join("") : '<span class="hint">Ninguém além dos admins.</span>') + '</div><p class="hint">Admins sempre veem todos os acessos. Quem não estiver marcado não vê nem sabe que este acesso existe.</p></div>' +
+      "</div><footer>" + (isNew ? "<span></span>" : '<span id="cfDelW"><button class="btn ghost small" id="cfDel">Excluir</button></span>') + '<button class="btn" id="cfSave">Salvar <span class="arrow">→</span></button></footer>', { wide: true });
+    $("[data-close]").onclick = closeModal;
+    $("#cfSv").onclick = function () { var i = $("#cfS"); i.type = i.type === "password" ? "text" : "password"; this.textContent = i.type === "password" ? "ver" : "ocultar"; };
+    $("#cfGen").onclick = function () { var i = $("#cfS"); i.value = gerarSenha(16); i.type = "text"; $("#cfSv").textContent = "ocultar"; };
+    $("#cfWho").onclick = function (e) { var b = e.target.closest("[data-p]"); if (!b) return; var i = acesso.indexOf(b.dataset.p); if (i >= 0) acesso.splice(i, 1); else acesso.push(b.dataset.p); b.setAttribute("aria-pressed", String(i < 0)); };
+    $("#cfSave").onclick = function () {
+      var t = $("#cfT").value.trim(); if (!t) { $("#cfT").focus(); return; }
+      Store.set("cofre", id, { titulo: t, categoria: $("#cfCat").value, conta: $("#cfCo").value, url: $("#cfU").value.trim(), usuario: $("#cfUs").value.trim(), senha: $("#cfS").value, chave: $("#cfK").value.trim(), obs: $("#cfO").value.trim(), acesso: acesso, atualizadoEm: new Date().toISOString(), atualizadoPor: me })
+        .then(function () { toast("Acesso salvo"); }, fail); closeModal();
+    };
+    if ($("#cfDel")) $("#cfDel").onclick = function () { delConfirm("#cfDelW", "Excluir este acesso?", function () { Store.del("cofre", id).catch(fail); closeModal(); }); };
+  }
+
+  /* ================================================================
      CONTA (antigo Ajustes)
      ================================================================ */
   $("#openSettings").onclick = function () {
@@ -1994,17 +2142,18 @@
   $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); });
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || view === "verba")) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || view === "verba" || view === "cofre")) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;
     guardStore();
     if (Store.mode === "supabase" && Store.perfil) { me = Store.perfil.nome; }
-    if (!isAdmin() && LS.get("fR", "*") === "*") pautaF.resp = me;
     render();
     Object.keys(S).forEach(function (col) {
       Store.sub(col, function (list) {
-        S[col] = list; loaded[col] = true;
+        R[col] = list; S[col] = isAdmin() ? list : list.filter(function (d) { return canRead(col, d); }); loaded[col] = true;
+        if (col === "config" && Store.mode !== "supabase") refilter(); // na prévia, papéis vêm da config
+        if (col === "pessoas" || col === "config") syncEquipe();
         if (Store.mode !== "local" && loaded.pessoas && loaded.modelos && !S.pessoas.length && !S.modelos.length) {
           $("#bootBanner").innerHTML = '<div class="banner warn" style="margin-bottom:16px">A base está vazia. ' + (isAdmin() ? '<button class="btn small" id="bootSeed">Carregar conteúdo padrão</button>' : "Peça a um administrador para carregar o conteúdo inicial.") + "</div>";
           if ($("#bootSeed")) $("#bootSeed").onclick = function () { Store.seed(window.GESTAO_DEFAULTS).then(function () { $("#bootBanner").innerHTML = ""; toast("Padrão carregado"); }, fail); };

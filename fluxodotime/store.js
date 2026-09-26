@@ -20,7 +20,7 @@
 */
 (function () {
   var COLS = ["pauta", "pessoas", "ciclo", "modelos", "quadros", "cartoes", "config", "eventos", "mapas",
-    "nfs", "contratos", "orcamento", "cooperada"];
+    "nfs", "contratos", "orcamento", "cooperada", "cofre"];
   var SUPABASE_JS = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js";
   var TABLE = "fluxo_docs", PERFIS = "fluxo_perfis", BUCKET = "anexos";
   var MAX_BYTES = 50 * 1024 * 1024;
