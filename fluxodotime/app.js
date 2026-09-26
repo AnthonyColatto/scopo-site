@@ -43,7 +43,7 @@
 
   /* ================= estado ================= */
   var Store = null;
-  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [] };
+  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [], visitas: [] };
   var R = {}; // dados como vieram da base; S é o que esta pessoa pode ver
   var loaded = {};
   var view = LS.get("tab", "pauta");
@@ -60,7 +60,9 @@
       tiposEvento: c.tiposEvento || D.tiposEvento || ["Reunião", "Outro"],
       categoriasVerba: c.categoriasVerba || D.categoriasVerba || ["Outros"],
       pagamentos: c.pagamentos || D.pagamentos || ["Boleto", "PIX"],
-      categoriasCofre: c.categoriasCofre || D.categoriasCofre || ["Outros"]
+      categoriasCofre: c.categoriasCofre || D.categoriasCofre || ["Outros"],
+      lojas: c.lojas || D.lojas || [],
+      setoresVisita: c.setoresVisita || D.setoresVisita || ["Limpeza"]
     };
   }
   function pessoas() { return S.pessoas.slice().sort(byOrder); }
@@ -99,14 +101,15 @@
     if (col === "pauta") return d.resp === me || d.criadoPor === me;
     if (col === "cartoes") return (d.resp || []).indexOf(me) >= 0 || d.criadoPor === me;
     if (col === "eventos") return (d.quem || []).indexOf(me) >= 0 || d.criadoPor === me;
+    if (col === "visitas") return d.resp === me || d.criadoPor === me;
     if (col === "pessoas") return d.nome === me;
     return false;
   }
   function canWrite(col, cur, next, op) {
     if (isAdmin()) return true;
     if (FIN.indexOf(col) >= 0) return false;
-    if (op === "add") return ["pauta", "cartoes", "eventos"].indexOf(col) >= 0 && meu(col, next);
-    if (op === "del") { if (col === "cartoes") return !!cur && cur.criadoPor === me; return (col === "pauta" || col === "eventos") && meu(col, cur); }
+    if (op === "add") return ["pauta", "cartoes", "eventos", "visitas"].indexOf(col) >= 0 && meu(col, next);
+    if (op === "del") { if (col === "cartoes") return !!cur && cur.criadoPor === me; return (col === "pauta" || col === "eventos" || col === "visitas") && meu(col, cur); }
     return meu(col, cur) && meu(col, next);
   }
   function canEdit(col, doc) { return canWrite(col, doc, doc, "upd"); }
@@ -114,7 +117,7 @@
   function canRead(col, d) {
     if (isAdmin()) return true;
     d = d || {};
-    if (["pauta", "cartoes", "eventos", "pessoas"].indexOf(col) >= 0) return meu(col, d);
+    if (["pauta", "cartoes", "eventos", "pessoas", "visitas"].indexOf(col) >= 0) return meu(col, d);
     if (col === "ciclo") return (d.quem || []).indexOf(me) >= 0;
     if (col === "mapas") return d.compartilhado === true;
     if (col === "cofre") return (d.acesso || []).indexOf(me) >= 0;
@@ -226,13 +229,14 @@
     document.body.classList.toggle("is-admin", adm);
     var tt = $('[data-tab="time"]'); if (tt) tt.textContent = adm ? "Time" : "Meu fluxo";
     var tc = $('[data-tab="cofre"]'); if (tc) tc.hidden = !(adm || S.cofre.length);
+    var tv = $('[data-tab="visitas"]'); if (tv) tv.hidden = !(adm || S.visitas.length);
     if (view === "cofre" && !(adm || S.cofre.length)) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
     var fs = $("#focoSeg");
     if (fs) {
       fs.innerHTML = '<button type="button" data-f="meu" aria-pressed="' + focoMeu() + '" title="Mostra só o que é seu">Só meu</button><button type="button" data-f="geral" aria-pressed="' + !focoMeu() + '" title="' + (adm ? "Visão de gestão: tudo do time" : "Tudo que foi liberado para você") + '">' + (adm ? "Geral" : "Tudo") + "</button>";
     }
     if (!adm && (view === "verba" || view === "admin")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -1023,6 +1027,7 @@
     if (calF.cartoes) S.cartoes.forEach(function (c) { var d = parse(c.prazo); if (d && !c.arquivado && passP(c.resp || []) && passC(c.conta)) push(d, { k: "cartao", id: c.id, t: c.titulo, sort: "60", cor: (c.etiquetas || []).length ? labelColor(c.etiquetas[0]) : "", conta: c.conta }); });
     if (calF.ciclo) [-1, 0, 1].forEach(function (o) { cycleFor(y, m + o).forEach(function (c) { if (passP(c.quem || []) && passC(c.conta)) push(c.d, { k: "ciclo", id: c.id, t: c.titulo, sort: "40" }); }); });
     if (calF.vencimentos && isAdmin() && !focoMeu()) S.nfs.forEach(function (n) { var d = parse(n.vencimento); if (d && n.status !== "paga" && passC(n.conta)) push(d, { k: "venc", id: n.id, t: brl(n.valor) + " · " + (n.fornecedor || n.descricao || "NF"), sort: "45" }); });
+    if (calF.visitas !== false) S.visitas.forEach(function (v) { var d = parse(v.data); if (d && passP(v.resp) && passC(v.conta)) push(d, { k: "visita", id: v.id, t: "Visita · " + (v.loja || ""), sort: "30", conta: v.conta }); });
     if (calF.reunioes) {
       var g = pessoaMe(); var reus = g ? (g.semana || []).filter(function (s) { return s.tipo === "reuniao"; }) : [];
       var start = new Date(y, m - 1, 20), end = new Date(y, m + 1, 12);
@@ -1083,6 +1088,7 @@
         else if (k === "cartao") { openCard(id); modalClose = function () { openCardId = null; renderCalendario(); }; }
         else if (k === "ciclo") openCicloEditor(S.ciclo.find(function (x) { return x.id === id; }));
         else if (k === "reuniao") showView("semana");
+        else if (k === "visita") { var vv = S.visitas.find(function (x) { return x.id === id; }); if (vv) openVisita(vv); }
         else if (k === "venc") { var nf = S.nfs.find(function (x) { return x.id === id; }); if (nf) openNF(nf); }
         return;
       }
@@ -1906,7 +1912,9 @@
     ["reunioes", "Reuniões", "Aparecem no filtro da Pauta viva."],
     ["areas", "Frentes / áreas", "Classificam os itens da pauta."],
     ["tiposEvento", "Tipos de evento", "Usados no Calendário."],
-    ["categoriasCofre", "Categorias de acessos", "Organizam a aba Acessos."]
+    ["categoriasCofre", "Categorias de acessos", "Organizam a aba Acessos."],
+    ["lojas", "Lojas", "Usadas nas visitas e no relatório da diretoria."],
+    ["setoresVisita", "Setores do checklist de visita", "Cada setor recebe Ótimo, Bom, Regular ou Ruim na visita."]
   ];
   // onde cada lista é usada, para renomear junto
   var LIST_USE = {
@@ -1915,13 +1923,15 @@
     areas: [["pauta", "area"], ["ciclo", "area"]],
     tiposEvento: [["eventos", "tipo"]],
     pagamentos: [["nfs", "pagamento"], ["contratos", "pagamento"]],
-    categoriasCofre: [["cofre", "categoria"]]
+    categoriasCofre: [["cofre", "categoria"]],
+    lojas: [["visitas", "loja"]]
   };
-  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre }, patch); return Store.set("config", "listas", doc).catch(fail); }
+  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre, lojas: L.lojas, setoresVisita: L.setoresVisita }, patch); return Store.set("config", "listas", doc).catch(fail); }
   function renameEverywhere(key, from, to) {
     var n = 0;
     (LIST_USE[key] || []).forEach(function (u) { S[u[0]].forEach(function (d) { if (d[u[1]] === from) { var p = {}; p[u[1]] = to; Store.upd(u[0], d.id, p).catch(fail); n++; } }); });
     if (key === "etiquetas") S.cartoes.forEach(function (c) { if ((c.etiquetas || []).indexOf(from) >= 0) { Store.upd("cartoes", c.id, { etiquetas: c.etiquetas.map(function (x) { return x === from ? to : x; }) }).catch(fail); n++; } });
+    if (key === "setoresVisita") S.visitas.forEach(function (v) { if ((v.notas || {})[from]) { var nn = Object.assign({}, v.notas); nn[to] = nn[from]; delete nn[from]; Store.upd("visitas", v.id, { notas: nn }).catch(fail); n++; } });
     if (key === "categoriasVerba") S.orcamento.forEach(function (o) { var ch = false, nd = orcPayload(o); ["AM", "AG"].forEach(function (c) { if (nd[c][from] != null) { nd[c][to] = nd[c][from]; delete nd[c][from]; ch = true; } }); if (ch) { Store.set("orcamento", o.id, nd).catch(fail); n++; } });
     return n;
   }
@@ -2122,6 +2132,217 @@
   }
 
   /* ================================================================
+     VISITAS ÀS LOJAS (checklist por setor + relatório para a diretoria)
+     ================================================================ */
+  var NOTAS = [["otimo", "Ótimo", 4], ["bom", "Bom", 3], ["regular", "Regular", 2], ["ruim", "Ruim", 1]];
+  var NOTA_V = { otimo: 4, bom: 3, regular: 2, ruim: 1 };
+  var NOTA_L = { otimo: "Ótimo", bom: "Bom", regular: "Regular", ruim: "Ruim" };
+  var viF = { periodo: "mes", loja: "", conta: "", de: "", ate: "" };
+  function visitaScore(v) {
+    var ns = Object.keys(v.notas || {}).map(function (k) { return NOTA_V[(v.notas[k] || {}).nota]; }).filter(Boolean);
+    if (!ns.length) return null;
+    return Math.round(ns.reduce(function (a, b) { return a + b; }, 0) / ns.length / 4 * 100);
+  }
+  function scoreClass(p) { return p == null ? "" : p >= 85 ? "otimo" : p >= 65 ? "bom" : p >= 45 ? "regular" : "ruim"; }
+  function notaFromAvg(avg) { return avg == null ? "" : avg >= 3.5 ? "otimo" : avg >= 2.5 ? "bom" : avg >= 1.5 ? "regular" : "ruim"; }
+  function viRange() {
+    var t = today(), a = null, b = null;
+    if (viF.periodo === "mes") { a = new Date(t.getFullYear(), t.getMonth(), 1); b = new Date(t.getFullYear(), t.getMonth() + 1, 0); }
+    else if (viF.periodo === "mespassado") { a = new Date(t.getFullYear(), t.getMonth() - 1, 1); b = new Date(t.getFullYear(), t.getMonth(), 0); }
+    else if (viF.periodo === "3m") { a = new Date(t.getFullYear(), t.getMonth() - 2, 1); b = t; }
+    else if (viF.periodo === "ano") { a = new Date(t.getFullYear(), 0, 1); b = new Date(t.getFullYear(), 11, 31); }
+    else if (viF.periodo === "periodo") { a = parse(viF.de); b = parse(viF.ate); }
+    return [a, b];
+  }
+  function viRangeLabel() {
+    var r = viRange();
+    if (!r[0] && !r[1]) return "Todo o histórico";
+    return (r[0] ? fmt(r[0]) + "/" + r[0].getFullYear() : "início") + " a " + (r[1] ? fmt(r[1]) + "/" + r[1].getFullYear() : "hoje");
+  }
+  function visitasFiltradas() {
+    var r = viRange();
+    return S.visitas.filter(function (v) {
+      var d = parse(v.data); if (!d) return false;
+      return (!r[0] || d >= r[0]) && (!r[1] || d <= r[1]) && (!viF.loja || v.loja === viF.loja) && (!viF.conta || v.conta === viF.conta || v.conta === "Ambas") && (!focoMeu() || v.resp === me);
+    }).sort(function (a, b) { return (b.data || "").localeCompare(a.data || ""); });
+  }
+  function setoresDe(list) {
+    var set = listas().setoresVisita.slice();
+    list.forEach(function (v) { Object.keys(v.notas || {}).forEach(function (k) { if (set.indexOf(k) < 0) set.push(k); }); });
+    return set;
+  }
+  // média por loja × setor no período
+  function matriz(list) {
+    var lojas = [], m = {};
+    list.forEach(function (v) {
+      if (lojas.indexOf(v.loja) < 0) lojas.push(v.loja);
+      Object.keys(v.notas || {}).forEach(function (s) {
+        var n = NOTA_V[(v.notas[s] || {}).nota]; if (!n) return;
+        var k = v.loja + "||" + s; (m[k] = m[k] || []).push(n);
+      });
+    });
+    var ord = listas().lojas; lojas.sort(function (a, b) { var ia = ord.indexOf(a), ib = ord.indexOf(b); return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || String(a).localeCompare(String(b), "pt-BR"); });
+    return { lojas: lojas, get: function (loja, s) { var a = m[loja + "||" + s]; return a ? a.reduce(function (x, y) { return x + y; }, 0) / a.length : null; } };
+  }
+  function renderVisitas() {
+    var el = $("#v-visitas"), L = listas();
+    var list = visitasFiltradas();
+    var setores = setoresDe(list), mx = matriz(list);
+    var scores = list.map(visitaScore).filter(function (x) { return x != null; });
+    var media = scores.length ? Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length) : null;
+    var criticos = 0; mx.lojas.forEach(function (l) { setores.forEach(function (s) { var a = mx.get(l, s); if (a != null && a < 1.5) criticos++; }); });
+    el.innerHTML =
+      '<div class="view-head"><div><div class="eyebrow">Visitas às lojas</div><h2>Checklist e avaliação por setor</h2><p class="muted">Registre cada visita com o resumo e a nota de cada setor. O painel mostra a média por loja e setor, e o relatório sai em PDF para a diretoria.</p></div>' +
+      '<div class="row"><button class="btn ghost" id="viPdf">Relatório em PDF</button><button class="btn" id="viNew">+ Nova visita <span class="arrow">→</span></button></div></div>' +
+      (!L.lojas.length ? '<div class="banner warn">Nenhuma loja cadastrada ainda. ' + (isAdmin() ? '<button class="linkbtn" id="viGoLojas">Cadastrar lojas e setores</button>' : "Peça a um admin para cadastrar as lojas.") + "</div>" : "") +
+      '<div class="row"><select id="viP" style="width:auto">' + [["mes", "Este mês"], ["mespassado", "Mês passado"], ["3m", "Últimos 3 meses"], ["ano", "Este ano"], ["tudo", "Todo o histórico"], ["periodo", "Período…"]].map(function (o) { return '<option value="' + o[0] + '"' + (viF.periodo === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" +
+      (viF.periodo === "periodo" ? '<input type="date" id="viDe" value="' + esc(viF.de) + '" style="width:auto"><span class="hint">até</span><input type="date" id="viAte" value="' + esc(viF.ate) + '" style="width:auto">' : "") +
+      '<select id="viL" style="width:auto"><option value="">Todas as lojas</option>' + L.lojas.map(function (l) { return "<option" + (l === viF.loja ? " selected" : "") + ">" + esc(l) + "</option>"; }).join("") + "</select>" +
+      '<select id="viC" style="width:auto"><option value="">Todas as contas</option>' + L.contas.filter(function (c) { return c !== "Ambas"; }).map(function (c) { return "<option" + (c === viF.conta ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select>" +
+      (isAdmin() ? '<button class="linkbtn" id="viCfg">editar lojas e setores</button>' : "") + "</div>" +
+      '<div class="vtiles"><div class="vtile"><span>Visitas</span><b>' + list.length + '</b><small>' + esc(viRangeLabel()) + '</small></div><div class="vtile"><span>Lojas visitadas</span><b>' + mx.lojas.length + (L.lojas.length ? " / " + L.lojas.length : "") + '</b></div><div class="vtile nota-' + scoreClass(media) + '"><span>Nota média</span><b>' + (media == null ? "—" : media + "%") + '</b></div><div class="vtile ' + (criticos ? "neg" : "") + '"><span>Pontos críticos</span><b>' + criticos + "</b><small>setores com média Ruim</small></div></div>" +
+      (mx.lojas.length ? '<div><div class="lbl" style="margin-bottom:6px">Média por loja e setor no período</div><div class="tbl-wrap"><table class="tbl mtx"><thead><tr><th>Loja</th>' + setores.map(function (s) { return "<th>" + esc(s) + "</th>"; }).join("") + '<th class="r">Nota</th></tr></thead><tbody>' +
+        mx.lojas.map(function (l) {
+          var vs = list.filter(function (v) { return v.loja === l; }), sc = vs.map(visitaScore).filter(function (x) { return x != null; });
+          var ls = sc.length ? Math.round(sc.reduce(function (a, b) { return a + b; }, 0) / sc.length) : null;
+          return '<tr data-vloja="' + esc(l) + '"><td><b>' + esc(l) + '</b><div class="hint">' + vs.length + " visita" + (vs.length > 1 ? "s" : "") + " · última " + fmt(parse(vs[0].data)) + "</div></td>" +
+            setores.map(function (s) { var a = mx.get(l, s), n = notaFromAvg(a); return '<td><span class="nota ' + n + '">' + (n ? NOTA_L[n] : "—") + "</span></td>"; }).join("") +
+            '<td class="r"><span class="nota ' + scoreClass(ls) + '">' + (ls == null ? "—" : ls + "%") + "</span></td></tr>";
+        }).join("") + "</tbody></table></div></div>" : "") +
+      '<div class="group"><h3>Visitas <small>' + list.length + "</small></h3>" + (list.length ? '<div class="vi-list">' + list.map(function (v) {
+        var sc = visitaScore(v), ruins = Object.keys(v.notas || {}).filter(function (k) { return (v.notas[k] || {}).nota === "ruim"; });
+        return '<button class="vi-item" data-vid="' + esc(v.id) + '"><span class="vi-date"><b>' + fmt(parse(v.data)) + "</b>" + DOW[parse(v.data).getDay()] + '</span><span class="vi-main"><b>' + esc(v.loja || "Sem loja") + "</b>" + (v.conta ? ' <span class="tag ' + esc(v.conta) + '">' + esc(v.conta) + "</span>" : "") + '<span class="hint">' + esc((v.resumo || "").slice(0, 140)) + (ruins.length ? ' · <span class="late-txt">Ruim: ' + esc(ruins.join(", ")) + "</span>" : "") + "</span></span>" +
+          '<span class="nota ' + scoreClass(sc) + '">' + (sc == null ? "sem notas" : sc + "%") + "</span></button>";
+      }).join("") + "</div>" : '<div class="empty">Nenhuma visita neste período.</div>') + "</div>";
+    $("#viNew").onclick = function () { openVisita(null); };
+    $("#viPdf").onclick = function () { relatorioVisitas(list); };
+    var goCfg = function () { showView("admin"); setTimeout(function () { var b = $('[data-list="lojas"]'); if (b) b.scrollIntoView({ behavior: "smooth", block: "center" }); }, 150); };
+    if ($("#viCfg")) $("#viCfg").onclick = goCfg;
+    if ($("#viGoLojas")) $("#viGoLojas").onclick = goCfg;
+    $("#viP").onchange = function () { viF.periodo = this.value; renderVisitas(); };
+    if ($("#viDe")) { $("#viDe").onchange = function () { viF.de = this.value; renderVisitas(); }; $("#viAte").onchange = function () { viF.ate = this.value; renderVisitas(); }; }
+    $("#viL").onchange = function () { viF.loja = this.value; renderVisitas(); };
+    $("#viC").onchange = function () { viF.conta = this.value; renderVisitas(); };
+    el.onclick = function (e) {
+      var b = e.target.closest("[data-vid]"); if (b) { openVisita(S.visitas.find(function (x) { return x.id === b.dataset.vid; })); return; }
+      var tr = e.target.closest("tr[data-vloja]"); if (tr) { viF.loja = tr.dataset.vloja; renderVisitas(); }
+    };
+  }
+  function openVisita(v) {
+    var L = listas(), isNew = !v, id = isNew ? Store.uid() : v.id;
+    var d = Object.assign({ loja: viF.loja || L.lojas[0] || "", data: iso(today()), conta: "Ambas", resp: me, resumo: "", notas: {}, anexos: [] }, v || {});
+    var notas = JSON.parse(JSON.stringify(d.notas || {}));
+    var setores = L.setoresVisita.slice(); Object.keys(notas).forEach(function (k) { if (setores.indexOf(k) < 0) setores.push(k); });
+    var pode = isNew || canEdit("visitas", v);
+    var lojasOpt = L.lojas.slice(); if (d.loja && lojasOpt.indexOf(d.loja) < 0) lojasOpt.push(d.loja);
+    openModal('<header><h3>' + (isNew ? "Nova visita" : "Visita · " + esc(d.loja)) + '</h3><button class="x" data-close>✕</button></header><div class="body">' +
+      '<div class="grid2"><div class="field"><label>Loja</label><select id="viLo">' + (lojasOpt.length ? opt(lojasOpt, d.loja) : '<option value="">Cadastre as lojas no Admin</option>') + "</select></div>" +
+      '<div class="field"><label>Data</label><input type="date" id="viDa" value="' + esc(d.data) + '"></div>' +
+      '<div class="field"><label>Conta</label><select id="viCo">' + opt(L.contas, d.conta) + "</select></div>" +
+      '<div class="field"><label>Quem visitou</label><select id="viRe">' + opt(nomes(), d.resp) + "</select></div></div>" +
+      '<div class="field"><label>Resumo da visita</label><textarea id="viRs" style="min-height:90px" placeholder="Como estava a loja, conversa com o gerente, o que precisa de ação">' + esc(d.resumo) + "</textarea></div>" +
+      '<div class="field"><div class="section-title"><label>Checklist por setor</label><span class="hint" id="viScore"></span></div><div class="ck-list">' +
+        setores.map(function (s, i) {
+          var n = notas[s] || {};
+          return '<div class="ck-row" data-si="' + i + '"><div class="ck-name">' + esc(s) + '</div><div class="ck-opts">' +
+            NOTAS.map(function (o) { return '<button type="button" class="ck-b ' + o[0] + '" data-n="' + o[0] + '" aria-pressed="' + (n.nota === o[0]) + '">' + o[1] + "</button>"; }).join("") +
+            '</div><input type="text" class="ck-obs" data-obs="' + i + '" value="' + esc(n.obs || "") + '" placeholder="Observação (opcional)"></div>';
+        }).join("") + '</div><p class="hint">Clique de novo na nota para limpar. Setores sem nota não entram na média.</p></div>' +
+      '<div class="field" id="viAtt"></div>' +
+      "</div><footer><span class=\"row\">" + (isNew ? "" : '<span id="viDelW"><button class="btn ghost small" id="viDel">Excluir</button></span>') + '<button class="btn ghost small" id="viPauta">Levar os "Ruim" para a pauta</button></span><button class="btn" id="viSave">Salvar visita <span class="arrow">→</span></button></footer>', { wide: true });
+    var anexos = (d.anexos || []).slice();
+    attachBlock($("#viAtt"), { titulo: "Fotos da visita", lista: anexos, pasta: "visitas/" + id, accept: "image/*,video/*,.pdf", podeEditar: pode, dropTarget: $("#modalRoot .modal"),
+      onChange: function (l) { anexos = l; if (!isNew) Store.upd("visitas", id, { anexos: l }).catch(fail); } });
+    var upScore = function () { var p = visitaScore({ notas: notas }); $("#viScore").innerHTML = p == null ? "" : 'Nota da visita: <span class="nota ' + scoreClass(p) + '">' + p + "%</span>"; };
+    var collect = function () { $$(".ck-obs").forEach(function (inp) { var s = setores[+inp.dataset.obs], o = inp.value.trim(); if (o) { notas[s] = Object.assign({}, notas[s] || {}, { obs: o }); } else if (notas[s]) { delete notas[s].obs; if (!notas[s].nota) delete notas[s]; } }); };
+    upScore();
+    $("[data-close]").onclick = closeModal;
+    $(".ck-list").onclick = function (e) {
+      var b = e.target.closest("[data-n]"); if (!b) return;
+      var row = b.closest("[data-si]"), s = setores[+row.dataset.si], cur = (notas[s] || {}).nota;
+      var nv = cur === b.dataset.n ? "" : b.dataset.n;
+      notas[s] = Object.assign({}, notas[s] || {}); if (nv) notas[s].nota = nv; else delete notas[s].nota; if (!notas[s].nota && !notas[s].obs) delete notas[s];
+      $$("[data-n]", row).forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.n === nv)); });
+      upScore();
+    };
+    var doc = function () { collect(); return { loja: $("#viLo").value, data: $("#viDa").value || iso(today()), conta: $("#viCo").value, resp: $("#viRe").value, resumo: $("#viRs").value.trim(), notas: notas, anexos: anexos, criadoPor: d.criadoPor || me, criadoEm: d.criadoEm || new Date().toISOString() }; };
+    $("#viSave").onclick = function () {
+      var x = doc(); if (!x.loja) { toast("Escolha a loja"); return; }
+      Store.set("visitas", id, x).then(function () { toast("Visita salva"); isNew = false; }, fail); closeModal();
+    };
+    $("#viPauta").onclick = function () {
+      var x = doc(); var ruins = Object.keys(x.notas).filter(function (k) { return x.notas[k].nota === "ruim"; });
+      if (!ruins.length) { toast("Nenhum setor marcado como Ruim"); return; }
+      Promise.all(ruins.map(function (s) {
+        return Store.add("pauta", { titulo: "[" + x.loja + "] " + s + (x.notas[s].obs ? ": " + x.notas[s].obs : ""), conta: x.conta, resp: me, reuniao: "", area: "Loja / VM", prazo: "", status: "aberto", notas: "Da visita de " + fmt(parse(x.data)) + ".", criadoEm: new Date().toISOString(), criadoPor: me });
+      })).then(function () { toast(ruins.length + " pendência" + (ruins.length > 1 ? "s" : "") + " na pauta"); }, fail);
+    };
+    if ($("#viDel")) $("#viDel").onclick = function () { delConfirm("#viDelW", "Excluir esta visita?", function () { anexos.forEach(function (a) { Store.removeFile(a); }); Store.del("visitas", id).catch(fail); closeModal(); }); };
+  }
+
+  /* ---------- relatório para a diretoria (abre pronto para salvar em PDF) ---------- */
+  function relatorioVisitas(list) {
+    if (!list.length) { toast("Não há visitas neste período para o relatório."); return; }
+    var w = window.open("", "_blank");
+    if (!w) { toast("O navegador bloqueou a janela. Libere pop-ups para este site."); return; }
+    w.document.write("<p style='font-family:sans-serif;padding:30px'>Montando o relatório…</p>");
+    var setores = setoresDe(list), mx = matriz(list);
+    var ANEXOS_POR_VISITA = 4;
+    var jobs = [];
+    list.forEach(function (v) { (v.anexos || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, ANEXOS_POR_VISITA).forEach(function (a) { jobs.push(Store.fileUrl(a).then(function (u) { a._u = u; }, function () {})); }); });
+    Promise.all(jobs).then(function () {
+      var logo = new URL("logo.png", location.href).href;
+      var scores = list.map(visitaScore).filter(function (x) { return x != null; });
+      var media = scores.length ? Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length) : null;
+      var cell = function (n, txt) { return '<span class="n ' + (n || "") + '">' + (txt || (n ? NOTA_L[n] : "—")) + "</span>"; };
+      var byLoja = mx.lojas.map(function (l) {
+        var vs = list.filter(function (v) { return v.loja === l; }), sc = vs.map(visitaScore).filter(function (x) { return x != null; });
+        var ls = sc.length ? Math.round(sc.reduce(function (a, b) { return a + b; }, 0) / sc.length) : null;
+        return '<section class="loja"><div class="lh"><h2>' + esc(l) + '</h2><div class="ls">' + cell(scoreClass(ls), ls == null ? "sem nota" : "Nota " + ls + "%") + '<span class="muted">' + vs.length + " visita" + (vs.length > 1 ? "s" : "") + "</span></div></div>" +
+          '<table class="grid"><thead><tr><th>Setor</th><th>Média</th>' + vs.map(function (v) { return "<th>" + fmt(parse(v.data)) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+          setores.map(function (s) { return "<tr><td>" + esc(s) + "</td><td>" + cell(notaFromAvg(mx.get(l, s))) + "</td>" + vs.map(function (v) { var n = (v.notas || {})[s] || {}; return "<td>" + cell(n.nota) + (n.obs ? '<div class="obs">' + esc(n.obs) + "</div>" : "") + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>" +
+          vs.map(function (v) {
+            var fotos = (v.anexos || []).filter(function (a) { return a._u; });
+            return '<div class="visita"><h3>Visita de ' + fmt(parse(v.data)) + "/" + v.data.slice(0, 4) + ' <span class="muted">· ' + esc(v.resp || "") + (visitaScore(v) != null ? " · nota " + visitaScore(v) + "%" : "") + "</span></h3>" +
+              (v.resumo ? '<p class="resumo">' + esc(v.resumo).replace(/\n/g, "<br>") + "</p>" : "") +
+              (fotos.length ? '<div class="fotos">' + fotos.map(function (a) { return '<img src="' + esc(a._u) + '" alt="">'; }).join("") + "</div>" : "") + "</div>";
+          }).join("") + "</section>";
+      }).join("");
+      var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de visitas · ' + esc(viRangeLabel()) + '</title>' +
+        '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap">' +
+        "<style>" +
+        "@page{size:A4;margin:14mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+        "body{margin:0;font-family:'Work Sans',Arial,sans-serif;color:#141414;font-size:11.5px;line-height:1.45;background:#fff}" +
+        "h1,h2,h3{font-family:'Poppins',Arial,sans-serif;margin:0}.muted{color:#6b6b6b;font-weight:400}" +
+        ".cover{background:#0a0a0a;color:#fff;padding:22px 26px;border-radius:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;border-bottom:4px solid #F5DF00}" +
+        ".cover img{height:24px;display:block;margin-bottom:14px}.cover h1{font-size:24px;font-weight:800}.cover .sub{color:#bdbdbd;margin-top:4px}.cover .meta{text-align:right;color:#bdbdbd;font-size:11px}" +
+        ".kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.kpi{border:1px solid #e3e3e3;border-radius:8px;padding:10px 12px}.kpi span{display:block;font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:#6b6b6b;font-weight:600}.kpi b{font-family:'Poppins',Arial;font-size:20px}" +
+        "h2.sec{font-size:15px;margin:18px 0 8px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #e7e7e7;padding:6px 7px;text-align:left;vertical-align:top}th{font-size:9.5px;letter-spacing:.8px;text-transform:uppercase;color:#6b6b6b;background:#f6f6f6}" +
+        ".n{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:600;font-size:10.5px;white-space:nowrap;background:#eee;color:#555}.n.otimo{background:#d8f5e3;color:#11623a}.n.bom{background:#dcecff;color:#174a8a}.n.regular{background:#fff1d1;color:#8a5a00}.n.ruim{background:#ffdcdc;color:#9a1c1c}" +
+        ".loja{break-before:page;padding-top:4px}.lh{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #F5DF00;padding-bottom:6px;margin-bottom:10px}.lh h2{font-size:19px}.ls{display:flex;gap:10px;align-items:center}" +
+        ".obs{font-size:10px;color:#555;margin-top:2px}.visita{margin-top:14px;break-inside:avoid}.visita h3{font-size:12.5px;margin-bottom:4px}.resumo{margin:0 0 6px;padding:8px 10px;background:#fafafa;border-left:3px solid #F5DF00}" +
+        ".fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.fotos img{width:100%;height:110px;object-fit:cover;border-radius:6px}" +
+        "@media screen{body{max-width:1100px;margin:0 auto;padding:24px}}" +
+        ".foot{margin-top:20px;font-size:10px;color:#8a8a8a;text-align:center}.tip{background:#fff8c6;border:1px solid #f0dc50;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px}@media print{.tip{display:none}}" +
+        "</style></head><body>" +
+        '<div class="tip">Na janela de impressão, escolha <b>Salvar como PDF</b> como destino.</div>' +
+        '<div class="cover"><div><img src="' + esc(logo) + '" alt="SCOPO"><h1>Relatório de visitas às lojas</h1><div class="sub">' + esc(viRangeLabel()) + (viF.conta ? " · " + esc(viF.conta) : "") + (viF.loja ? " · " + esc(viF.loja) : "") + '</div></div><div class="meta">Gerado em ' + fmt(new Date()) + "/" + new Date().getFullYear() + "<br>por " + esc(me) + "</div></div>" +
+        '<div class="kpis"><div class="kpi"><span>Visitas</span><b>' + list.length + '</b></div><div class="kpi"><span>Lojas visitadas</span><b>' + mx.lojas.length + '</b></div><div class="kpi"><span>Nota média</span><b>' + (media == null ? "—" : media + "%") + '</b></div><div class="kpi"><span>Setores avaliados</span><b>' + setores.length + "</b></div></div>" +
+        '<h2 class="sec">Visão geral · média por loja e setor</h2><table><thead><tr><th>Loja</th>' + setores.map(function (s) { return "<th>" + esc(s) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+        mx.lojas.map(function (l) { return "<tr><td><b>" + esc(l) + "</b></td>" + setores.map(function (s) { return "<td>" + cell(notaFromAvg(mx.get(l, s))) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>" +
+        '<p class="muted" style="margin-top:6px">Escala: Ótimo = 4 · Bom = 3 · Regular = 2 · Ruim = 1. Nota em % = média ÷ 4.</p>' +
+        byLoja + '<div class="foot">SCOPO · Fluxo do Time · Relatório de visitas</div></body></html>';
+      w.document.open(); w.document.write(html); w.document.close();
+      var go = function () { try { w.focus(); w.print(); } catch (e) {} };
+      var imgs = w.document.images, pend = imgs.length, done = false;
+      var fin = function () { if (!done) { done = true; setTimeout(go, 300); } };
+      if (!pend) setTimeout(fin, 600);
+      Array.prototype.forEach.call(imgs, function (im) { if (im.complete) { if (--pend <= 0) fin(); } else { im.onload = im.onerror = function () { if (--pend <= 0) fin(); }; } });
+      setTimeout(fin, 5000);
+    });
+  }
+
+  /* ================================================================
      CONTA (antigo Ajustes)
      ================================================================ */
   $("#openSettings").onclick = function () {
@@ -2142,7 +2363,7 @@
   $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); });
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || view === "verba" || view === "cofre")) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || view === "verba" || view === "cofre" || view === "visitas")) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;

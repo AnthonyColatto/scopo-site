@@ -42,7 +42,9 @@ window.GESTAO_DEFAULTS = (function () {
         "Prestadores PJ", "Ferramentas e assinaturas", "Outros"
       ],
       pagamentos: ["Boleto", "PIX", "Transferência", "Cartão", "Faturado"],
-      categoriasCofre: ["Redes sociais", "Anúncios", "Site e hospedagem", "Email", "Ferramentas", "Fornecedores", "Outros"]
+      categoriasCofre: ["Redes sociais", "Anúncios", "Site e hospedagem", "Email", "Ferramentas", "Fornecedores", "Outros"],
+      lojas: [],
+      setoresVisita: ["Fachada", "Limpeza", "Banheiros", "Precificação", "Exposição", "PDV e comunicação", "Tabloide exposto", "Rádio e TV interna", "Atendimento"]
     },
     // usado só na prévia e no modo sem banco: quem é admin
     acessos: { lista: [
