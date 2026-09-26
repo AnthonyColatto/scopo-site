@@ -43,7 +43,7 @@
 
   /* ================= estado ================= */
   var Store = null;
-  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [], visitas: [], eventos_org: [], campanhas: [] };
+  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [], visitas: [], eventos_org: [], campanhas: [], reunioes_dir: [], documentos: [], indicadores: [] };
   var R = {}; // dados como vieram da base; S é o que esta pessoa pode ver
   var loaded = {};
   var view = LS.get("tab", "pauta");
@@ -66,7 +66,10 @@
       tiposEventoOrg: c.tiposEventoOrg || D.tiposEventoOrg || ["Evento"],
       itensCustoEvento: c.itensCustoEvento || D.itensCustoEvento || ["Buffet"],
       canaisCampanha: c.canaisCampanha || D.canaisCampanha || ["Redes sociais"],
-      checklistCampanha: c.checklistCampanha || D.checklistCampanha || []
+      checklistCampanha: c.checklistCampanha || D.checklistCampanha || [],
+      categoriasDoc: c.categoriasDoc || D.categoriasDoc || ["Outros"],
+      unidades: c.unidades || D.unidades || ["Coronel", "Zahran", "Bandeirantes", "Dourados", "Maracaju", "Golden"],
+      canaisTrafego: c.canaisTrafego || D.canaisTrafego || ["AM · Meta Ads", "AM · Google Ads", "AG · Meta Ads", "AG · Google Ads"]
     };
   }
   function pessoas() { return S.pessoas.slice().sort(byOrder); }
@@ -89,7 +92,7 @@
   /* ================= acessos e permissões =================
      Espelha as regras do banco (supabase-setup.sql). No Supabase quem manda é o banco;
      aqui a tela só evita que a pessoa tente algo que vai ser recusado. */
-  var FIN = ["nfs", "contratos", "orcamento", "cooperada"];
+  var FIN = ["nfs", "contratos", "orcamento", "cooperada", "indicadores"];
   function acessosLista() {
     var c = S.config.find(function (x) { return x.id === "acessos"; });
     var D = window.GESTAO_DEFAULTS && window.GESTAO_DEFAULTS.config.acessos;
@@ -239,8 +242,8 @@
     if (fs) {
       fs.innerHTML = '<button type="button" data-f="meu" aria-pressed="' + focoMeu() + '" title="Mostra só o que é seu">Só meu</button><button type="button" data-f="geral" aria-pressed="' + !focoMeu() + '" title="' + (adm ? "Visão de gestão: tudo do time" : "Tudo que foi liberado para você") + '">' + (adm ? "Geral" : "Tudo") + "</button>";
     }
-    if (!adm && (view === "verba" || view === "admin" || view === "eventosorg" || view === "campanhas")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    if (!adm && (view === "verba" || view === "admin" || view === "eventosorg" || view === "campanhas" || view === "reunioes" || view === "indicadores")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -1034,6 +1037,7 @@
     if (calF.visitas !== false) S.visitas.forEach(function (v) { var d = parse(v.data); if (d && passP(v.resp) && passC(v.conta)) push(d, { k: "visita", id: v.id, t: "Visita · " + (v.loja || ""), sort: "30", conta: v.conta }); });
     if (isAdmin() && !focoMeu()) {
       S.eventos_org.forEach(function (e) { var d = parse(e.data); if (d && e.status !== "cancelado" && passC(e.conta)) push(d, { k: "evorg", id: e.id, t: "★ " + (e.nome || "Evento"), sort: "20", conta: e.conta }); });
+      S.reunioes_dir.forEach(function (r) { var d = parse(r.data); if (d) push(d, { k: "reudir", id: r.id, t: (r.hora ? r.hora + " " : "") + (r.tipo || "Reunião"), sort: "15" }); });
       S.campanhas.forEach(function (c) { var d = parse(c.inicio); if (d && c.status !== "cancelada" && passC(c.conta)) push(d, { k: "camp", id: c.id, t: "Campanha · " + c.nome, sort: "25", conta: c.conta }); });
     }
     if (calF.reunioes) {
@@ -1096,6 +1100,7 @@
         else if (k === "cartao") { openCard(id); modalClose = function () { openCardId = null; renderCalendario(); }; }
         else if (k === "ciclo") openCicloEditor(S.ciclo.find(function (x) { return x.id === id; }));
         else if (k === "reuniao") showView("semana");
+        else if (k === "reudir") { var rd = S.reunioes_dir.find(function (x) { return x.id === id; }); if (rd) openReuniao(rd); }
         else if (k === "evorg") { var eo = S.eventos_org.find(function (x) { return x.id === id; }); if (eo) openEventoOrg(eo); }
         else if (k === "camp") { var cp = S.campanhas.find(function (x) { return x.id === id; }); if (cp) openCampanha(cp); }
         else if (k === "visita") { var vv = S.visitas.find(function (x) { return x.id === id; }); if (vv) openVisita(vv); }
@@ -1928,7 +1933,10 @@
     ["tiposEventoOrg", "Tipos de evento (aba Eventos)", ""],
     ["itensCustoEvento", "Itens de custo de evento", "Aparecem como sugestão na estimativa de custos."],
     ["canaisCampanha", "Canais de campanha", ""],
-    ["checklistCampanha", "Checklist padrão de campanha", "Toda campanha nova começa com estes itens."]
+    ["checklistCampanha", "Checklist padrão de campanha", "Toda campanha nova começa com estes itens."],
+    ["categoriasDoc", "Categorias de documentos", "Organizam os documentos da aba Reuniões."],
+    ["unidades", "Unidades (Indicadores)", "Lojas do atendimento Bitrix e das pesquisas NPS."],
+    ["canaisTrafego", "Contas de tráfego pago (Indicadores)", "Ex: AM · Meta Ads. Cada uma recebe os números do mês."]
   ];
   // onde cada lista é usada, para renomear junto
   var LIST_USE = {
@@ -1939,14 +1947,16 @@
     pagamentos: [["nfs", "pagamento"], ["contratos", "pagamento"]],
     categoriasCofre: [["cofre", "categoria"]],
     lojas: [["visitas", "loja"]],
-    tiposEventoOrg: [["eventos_org", "tipo"]]
+    tiposEventoOrg: [["eventos_org", "tipo"]],
+    categoriasDoc: [["documentos", "categoria"]]
   };
-  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre, lojas: L.lojas, setoresVisita: L.setoresVisita, tiposEventoOrg: L.tiposEventoOrg, itensCustoEvento: L.itensCustoEvento, canaisCampanha: L.canaisCampanha, checklistCampanha: L.checklistCampanha }, patch); return Store.set("config", "listas", doc).catch(fail); }
+  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre, lojas: L.lojas, setoresVisita: L.setoresVisita, tiposEventoOrg: L.tiposEventoOrg, itensCustoEvento: L.itensCustoEvento, canaisCampanha: L.canaisCampanha, checklistCampanha: L.checklistCampanha, categoriasDoc: L.categoriasDoc, unidades: L.unidades, canaisTrafego: L.canaisTrafego }, patch); return Store.set("config", "listas", doc).catch(fail); }
   function renameEverywhere(key, from, to) {
     var n = 0;
     (LIST_USE[key] || []).forEach(function (u) { S[u[0]].forEach(function (d) { if (d[u[1]] === from) { var p = {}; p[u[1]] = to; Store.upd(u[0], d.id, p).catch(fail); n++; } }); });
     if (key === "etiquetas") S.cartoes.forEach(function (c) { if ((c.etiquetas || []).indexOf(from) >= 0) { Store.upd("cartoes", c.id, { etiquetas: c.etiquetas.map(function (x) { return x === from ? to : x; }) }).catch(fail); n++; } });
     if (key === "setoresVisita") S.visitas.forEach(function (v) { if ((v.notas || {})[from]) { var nn = Object.assign({}, v.notas); nn[to] = nn[from]; delete nn[from]; Store.upd("visitas", v.id, { notas: nn }).catch(fail); n++; } });
+    if (key === "unidades" || key === "canaisTrafego") { var sk2 = key === "unidades" ? ["atend", "nps"] : ["trafego"]; S.indicadores.forEach(function (d) { var patch = {}, ch = false; sk2.forEach(function (k) { if (d[k] && d[k][from]) { var o = Object.assign({}, d[k]); o[to] = o[from]; delete o[from]; patch[k] = o; ch = true; } if (/^metas-/.test(d.id) && d[k] && d[k].linhas && d[k].linhas[from]) { var lk = Object.assign({}, d[k].linhas); lk[to] = lk[from]; delete lk[from]; patch[k] = Object.assign({}, patch[k] || d[k], { linhas: lk }); ch = true; } }); if (ch) { Store.upd("indicadores", d.id, patch).catch(fail); n++; } }); }
     if (key === "categoriasVerba") S.orcamento.forEach(function (o) { var ch = false, nd = orcPayload(o); ["AM", "AG"].forEach(function (c) { if (nd[c][from] != null) { nd[c][to] = nd[c][from]; delete nd[c][from]; ch = true; } }); if (ch) { Store.set("orcamento", o.id, nd).catch(fail); n++; } });
     return n;
   }
@@ -2707,6 +2717,661 @@
   }
 
   /* ================================================================
+     REUNIÕES (diretoria, estratégico) e DOCUMENTOS · só admins
+     ================================================================ */
+  var RI_ST = [["pendente", "Pendente"], ["andamento", "Em andamento"], ["feito", "Feito"], ["naofeito", "Não vai ser feito"]];
+  var reF = { sub: LS.get("reSub", "reunioes"), tipo: "", q: "", cat: "" };
+  function riAberto(i) { return i.status !== "feito" && i.status !== "naofeito"; }
+  function reuTipos() { var L = listas(); var t = L.reunioes.slice(); ["Diretoria", "Estratégico (Liu)"].forEach(function (x) { if (t.indexOf(x) < 0) t.unshift(x); }); return t; }
+  function reunioesOrd() { return S.reunioes_dir.slice().sort(function (a, b) { return ((b.data || "") + (b.hora || "")).localeCompare((a.data || "") + (a.hora || "")); }); }
+  function anteriorDe(tipo, antesDe, exceto) { return reunioesOrd().find(function (r) { return r.tipo === tipo && r.id !== exceto && (!antesDe || (r.data || "") <= antesDe); }); }
+  function renderReunioes() {
+    var el = $("#v-reunioes");
+    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    var head = '<div class="view-head"><div><div class="eyebrow">Reuniões</div><h2>Diretoria, estratégico e documentos</h2><p class="muted">Abra a reunião anterior, veja o que foi feito e o que ficou, e monte a próxima pauta. Os documentos que o estratégico manda ficam guardados aqui.</p></div>' +
+      '<div class="row">' + (reF.sub === "reunioes" ? '<button class="btn" id="reNew">+ Nova reunião <span class="arrow">→</span></button>' : '<button class="btn" id="docNew">+ Documento <span class="arrow">→</span></button>') + "</div></div>" +
+      '<div class="seg"><button data-resub="reunioes" aria-pressed="' + (reF.sub === "reunioes") + '">Reuniões</button><button data-resub="documentos" aria-pressed="' + (reF.sub === "documentos") + '">Documentos</button></div>';
+    var body = reF.sub === "documentos" ? docsHTML() : reunioesHTML();
+    el.innerHTML = head + body;
+    $$("[data-resub]", el).forEach(function (b) { b.onclick = function () { reF.sub = b.dataset.resub; LS.set("reSub", reF.sub); renderReunioes(); }; });
+    if ($("#reNew")) $("#reNew").onclick = function () { novaReuniao(); };
+    if ($("#docNew")) $("#docNew").onclick = function () { openDocumento(null); };
+    if ($("#reT")) $("#reT").onchange = function () { reF.tipo = this.value; renderReunioes(); };
+    if ($("#docQ")) $("#docQ").oninput = function () { reF.q = this.value; clearTimeout(renderReunioes._t); renderReunioes._t = setTimeout(function () { renderReunioes(); var i = $("#docQ"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250); };
+    if ($("#docC")) $("#docC").onchange = function () { reF.cat = this.value; renderReunioes(); };
+    el.onclick = function (e) {
+      var b = e.target.closest("[data-reu]"); if (b) { openReuniao(S.reunioes_dir.find(function (x) { return x.id === b.dataset.reu; })); return; }
+      var st = e.target.closest("[data-pst]");
+      if (st) { var r = S.reunioes_dir.find(function (x) { return x.id === st.dataset.pst; }); var o = RI_ST.map(function (x) { return x[0]; }); var itens = (r.pauta || []).map(function (i) { return i.id === st.dataset.item ? Object.assign({}, i, { status: o[(o.indexOf(i.status || "pendente") + 1) % o.length] }) : i; }); Store.upd("reunioes_dir", r.id, { pauta: itens }).catch(fail); return; }
+      var d = e.target.closest("[data-doc]"); if (d) { openDocumento(S.documentos.find(function (x) { return x.id === d.dataset.doc; })); return; }
+      var a = e.target.closest("[data-abrir]"); if (a) { var src = S.documentos.concat(S.reunioes_dir).find(function (x) { return x.id === a.dataset.abrir; }); var an = src && (src.anexos || [])[+a.dataset.i]; if (an) lightbox(an); }
+    };
+  }
+  function reunioesHTML() {
+    var list = reunioesOrd().filter(function (r) { return !reF.tipo || r.tipo === reF.tipo; });
+    var abertos = [];
+    list.forEach(function (r) { (r.pauta || []).forEach(function (i) { if (riAberto(i) && !i.levadoPara) abertos.push({ r: r, i: i }); }); });
+    var t0 = iso(today());
+    return '<div class="row"><select id="reT" style="width:auto"><option value="">Todas as reuniões</option>' + reuTipos().map(function (t) { return "<option" + (t === reF.tipo ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select></div>" +
+      '<div class="re-cols"><div><div class="lbl" style="margin-bottom:8px">Reuniões</div>' +
+      (list.length ? '<div class="re-list">' + list.map(function (r) {
+        var p = r.pauta || [], feitos = p.filter(function (i) { return i.status === "feito"; }).length, ab = p.filter(function (i) { return riAberto(i) && !i.levadoPara; }).length, passou = p.filter(function (i) { return i.levadoPara; }).length, dt = parse(r.data);
+        return '<button class="re-item" data-reu="' + esc(r.id) + '"><span class="vi-date"><b>' + (dt ? fmt(dt) : "—") + "</b>" + (dt ? DOW[dt.getDay()] : "") + '</span><span class="vi-main"><b>' + esc(r.titulo || r.tipo || "Reunião") + '</b><span class="hint">' + esc(r.tipo || "") + (r.participantes && r.participantes.length ? " · " + esc(r.participantes.join(", ")) : "") + "</span>" +
+          (p.length ? '<span class="ca-prog"><i style="width:' + Math.round(feitos / p.length * 100) + '%"></i></span>' : "") + '</span><span class="re-count">' + (p.length ? feitos + "/" + p.length + " feitos" : "sem pauta") + (ab ? '<br><span class="late-txt">' + ab + " em aberto</span>" : "") + (passou ? "<br>" + passou + " passaram adiante" : "") + ((r.anexos || []).length ? "<br>⧉ " + r.anexos.length : "") + "</span></button>";
+      }).join("") + "</div>" : '<div class="empty">Nenhuma reunião registrada ainda.</div>') + "</div>" +
+      '<div><div class="lbl" style="margin-bottom:8px">Pendências em aberto · ' + abertos.length + "</div>" +
+      (abertos.length ? '<div class="re-open">' + abertos.map(function (x) {
+        var pz = x.i.prazo, late = pz && pz < t0;
+        return '<div class="re-oi"><div><b>' + esc(x.i.texto) + '</b><div class="hint">' + esc(x.r.tipo || "") + " de " + (x.r.data ? fmt(parse(x.r.data)) : "—") + (x.i.resp ? " · " + esc(x.i.resp) : "") + (pz ? ' · <span class="' + (late ? "late-txt" : "") + '">prazo ' + fmt(parse(pz)) + "</span>" : "") + '</div></div><button class="st ri-' + esc(x.i.status || "pendente") + '" data-pst="' + esc(x.r.id) + '" data-item="' + esc(x.i.id) + '">' + esc(stLabel(RI_ST, x.i.status || "pendente")) + "</button></div>";
+      }).join("") + "</div>" : '<div class="empty">Nada em aberto. Tudo que foi combinado está resolvido.</div>') + "</div></div>";
+  }
+  function docsHTML() {
+    var L = listas(), q = reF.q.toLowerCase();
+    var docs = S.documentos.filter(function (d) { return (!reF.cat || d.categoria === reF.cat) && (!q || ((d.titulo || "") + " " + (d.descricao || "") + " " + (d.origem || "")).toLowerCase().indexOf(q) >= 0); })
+      .sort(function (a, b) { return (b.data || "").localeCompare(a.data || ""); });
+    var deReu = [];
+    S.reunioes_dir.forEach(function (r) { (r.anexos || []).forEach(function (a, i) { if (!q || (a.nome || "").toLowerCase().indexOf(q) >= 0) deReu.push({ r: r, a: a, i: i }); }); });
+    var icon = function (a) { return '<span class="doc-ico">' + esc(fileKind(a).slice(0, 4)) + "</span>"; };
+    return '<div class="row"><input type="text" id="docQ" placeholder="Buscar documento" value="' + esc(reF.q) + '" style="max-width:300px"><select id="docC" style="width:auto"><option value="">Todas as categorias</option>' + L.categoriasDoc.map(function (c) { return "<option" + (c === reF.cat ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select></div>" +
+      (docs.length ? '<div class="cf-grid">' + docs.map(function (d) {
+        return '<article class="cf-card"><header><div><b>' + esc(d.titulo) + '</b><div class="hint">' + esc([d.categoria, d.origem, d.data ? fmt(parse(d.data)) + "/" + d.data.slice(0, 4) : ""].filter(Boolean).join(" · ")) + '</div></div><button class="icon-btn" data-doc="' + esc(d.id) + '">Editar</button></header>' +
+          (d.descricao ? '<p class="hint cf-obs">' + esc(d.descricao) + "</p>" : "") +
+          ((d.anexos || []).length ? '<div class="doc-files">' + d.anexos.map(function (a, i) { return '<button class="doc-file" data-abrir="' + esc(d.id) + '" data-i="' + i + '">' + icon(a) + '<span>' + esc(a.nome) + '</span><span class="hint">' + fileSize(a.tamanho) + "</span></button>"; }).join("") + "</div>" : '<p class="hint">Sem arquivo anexado.</p>') + "</article>";
+      }).join("") + "</div>" : '<div class="empty">' + (S.documentos.length ? "Nada com esse filtro." : "Nenhum documento ainda. Guarde aqui o manual do vendedor, o plano da marca exclusiva e o que mais o estratégico mandar.") + "</div>") +
+      (deReu.length ? '<div class="group"><h3>Anexados nas reuniões <small>' + deReu.length + '</small></h3><div class="doc-files">' + deReu.map(function (x) { return '<button class="doc-file" data-abrir="' + esc(x.r.id) + '" data-i="' + x.i + '">' + icon(x.a) + "<span>" + esc(x.a.nome) + '</span><span class="hint">' + esc(x.r.tipo || "") + " " + (x.r.data ? fmt(parse(x.r.data)) : "") + "</span></button>"; }).join("") + "</div></div>" : "");
+  }
+  function novaReuniao() {
+    var tipos = reuTipos();
+    openModal('<header><h3>Nova reunião</h3><button class="x" data-close>✕</button></header><div class="body">' +
+      '<div class="grid2"><div class="field"><label>Reunião</label><select id="nrT">' + opt(tipos, reF.tipo || tipos[0]) + '</select></div><div class="field"><label>Data</label><input type="date" id="nrD" value="' + iso(today()) + '"></div></div>' +
+      '<p class="hint" id="nrInfo"></p><label class="ct"><input type="checkbox" id="nrCarry" checked> trazer as pendências em aberto da reunião anterior</label></div>' +
+      '<footer><span></span><button class="btn" id="nrGo">Criar e abrir <span class="arrow">→</span></button></footer>');
+    var info = function () {
+      var ant = anteriorDe($("#nrT").value, $("#nrD").value), ab = ant ? (ant.pauta || []).filter(function (i) { return riAberto(i) && !i.levadoPara; }).length : 0;
+      $("#nrInfo").textContent = ant ? "Reunião anterior: " + fmt(parse(ant.data)) + " · " + (ant.pauta || []).length + " itens, " + ab + " em aberto." : "Primeira reunião deste tipo.";
+      $("#nrCarry").disabled = !ab; $("#nrCarry").checked = !!ab;
+    };
+    $("#nrT").onchange = info; $("#nrD").onchange = info; info();
+    $("[data-close]").onclick = closeModal;
+    $("#nrGo").onclick = function () {
+      var tipo = $("#nrT").value, data = $("#nrD").value || iso(today()), id = Store.uid(), ant = anteriorDe(tipo, data), pauta = [];
+      var jobs = [];
+      if ($("#nrCarry").checked && ant) {
+        var ntrazidos = (ant.pauta || []).filter(function (i) { return riAberto(i) && !i.levadoPara; });
+        pauta = ntrazidos.map(function (i) { return { id: Store.uid(), texto: i.texto, resp: i.resp || "", prazo: i.prazo || "", status: i.status === "andamento" ? "andamento" : "pendente", obs: i.obs || "", origem: ant.id, origemData: ant.data }; });
+        if (ntrazidos.length) jobs.push(Store.upd("reunioes_dir", ant.id, { pauta: (ant.pauta || []).map(function (i) { return riAberto(i) && !i.levadoPara ? Object.assign({}, i, { levadoPara: id }) : i; }) }));
+      }
+      var doc = { titulo: tipo + " · " + fmt(parse(data)), tipo: tipo, data: data, hora: "", local: "", participantes: [], pauta: pauta, definicoes: "", anexos: [], status: "agendada", criadoPor: me, criadoEm: new Date().toISOString() };
+      jobs.push(Store.set("reunioes_dir", id, doc));
+      Promise.all(jobs).then(function () { closeModal(); setTimeout(function () { openReuniao(Object.assign({ id: id }, doc)); }, 50); }, fail);
+    };
+  }
+  function openReuniao(r) {
+    if (!r) return;
+    var id = r.id, d = JSON.parse(JSON.stringify(r)), L = listas();
+    d.pauta = d.pauta || []; d.participantes = d.participantes || []; d.anexos = d.anexos || [];
+    var partOpt = nomes().concat(["Diretoria", "Liu"]).filter(function (x, i, a) { return a.indexOf(x) === i; });
+    d.participantes.forEach(function (p) { if (partOpt.indexOf(p) < 0) partOpt.push(p); });
+    function sync() {
+      var m = $("#modalRoot .modal"); if (!m) return;
+      ["titulo", "data", "hora", "local", "definicoes", "status"].forEach(function (k) { var i = $('[data-rf="' + k + '"]', m); if (i) d[k] = i.value; });
+      $$("[data-ri]", m).forEach(function (row) { var it = d.pauta.find(function (x) { return x.id === row.dataset.ri; }); if (!it) return; it.texto = $('[data-k="texto"]', row).value; it.resp = $('[data-k="resp"]', row).value; it.prazo = $('[data-k="prazo"]', row).value; it.obs = $('[data-k="obs"]', row).value; });
+    }
+    function save(msg, close) { sync(); Store.set("reunioes_dir", id, Object.assign({}, d, { atualizadoEm: new Date().toISOString() })).then(function () { if (msg) toast(msg); }, fail); if (close) closeModal(); }
+    function draw() {
+      var ant = anteriorDe(d.tipo, d.data, id);
+      var feitos = d.pauta.filter(function (i) { return i.status === "feito"; }).length;
+      var html = '<header><div style="flex:1;min-width:0"><input class="title" data-rf="titulo" value="' + esc(d.titulo || "") + '" style="width:100%"><p class="hint" style="padding-left:6px">' + esc(d.tipo || "") + (ant ? ' · <button class="linkbtn" id="reAnt">abrir a anterior (' + fmt(parse(ant.data)) + ")</button>" : "") + '</p></div><button class="x" data-close>✕</button></header><div class="body">' +
+        '<div class="grid2"><div class="field"><label>Data</label><input type="date" data-rf="data" value="' + esc(d.data || "") + '"></div><div class="field"><label>Horário</label><input type="text" data-rf="hora" value="' + esc(d.hora || "") + '" placeholder="09:00"></div><div class="field"><label>Local</label><input type="text" data-rf="local" value="' + esc(d.local || "") + '"></div><div class="field"><label>Situação</label><select data-rf="status"><option value="agendada"' + (d.status !== "realizada" ? " selected" : "") + '>Agendada</option><option value="realizada"' + (d.status === "realizada" ? " selected" : "") + ">Realizada</option></select></div></div>" +
+        '<div class="field"><label>Participantes</label><div class="chips" id="rePart">' + partOpt.map(function (n) { return '<button type="button" data-p="' + esc(n) + '" aria-pressed="' + (d.participantes.indexOf(n) >= 0) + '">' + esc(n) + "</button>"; }).join("") + "</div></div>" +
+        '<div class="field"><div class="section-title"><label>Pauta · ' + feitos + "/" + d.pauta.length + ' feitos</label><button class="btn ghost small" id="riAdd">+ Item</button></div>' +
+        (d.pauta.length ? '<div class="progress"><i style="width:' + Math.round(feitos / d.pauta.length * 100) + '%"></i></div>' : "") +
+        '<div class="ri-list">' + (d.pauta.length ? d.pauta.map(function (i) {
+          return '<div class="ri-row' + (i.status === "feito" ? " done" : "") + '" data-ri="' + esc(i.id) + '"><div class="ri-main"><input type="text" data-k="texto" value="' + esc(i.texto) + '" placeholder="Assunto ou tarefa">' +
+            (i.origemData ? '<span class="tag">da reunião de ' + fmt(parse(i.origemData)) + "</span>" : "") + (i.levadoPara ? '<span class="tag">passou para a próxima</span>' : "") + (i.pautaViva ? '<span class="tag solid">na Pauta viva</span>' : "") + (i.cartao ? '<span class="tag solid">no quadro</span>' : "") + "</div>" +
+            '<div class="ri-meta"><select data-k="resp"><option value="">Responsável</option>' + partOpt.concat(nomes()).filter(function (x, k, a) { return a.indexOf(x) === k; }).map(function (n) { return "<option" + (n === i.resp ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("") + '</select><input type="date" data-k="prazo" value="' + esc(i.prazo || "") + '">' +
+            '<div class="seg ri-st">' + RI_ST.map(function (s) { return '<button type="button" data-ist="' + s[0] + '" aria-pressed="' + ((i.status || "pendente") === s[0]) + '">' + s[1] + "</button>"; }).join("") + "</div>" +
+            '<button class="icon-btn" data-ipv title="Criar na Pauta viva">→ pauta viva</button><span class="ri-q"><button class="icon-btn" data-iq title="Criar cartão num quadro">→ quadro</button></span><button class="x" data-idel>✕</button></div>' +
+            '<input type="text" data-k="obs" class="ri-obs" value="' + esc(i.obs || "") + '" placeholder="Observação / o que foi decidido sobre este item"></div>';
+        }).join("") : '<p class="hint">Sem itens ainda. Adicione os assuntos que vão ser tratados.</p>') + "</div></div>" +
+        '<div class="field"><label>O que foi definido</label><textarea data-rf="definicoes" style="min-height:110px" placeholder="Decisões da reunião, direcionamentos da diretoria, próximos passos">' + esc(d.definicoes || "") + "</textarea></div>" +
+        '<div class="field" id="reAtt"></div>' +
+        '</div><footer><span class="row"><span id="reDelW"><button class="btn ghost small" id="reDel">Excluir</button></span><button class="btn ghost small" id="rePdf">Ata em PDF</button></span><button class="btn" id="reSave">Salvar <span class="arrow">→</span></button></footer>';
+      if ($("#mb")) $("#modalRoot .modal").innerHTML = html; else openModal(html, { wide: true });
+      var m = $("#modalRoot .modal");
+      attachBlock($("#reAtt"), { titulo: "Documentos da reunião (Word, PDF, apresentações, planilhas)", lista: d.anexos, pasta: "reunioes/" + id, accept: ".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.csv,image/*", podeEditar: true, dropTarget: m, onChange: function (l) { d.anexos = l; save(); } });
+      $("[data-close]", m).onclick = function () { save(); closeModal(); };
+      $("#rePart").onclick = function (e) { var b = e.target.closest("[data-p]"); if (!b) return; var k = d.participantes.indexOf(b.dataset.p); if (k >= 0) d.participantes.splice(k, 1); else d.participantes.push(b.dataset.p); b.setAttribute("aria-pressed", String(k < 0)); };
+      $("#riAdd").onclick = function () { sync(); d.pauta.push({ id: Store.uid(), texto: "", resp: "", prazo: "", status: "pendente", obs: "" }); draw(); var rows = $$("[data-ri] [data-k=texto]"); if (rows.length) rows[rows.length - 1].focus(); };
+      m.onclick = function (e) {
+        var row = e.target.closest("[data-ri]"); if (!row) return;
+        var it = d.pauta.find(function (x) { return x.id === row.dataset.ri; }); if (!it) return;
+        var b = e.target.closest("[data-ist]"); if (b) { sync(); it.status = b.dataset.ist; draw(); return; }
+        if (e.target.closest("[data-idel]")) { sync(); d.pauta = d.pauta.filter(function (x) { return x !== it; }); draw(); return; }
+        if (e.target.closest("[data-iq]")) {
+          sync(); if (!it.texto.trim()) { toast("Escreva o item primeiro"); return; }
+          var qs = S.quadros.slice().sort(byOrder); if (!qs.length) { toast("Nenhum quadro criado ainda"); return; }
+          var wrap = e.target.closest(".ri-q");
+          wrap.innerHTML = '<select data-qsel style="width:auto">' + qs.map(function (q) { return '<option value="' + esc(q.id) + '">' + esc(q.nome) + "</option>"; }).join("") + '</select><button class="btn small" data-qok>Criar</button>';
+          return;
+        }
+        if (e.target.closest("[data-qok]")) {
+          var q = S.quadros.find(function (x) { return x.id === $("[data-qsel]", row).value; }); if (!q || !(q.colunas || []).length) return;
+          var col = q.colunas[0].id;
+          Store.add("cartoes", { quadro: q.id, coluna: col, ordem: nextOrder(q.id, col), titulo: it.texto, desc: "Da reunião " + (d.titulo || "") + (it.obs ? "\n\n" + it.obs : "") + (d.definicoes ? "\n\nDefinições: " + d.definicoes : ""), conta: "Ambas", resp: it.resp && nomes().indexOf(it.resp) >= 0 ? [it.resp] : [me], prazo: it.prazo || "", etiquetas: [], checklist: [], comentarios: [], criadoEm: new Date().toISOString(), criadoPor: me })
+            .then(function (cid) { it.cartao = cid; save("Cartão criado em " + q.nome); draw(); }, fail);
+          return;
+        }
+        if (e.target.closest("[data-ipv]")) {
+          sync(); if (!it.texto.trim()) { toast("Escreva o item primeiro"); return; }
+          Store.add("pauta", { titulo: it.texto, conta: "Ambas", resp: it.resp && nomes().indexOf(it.resp) >= 0 ? it.resp : me, reuniao: L.reunioes.indexOf(d.tipo) >= 0 ? d.tipo : "", area: "Diretoria", prazo: it.prazo || "", status: "aberto", notas: "Da reunião " + (d.titulo || "") + (it.obs ? ". " + it.obs : ""), criadoEm: new Date().toISOString(), criadoPor: me })
+            .then(function () { it.pautaViva = true; save("Criado na Pauta viva"); draw(); }, fail);
+        }
+      };
+      $("#reSave").onclick = function () { save("Reunião salva", true); };
+      $("#rePdf").onclick = function () { save(); ataPDF(Object.assign({ id: id }, d)); };
+      if ($("#reAnt")) $("#reAnt").onclick = function () { save(); var ant = anteriorDe(d.tipo, d.data, id); closeModal(); setTimeout(function () { openReuniao(ant); }, 50); };
+      $("#reDel").onclick = function () { delConfirm("#reDelW", "Excluir a reunião?", function () { d.anexos.forEach(function (a) { Store.removeFile(a); }); Store.del("reunioes_dir", id).catch(fail); closeModal(); }); };
+    }
+    draw();
+  }
+  function ataPDF(r) {
+    var p = r.pauta || [], dt = parse(r.data);
+    var cls = { pendente: "planejada", andamento: "producao", feito: "realizada", naofeito: "cancelada" };
+    abrirRelatorio({ titulo: "Ata · " + (r.titulo || ""), heading: r.titulo || "Reunião", sub: [r.tipo, dt ? DOW_LONG[dt.getDay()] + ", " + fmt(dt) + "/" + dt.getFullYear() : "", r.hora, r.local].filter(Boolean).join(" · "),
+      kpis: [["Itens na pauta", p.length], ["Feitos", p.filter(function (i) { return i.status === "feito"; }).length], ["Em aberto", p.filter(riAberto).length], ["Participantes", (r.participantes || []).length]],
+      body: function () {
+        return ((r.participantes || []).length ? '<div class="box"><b>Participantes:</b> ' + esc(r.participantes.join(", ")) + "</div>" : "") +
+          '<h2 class="sec">Pauta</h2><table><thead><tr><th>#</th><th>Assunto</th><th>Responsável</th><th>Prazo</th><th>Situação</th></tr></thead><tbody>' +
+          (p.length ? p.map(function (i, k) { return "<tr><td>" + (k + 1) + "</td><td><b>" + esc(i.texto) + "</b>" + (i.obs ? '<div class="muted">' + esc(i.obs) + "</div>" : "") + (i.origemData ? '<div class="muted">vem da reunião de ' + fmt(parse(i.origemData)) + "</div>" : "") + "</td><td>" + esc(i.resp || "—") + "</td><td>" + (i.prazo ? fmt(parse(i.prazo)) : "—") + '</td><td><span class="pill p-' + cls[i.status || "pendente"] + '">' + esc(stLabel(RI_ST, i.status || "pendente")) + "</span></td></tr>"; }).join("") : '<tr><td colspan="5" class="muted">Sem itens.</td></tr>') + "</tbody></table>" +
+          (r.definicoes ? '<h2 class="sec">O que foi definido</h2><div class="txt">' + esc(r.definicoes) + "</div>" : "") +
+          ((r.anexos || []).length ? '<h2 class="sec">Documentos da reunião</h2><div class="tags">' + r.anexos.map(function (a) { return "<span>" + esc(a.nome) + "</span>"; }).join("") + "</div>" : "");
+      } });
+  }
+  function openDocumento(doc) {
+    var L = listas(), isNew = !doc, id = isNew ? Store.uid() : doc.id;
+    var d = Object.assign({ titulo: "", categoria: L.categoriasDoc[0] || "", origem: "Liu", data: iso(today()), descricao: "", anexos: [] }, doc || {});
+    var anexos = (d.anexos || []).slice();
+    openModal('<header><h3>' + (isNew ? "Novo documento" : "Documento") + '</h3><button class="x" data-close>✕</button></header><div class="body">' +
+      '<div class="grid2"><div class="field"><label>Nome</label><input type="text" id="dcT" value="' + esc(d.titulo) + '" placeholder="ex: Manual do vendedor" autofocus></div>' +
+      '<div class="field"><label>Categoria</label><select id="dcC">' + opt(L.categoriasDoc, d.categoria) + "</select></div>" +
+      '<div class="field"><label>Quem enviou</label><input type="text" id="dcO" value="' + esc(d.origem) + '" list="dcOl"><datalist id="dcOl">' + ["Liu", "Diretoria"].concat(nomes()).map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist></div>" +
+      '<div class="field"><label>Data</label><input type="date" id="dcD" value="' + esc(d.data) + '"></div></div>' +
+      '<div class="field"><label>Do que se trata</label><textarea id="dcDs" style="min-height:70px" placeholder="Resumo, versão, o que muda">' + esc(d.descricao) + "</textarea></div>" +
+      '<div class="field" id="dcAtt"></div></div>' +
+      "<footer>" + (isNew ? "<span></span>" : '<span id="dcDelW"><button class="btn ghost small" id="dcDel">Excluir</button></span>') + '<button class="btn" id="dcSave">Salvar <span class="arrow">→</span></button></footer>', { wide: true });
+    attachBlock($("#dcAtt"), { titulo: "Arquivos (Word, PDF, apresentação, planilha)", lista: anexos, pasta: "documentos/" + id, accept: ".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.csv,image/*", podeEditar: true, dropTarget: $("#modalRoot .modal"), onChange: function (l) { anexos = l; if (!isNew) Store.upd("documentos", id, { anexos: l }).catch(fail); } });
+    $("[data-close]").onclick = closeModal;
+    $("#dcSave").onclick = function () {
+      var t = $("#dcT").value.trim(); if (!t) { $("#dcT").focus(); return; }
+      Store.set("documentos", id, { titulo: t, categoria: $("#dcC").value, origem: $("#dcO").value.trim(), data: $("#dcD").value, descricao: $("#dcDs").value.trim(), anexos: anexos, criadoPor: d.criadoPor || me, atualizadoEm: new Date().toISOString() }).then(function () { toast("Documento salvo"); }, fail);
+      closeModal();
+    };
+    if ($("#dcDel")) $("#dcDel").onclick = function () { delConfirm("#dcDelW", "Excluir o documento e os arquivos?", function () { anexos.forEach(function (a) { Store.removeFile(a); }); Store.del("documentos", id).catch(fail); closeModal(); }); };
+  }
+
+  /* ================================================================
+     INDICADORES · atendimento Bitrix, pesquisas NPS e tráfego pago (só admins)
+     Um documento por mês ("2026-09") com { atend, nps, trafego }.
+     Metas em documentos "metas-AAAA-MM": valem daquele mês em diante.
+     ================================================================ */
+  var IND_SECS = {
+    atend: {
+      nome: "Atendimento Bitrix", curto: "Atendimento", linhas: "unidades", linhaNome: "Loja", obs: "Observações",
+      metrics: [
+        { k: "atendimentos", l: "Atendimentos", dir: "up", f: "int", agg: "sum" },
+        { k: "qualidade", l: "Qualidade do atendimento", dir: "up", f: "pct", agg: "wavg", w: "atendimentos", hint: "% de avaliações positivas" },
+        { k: "tempo", l: "Tempo de resposta", dir: "down", f: "min", agg: "wavg", w: "atendimentos", hint: "em minutos" },
+        { k: "ignoradas", l: "Mensagens ignoradas", dir: "down", f: "int", agg: "sum" }
+      ]
+    },
+    nps: {
+      nome: "Pesquisas NPS", curto: "NPS", linhas: "unidades", linhaNome: "Loja", obs: "O que os clientes disseram",
+      metrics: [
+        { k: "npsAtend", l: "NPS atendimento", dir: "up", f: "nps", agg: "wavg", w: "respostas", hint: "de -100 a 100" },
+        { k: "npsGeral", l: "NPS geral", dir: "up", f: "nps", agg: "wavg", w: "respostas", hint: "de -100 a 100" },
+        { k: "promotores", l: "Promotores", dir: "up", f: "pct", agg: "wavg", w: "respostas" },
+        { k: "neutros", l: "Neutros", dir: "down", f: "pct", agg: "wavg", w: "respostas" },
+        { k: "detratores", l: "Detratores", dir: "down", f: "pct", agg: "wavg", w: "respostas" },
+        { k: "respostas", l: "Respostas", dir: "up", f: "int", agg: "sum" }
+      ]
+    },
+    trafego: {
+      nome: "Tráfego pago", curto: "Tráfego", linhas: "canaisTrafego", linhaNome: "Conta / plataforma", obs: "Campanhas e observações do mês",
+      metrics: [
+        { k: "investimento", l: "Investimento", dir: "teto", f: "brl", agg: "sum", hint: "meta = orçamento do mês" },
+        { k: "impressoes", l: "Impressões", dir: "up", f: "int", agg: "sum" },
+        { k: "alcance", l: "Alcance", dir: "up", f: "int", agg: "sum" },
+        { k: "cliques", l: "Cliques", dir: "up", f: "int", agg: "sum" },
+        { k: "conversoes", l: "Leads / conversas", dir: "up", f: "int", agg: "sum" },
+        { k: "vendas", l: "Vendas atribuídas", dir: "up", f: "brl", agg: "sum" },
+        { k: "ctr", l: "CTR", dir: "up", f: "pct2", calc: function (g) { return g.impressoes ? g.cliques / g.impressoes * 100 : null; }, need: ["cliques", "impressoes"] },
+        { k: "cpc", l: "Custo por clique", dir: "down", f: "brl", calc: function (g) { return g.cliques ? g.investimento / g.cliques : null; }, need: ["investimento", "cliques"] },
+        { k: "cpl", l: "Custo por lead", dir: "down", f: "brl", calc: function (g) { return g.conversoes ? g.investimento / g.conversoes : null; }, need: ["investimento", "conversoes"] },
+        { k: "roas", l: "ROAS", dir: "up", f: "x", calc: function (g) { return g.investimento ? g.vendas / g.investimento : null; }, need: ["vendas", "investimento"], hint: "vendas ÷ investimento" }
+      ]
+    }
+  };
+  var indF = { sec: LS.get("indSec", "atend"), mes: iso(today()).slice(0, 7), metric: {}, hist: 6 };
+  (function () { var d = today(); if (d.getDate() <= 10) indF.mes = addMes(indF.mes, -1); })(); // no começo do mês, o foco é fechar o anterior
+  if (!IND_SECS[indF.sec]) indF.sec = "atend";
+
+  function indSec() { return IND_SECS[indF.sec]; }
+  function indInputs(sec) { return sec.metrics.filter(function (m) { return !m.calc; }); }
+  function indLinhas(secKey) { var L = listas(); return (L[IND_SECS[secKey].linhas] || []).slice(); }
+  function indMesDoc(ym) { return S.indicadores.find(function (x) { return x.id === ym; }) || null; }
+  function indRow(secKey, ym, linha) { var d = indMesDoc(ym); return (d && d[secKey] && d[secKey][linha]) || null; }
+  function indNum(v) { return v === "" || v == null || isNaN(Number(v)) ? null : Number(v); }
+  function indTemDados(secKey, ym) { var d = indMesDoc(ym); if (!d || !d[secKey]) return false; return Object.keys(d[secKey]).some(function (k) { var r = d[secKey][k]; return r && indInputs(IND_SECS[secKey]).some(function (m) { return indNum(r[m.k]) != null; }); }); }
+
+  // valor de uma linha (loja/conta) num mês, incluindo os calculados
+  function indValLinha(secKey, ym, linha, m) {
+    var r = indRow(secKey, ym, linha); if (!r) return null;
+    if (!m.calc) return indNum(r[m.k]);
+    var g = {}; indInputs(IND_SECS[secKey]).forEach(function (x) { g[x.k] = indNum(r[x.k]) || 0; });
+    if (m.need.some(function (k) { return indNum(r[k]) == null; })) return null;
+    return m.calc(g);
+  }
+  // valor do grupo (todas as linhas)
+  function indValGrupo(secKey, ym, m) {
+    var sec = IND_SECS[secKey], linhas = indLinhas(secKey);
+    var d = indMesDoc(ym); if (!d || !d[secKey]) return null;
+    // considera também linhas que existem nos dados mas saíram da lista
+    Object.keys(d[secKey]).forEach(function (k) { if (linhas.indexOf(k) < 0) linhas.push(k); });
+    if (m.calc) {
+      var g = {}, ok = true;
+      m.need.forEach(function (k) { var mm = sec.metrics.find(function (x) { return x.k === k; }); var v = indValGrupo(secKey, ym, mm); if (v == null) ok = false; g[k] = v || 0; });
+      return ok ? m.calc(g) : null;
+    }
+    var vals = linhas.map(function (l) { var r = d[secKey][l]; return r ? { v: indNum(r[m.k]), w: m.w ? indNum(r[m.w]) : null } : null; }).filter(function (x) { return x && x.v != null; });
+    if (!vals.length) return null;
+    if (m.agg === "sum") return vals.reduce(function (t, x) { return t + x.v; }, 0);
+    var sw = vals.reduce(function (t, x) { return t + (x.w || 0); }, 0);
+    if (sw > 0) return vals.reduce(function (t, x) { return t + x.v * (x.w || 0); }, 0) / sw;
+    return vals.reduce(function (t, x) { return t + x.v; }, 0) / vals.length;
+  }
+  function indVal(secKey, ym, linha, m) { return linha ? indValLinha(secKey, ym, linha, m) : indValGrupo(secKey, ym, m); }
+
+  // metas: documento "metas-AAAA-MM" mais recente que não passa do mês (ou o mais antigo, se todos forem depois)
+  function indMetasDoc(ym) {
+    var docs = S.indicadores.filter(function (x) { return /^metas-\d{4}-\d{2}$/.test(x.id); }).sort(function (a, b) { return a.id.localeCompare(b.id); });
+    if (!docs.length) return null;
+    var ok = docs.filter(function (x) { return x.id.slice(6) <= ym; });
+    return ok.length ? ok[ok.length - 1] : docs[0];
+  }
+  function indMeta(secKey, ym, linha, m) {
+    var md = indMetasDoc(ym), s = md && md[secKey]; if (!s) return null;
+    var g = indNum((s.geral || {})[m.k]);
+    if (!linha) {
+      if (g != null) return g;
+      if (m.agg === "sum") { var tot = 0, any = false; indLinhas(secKey).forEach(function (l) { var v = indNum(((s.linhas || {})[l] || {})[m.k]); if (v != null) { tot += v; any = true; } }); return any ? tot : null; }
+      return null;
+    }
+    var u = indNum(((s.linhas || {})[linha] || {})[m.k]);
+    if (u != null) return u;
+    return m.agg === "sum" ? null : g; // taxas e médias herdam a meta do grupo; totais não
+  }
+  // % em relação à meta (100 = bateu)
+  function indPct(v, meta, m) {
+    if (v == null || meta == null) return null;
+    if (m.dir === "down") { if (v <= 0) return meta > 0 ? 200 : 100; return meta / v * 100; }
+    if (meta === 0) return null;
+    return v / meta * 100;
+  }
+  function indStatus(pct, m) {
+    if (pct == null) return null;
+    if (m.dir === "teto") return pct <= 100 ? "ok" : pct <= 110 ? "warn" : "late";
+    return pct >= 100 ? "ok" : pct >= 85 ? "warn" : "late";
+  }
+  var IND_ST_LABEL = { ok: "Na meta", warn: "Perto da meta", late: "Abaixo da meta" };
+  function indStLabel(st, m) { if (m.dir === "teto") return { ok: "Dentro do orçamento", warn: "Pouco acima", late: "Estourou" }[st]; return IND_ST_LABEL[st]; }
+
+  function indFmt(v, f) {
+    if (v == null || isNaN(v)) return "—";
+    if (f === "int") return Math.round(v).toLocaleString("pt-BR");
+    if (f === "pct") return v.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%";
+    if (f === "pct2") return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+    if (f === "nps") return Math.round(v).toLocaleString("pt-BR");
+    if (f === "brl") return brl(v);
+    if (f === "brl0") return Math.abs(v) >= 1000 ? "R$ " + (v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mil" : "R$ " + Math.round(v);
+    if (f === "x") return v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "x";
+    if (f === "min") { if (v < 60) return v.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " min"; var h = Math.floor(v / 60), mi = Math.round(v - h * 60); return h + "h" + (mi ? " " + pad(mi) + "min" : ""); }
+    return String(v);
+  }
+  // variação contra o mês anterior, já dizendo se foi para o lado bom
+  function indDelta(v, p, m) {
+    if (v == null || p == null) return null;
+    var diff = v - p, txt;
+    if (m.f === "pct" || m.f === "pct2") txt = (diff >= 0 ? "+" : "−") + Math.abs(diff).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " p.p.";
+    else if (m.f === "nps") txt = (diff >= 0 ? "+" : "−") + Math.abs(Math.round(diff)) + " pts";
+    else if (m.f === "min") txt = (diff >= 0 ? "+" : "−") + indFmt(Math.abs(diff), "min");
+    else if (p === 0) txt = diff === 0 ? "0%" : "novo";
+    else { var pc = diff / Math.abs(p) * 100; txt = (pc >= 0 ? "+" : "−") + Math.abs(pc).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + "%"; }
+    if (Math.abs(diff) < 1e-9) txt = "igual";
+    var bom = Math.abs(diff) < 1e-9 ? null : m.dir === "up" ? diff > 0 : diff < 0;
+    if (m.dir === "teto") bom = null; // gastar mais ou menos não é bom nem ruim por si só
+    return { txt: txt, bom: bom, seta: Math.abs(diff) < 1e-9 ? "=" : diff > 0 ? "▲" : "▼" };
+  }
+  function indDeltaHTML(d, vs) { if (!d) return '<span class="ind-delta">sem mês anterior</span>'; return '<span class="ind-delta ' + (d.bom === true ? "bom" : d.bom === false ? "ruim" : "") + '">' + d.seta + " " + esc(d.txt) + (vs ? ' <span class="muted">' + esc(vs) + "</span>" : "") + "</span>"; }
+  function indPctHTML(pct, m) {
+    if (pct == null) return "";
+    var st = indStatus(pct, m), shown = indPctTxt(pct) + "%";
+    return '<span class="ind-pill st-' + st + '" title="' + esc(indStLabel(st, m)) + '">' + (st === "ok" ? "✓ " : st === "warn" ? "• " : "! ") + shown + "</span>";
+  }
+  function indPctTxt(p) { if (p > 999) return ">999"; var r = Math.round(p); if (r === 100 && p < 100) r = 99; return String(r); }
+  function indNice(mn, mx) { var span = mx - mn || 1, raw = span / 4, mag = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / mag, st = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * mag; var a = Math.floor(mn / st) * st, b = Math.ceil(mx / st) * st, t = []; for (var v = a; v <= b + st / 2; v += st) t.push(Math.round(v * 1e6) / 1e6); return t; }
+  function indMeses(ym, n) { var out = []; for (var i = n - 1; i >= 0; i--) out.push(addMes(ym, -i)); return out; }
+  function mesCurto(ym) { var p = ym.split("-"); return MONTHS[+p[1] - 1].slice(0, 3) + "/" + p[0].slice(2); }
+
+  // minigráfico de linha (uma série) para os cartões
+  function indSpark(secKey, ym, m) {
+    var ms = indMeses(ym, 6), vals = ms.map(function (x) { return indValGrupo(secKey, x, m); });
+    var pts = vals.map(function (v, i) { return v == null ? null : [i, v]; }).filter(Boolean);
+    if (pts.length < 2) return '<div class="ind-spark empty">evolução aparece com 2 meses de dados</div>';
+    var W = 150, H = 34, P = 4, mn = Math.min.apply(null, pts.map(function (p) { return p[1]; })), mx = Math.max.apply(null, pts.map(function (p) { return p[1]; }));
+    if (mx === mn) { mx += 1; mn -= 1; }
+    var X = function (i) { return P + i * (W - 2 * P) / 5; }, Y = function (v) { return H - P - (v - mn) / (mx - mn) * (H - 2 * P); };
+    var path = pts.map(function (p, i) { return (i ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); }).join(" ");
+    var last = pts[pts.length - 1];
+    return '<svg class="ind-spark" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="Últimos 6 meses"><path d="' + path + '"/>' +
+      pts.map(function (p) { return '<circle class="hit" cx="' + X(p[0]) + '" cy="' + Y(p[1]) + '" r="9"><title>' + esc(mesCurto(ms[p[0]]) + ": " + indFmt(p[1], m.f)) + "</title></circle>"; }).join("") +
+      '<circle class="dot" cx="' + X(last[0]) + '" cy="' + Y(last[1]) + '" r="3"/></svg>';
+  }
+
+  // gráfico de evolução do grupo com a linha da meta
+  function indLinha(secKey, ym, m, n) {
+    var ms = indMeses(ym, n), vals = ms.map(function (x) { return indValGrupo(secKey, x, m); }), metas = ms.map(function (x) { return indMeta(secKey, x, null, m); });
+    if (vals.filter(function (v) { return v != null; }).length < 1) return '<div class="empty">Sem dados nos últimos ' + n + " meses.</div>";
+    var W = Math.max(320, Math.min(1400, (($("#v-indicadores") || {}).clientWidth || 1000) - 40)), H = 240, L = 70, Rr = 18, T = 18, B = 30;
+    var all = vals.concat(metas).filter(function (v) { return v != null; });
+    var mn = Math.min.apply(null, all), mx = Math.max.apply(null, all);
+    if (m.f !== "nps" || mn >= 0) mn = Math.min(0, mn);
+    if (mx === mn) mx = mn + 1;
+    var ticks = indNice(mn, mx); mn = ticks[0]; mx = ticks[ticks.length - 1];
+    var X = function (i) { return L + (n === 1 ? (W - L - Rr) / 2 : i * (W - L - Rr) / (n - 1)); }, Y = function (v) { return T + (1 - (v - mn) / (mx - mn)) * (H - T - B); };
+    var grid = ticks.map(function (t) { return '<line class="g" x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(t) + '" y2="' + Y(t) + '"/><text class="ax" x="' + (L - 8) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + esc(indFmt(t, m.f === "brl" ? "brl0" : m.f)) + "</text>"; }).join("");
+    var every = Math.ceil(n / Math.max(2, Math.floor((W - L) / 64))); var xl = ms.map(function (x, i) { if (i % every && i !== n - 1) return ""; return '<text class="ax" x="' + X(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + mesCurto(x) + "</text>"; }).join("");
+    var seg = function (arr, cls) {
+      var d = "", pen = false;
+      arr.forEach(function (v, i) { if (v == null) { pen = false; return; } d += (pen ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1) + " "; pen = true; });
+      return d ? '<path class="' + cls + '" d="' + d + '"/>' : "";
+    };
+    var dots = vals.map(function (v, i) { if (v == null) return ""; var mt = metas[i], pc = indPct(v, mt, m); return '<g class="pt"><circle class="dot" cx="' + X(i) + '" cy="' + Y(v) + '" r="4"/><circle class="hit" cx="' + X(i) + '" cy="' + Y(v) + '" r="14"><title>' + esc(mesLabel(ms[i]) + "\n" + m.l + ": " + indFmt(v, m.f) + (mt != null ? "\nMeta: " + indFmt(mt, m.f) + " (" + indPctTxt(pc) + "%)" : "")) + "</title></circle></g>"; }).join("");
+    var lastI = -1; vals.forEach(function (v, i) { if (v != null) lastI = i; });
+    var lab = lastI >= 0 ? '<text class="vl" x="' + Math.min(X(lastI), W - Rr - 4) + '" y="' + (Y(vals[lastI]) - 10) + '" text-anchor="' + (lastI === n - 1 ? "end" : "middle") + '">' + esc(indFmt(vals[lastI], m.f)) + "</text>" : "";
+    var temMeta = metas.some(function (v) { return v != null; });
+    return '<div class="ind-legend"><span><i class="sw serie"></i>' + esc(m.l) + " (grupo)</span>" + (temMeta ? '<span><i class="sw meta"></i>Meta</span>' : "") + "</div>" +
+      '<svg class="ind-line" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="Evolução de ' + esc(m.l) + '">' + grid + xl + seg(metas, "meta") + seg(vals, "serie") + dots + lab + "</svg>";
+  }
+
+  function renderIndicadores() {
+    var el = $("#v-indicadores");
+    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    var sk = indF.sec, sec = indSec(), ym = indF.mes, prev = addMes(ym, -1), linhas = indLinhas(sk);
+    var mk = indF.metric[sk] || sec.metrics[0].k, m = sec.metrics.find(function (x) { return x.k === mk; }) || sec.metrics[0];
+    var tem = indTemDados(sk, ym);
+    if (!tem && !indF.auto && S.indicadores.length) { // na primeira abertura, vai para o último mês com dados
+      indF.auto = true;
+      var ult = S.indicadores.filter(function (x) { return /^\d{4}-\d{2}$/.test(x.id) && x.id <= ym && indTemDados(sk, x.id); }).map(function (x) { return x.id; }).sort().pop();
+      if (ult) { indF.mes = ult; return renderIndicadores(); }
+    }
+    if (tem) indF.auto = true;
+    var head = '<div class="view-head"><div><div class="eyebrow">Indicadores</div><h2>' + esc(sec.nome) + '</h2><p class="muted">Lance os números do mês, defina as metas e acompanhe o grupo e cada ' + (sk === "trafego" ? "conta" : "loja") + " contra a meta e contra os meses anteriores.</p></div>" +
+      '<div class="row"><button class="btn ghost small" id="inMetas">Metas</button><button class="btn ghost small" id="inPdf">Resumo em PDF</button><button class="btn" id="inLancar">Lançar dados do mês <span class="arrow">→</span></button></div></div>' +
+      '<div class="ind-bar"><div class="seg">' + Object.keys(IND_SECS).map(function (k) { return '<button data-insec="' + k + '" aria-pressed="' + (k === sk) + '">' + esc(IND_SECS[k].nome) + "</button>"; }).join("") + "</div>" +
+      '<div class="ind-mes"><button class="btn ghost small" data-inmes="-1" aria-label="Mês anterior">‹</button><b>' + esc(mesLabel(ym).replace(/^./, function (c) { return c.toUpperCase(); })) + '</b><button class="btn ghost small" data-inmes="1" aria-label="Próximo mês">›</button><input type="month" id="inMesPick" value="' + ym + '" aria-label="Escolher mês"></div></div>';
+    if (!linhas.length) {
+      el.innerHTML = head + '<div class="empty">Cadastre ' + (sk === "trafego" ? "as contas / plataformas de tráfego" : "as unidades") + ' para começar. <button class="btn small" id="inAddLinha">+ ' + (sk === "trafego" ? "conta" : "unidade") + "</button></div>";
+      indBind(el); return;
+    }
+    if (!tem) {
+      el.innerHTML = head + '<div class="empty">Ainda não há dados de ' + esc(sec.curto) + " em " + esc(mesLabel(ym)) + '. <button class="btn small" id="inLancar2">Lançar agora</button>' + (indTemDados(sk, prev) ? '<p class="hint" style="margin-top:8px">' + esc(mesLabel(prev)) + " já tem dados. Use ‹ para ver.</p>" : "") + "</div>";
+      indBind(el); return;
+    }
+
+    // 1. cartões do grupo
+    var cards = sec.metrics.map(function (x) {
+      var v = indValGrupo(sk, ym, x), p = indValGrupo(sk, prev, x), mt = indMeta(sk, ym, null, x), pc = indPct(v, mt, x), st = indStatus(pc, x);
+      return '<button class="ind-card' + (x.k === m.k ? " on" : "") + '" data-inmetric="' + x.k + '"><span class="lbl">' + esc(x.l) + (x.calc ? ' <em title="calculado">calc.</em>' : "") + "</span>" +
+        '<b class="v">' + esc(indFmt(v, x.f)) + "</b>" +
+        (mt != null ? '<div class="ind-meta"><div class="ind-track"><i class="st-' + st + '" style="width:' + Math.max(2, Math.min(100, x.dir === "teto" ? pc : pc)) + '%"></i></div><small>meta ' + esc(indFmt(mt, x.f)) + " · " + indPctHTML(pc, x) + " " + esc(indStLabel(st, x)) + "</small></div>" : '<small class="muted">sem meta</small>') +
+        indDeltaHTML(indDelta(v, p, x), "vs " + mesCurto(prev)) + indSpark(sk, ym, x) + "</button>";
+    }).join("");
+
+    // 2. loja x loja no indicador escolhido
+    var rows = linhas.map(function (l) { var v = indValLinha(sk, ym, l, m), mt = indMeta(sk, ym, l, m); return { l: l, v: v, mt: mt, pc: indPct(v, mt, m), p: indValLinha(sk, prev, l, m) }; });
+    var comV = rows.filter(function (r) { return r.v != null; });
+    var ordem = comV.slice().sort(function (a, b) { return m.dir === "down" ? a.v - b.v : b.v - a.v; });
+    var semV = rows.filter(function (r) { return r.v == null; });
+    var escala = Math.max.apply(null, comV.map(function (r) { return Math.abs(r.v); }).concat(comV.map(function (r) { return r.mt != null ? Math.abs(r.mt) : 0; }))) || 1;
+    var neg = comV.some(function (r) { return r.v < 0; });
+    var bars = ordem.map(function (r, i) {
+      var w = Math.abs(r.v) / escala * (neg ? 50 : 100), st = indStatus(r.pc, m), left = neg ? (r.v < 0 ? 50 - w : 50) : 0;
+      var tick = r.mt != null ? '<i class="tick" style="left:' + ((neg ? 50 + (r.mt / escala) * 50 : Math.abs(r.mt) / escala * 100)) + '%" title="Meta: ' + esc(indFmt(r.mt, m.f)) + '"></i>' : "";
+      return '<div class="ind-brow" title="' + esc(r.l + ": " + indFmt(r.v, m.f) + (r.mt != null ? " · meta " + indFmt(r.mt, m.f) : "")) + '"><span class="n"><em>' + (i + 1) + "º</em> " + esc(r.l) + '</span><div class="ind-btrack">' + (neg ? '<i class="zero"></i>' : "") + '<i class="fill ' + (st ? "st-" + st : "") + '" style="left:' + left + "%;width:" + Math.max(w, 0.8) + '%"></i>' + tick + '</div><span class="v">' + esc(indFmt(r.v, m.f)) + "</span><span>" + (indPctHTML(r.pc, m) || '<span class="muted small">sem meta</span>') + "</span><span>" + indDeltaHTML(indDelta(r.v, r.p, m)) + "</span></div>";
+    }).join("") + semV.map(function (r) { return '<div class="ind-brow off"><span class="n">' + esc(r.l) + '</span><div class="ind-btrack"></div><span class="v muted">sem dados</span><span></span><span></span></div>'; }).join("");
+    var lojaxloja = '<section class="card pad ind-box"><div class="ind-box-h"><h3>' + (sk === "trafego" ? "Conta x conta" : "Loja x loja") + ' · <span class="hl">' + esc(m.l) + '</span></h3><span class="muted small">' + (m.dir === "down" ? "menor é melhor" : m.dir === "teto" ? "meta = orçamento" : "maior é melhor") + " · a marca | é a meta · clique nos cartões acima para trocar o indicador</span></div>" + bars + "</section>";
+
+    // 3. NPS: distribuição de promotores, neutros e detratores
+    var dist = "";
+    if (sk === "nps") {
+      var seg3 = function (r, lab) {
+        var d = indNum(r.detratores), n = indNum(r.neutros), p = indNum(r.promotores);
+        if (d == null && n == null && p == null) return "";
+        d = d || 0; n = n || 0; p = p || 0; var t = d + n + p || 1;
+        var part = function (v, c, nome) { var w = v / t * 100; return w > 0 ? '<i class="' + c + '" style="width:' + w + '%" title="' + esc(nome + ": " + indFmt(v, "pct")) + '">' + (w >= 9 ? indFmt(v, "pct") : "") + "</i>" : ""; };
+        return '<div class="ind-drow"><span class="n">' + esc(lab) + '</span><div class="ind-stack">' + part(d, "det", "Detratores") + part(n, "neu", "Neutros") + part(p, "pro", "Promotores") + "</div></div>";
+      };
+      var gr = {}; ["detratores", "neutros", "promotores"].forEach(function (k) { gr[k] = indValGrupo("nps", ym, sec.metrics.find(function (x) { return x.k === k; })); });
+      dist = '<section class="card pad ind-box"><div class="ind-box-h"><h3>Promotores, neutros e detratores</h3><div class="ind-legend"><span><i class="sw det"></i>Detratores</span><span><i class="sw neu"></i>Neutros</span><span><i class="sw pro"></i>Promotores</span></div></div>' +
+        seg3(gr, "Grupo") + linhas.map(function (l) { return seg3(indRow("nps", ym, l) || {}, l); }).join("") + "</section>";
+    }
+
+    // 4. evolução do grupo + mês a mês por loja
+    var ms = indMeses(ym, indF.hist);
+    var evo = '<section class="card pad ind-box"><div class="ind-box-h"><h3>Evolução · <span class="hl">' + esc(m.l) + '</span></h3><div class="seg">' + [6, 12].map(function (n) { return '<button data-inhist="' + n + '" aria-pressed="' + (indF.hist === n) + '">' + n + " meses</button>"; }).join("") + "</div></div>" + indLinha(sk, ym, m, indF.hist) +
+      '<div class="tbl-wrap" style="margin-top:14px"><table class="tbl ind-tbl"><thead><tr><th>' + esc(sec.linhaNome) + "</th>" + ms.map(function (x) { return '<th class="r">' + mesCurto(x) + "</th>"; }).join("") + '<th class="r">vs mês anterior</th></tr></thead><tbody>' +
+      [null].concat(linhas).map(function (l) {
+        return "<tr" + (l ? "" : ' class="grp"') + "><td>" + (l ? esc(l) : "<b>Grupo</b>") + "</td>" + ms.map(function (x) { var v = indVal(sk, x, l, m), mt = indMeta(sk, x, l, m), st = indStatus(indPct(v, mt, m), m); return '<td class="r num' + (st ? " c-" + st : "") + '"' + (mt != null && v != null ? ' title="Meta ' + esc(indFmt(mt, m.f)) + '"' : "") + ">" + esc(indFmt(v, m.f)) + "</td>"; }).join("") +
+          '<td class="r">' + (indDelta(indVal(sk, ym, l, m), indVal(sk, prev, l, m), m) ? indDeltaHTML(indDelta(indVal(sk, ym, l, m), indVal(sk, prev, l, m), m)) : '<span class="muted small">—</span>') + "</td></tr>";
+      }).join("") + '</tbody></table></div><p class="hint">Cor da célula: verde bateu a meta, âmbar chegou perto (85% ou mais), vermelho ficou abaixo. Sem cor = sem meta.</p></section>';
+
+    // 5. tabela completa do mês
+    var full = '<section class="card pad ind-box"><div class="ind-box-h"><h3>Todos os indicadores · ' + esc(mesLabel(ym)) + '</h3><button class="btn ghost small" id="inLancar3">Editar números</button></div><div class="tbl-wrap"><table class="tbl ind-tbl"><thead><tr><th>' + esc(sec.linhaNome) + "</th>" + sec.metrics.map(function (x) { return '<th class="r">' + esc(x.l) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+      linhas.map(function (l) { return "<tr><td>" + esc(l) + "</td>" + sec.metrics.map(function (x) { var v = indValLinha(sk, ym, l, x); return '<td class="r num">' + esc(indFmt(v, x.f)) + "<br>" + indPctHTML(indPct(v, indMeta(sk, ym, l, x), x), x) + "</td>"; }).join("") + "</tr>"; }).join("") +
+      '</tbody><tfoot><tr><td>Grupo</td>' + sec.metrics.map(function (x) { var v = indValGrupo(sk, ym, x); return '<td class="r num">' + esc(indFmt(v, x.f)) + "<br>" + indPctHTML(indPct(v, indMeta(sk, ym, null, x), x), x) + "</td>"; }).join("") + "</tr></tfoot></table></div></section>";
+
+    // 6. comentários / observações
+    var obs = linhas.map(function (l) { var r = indRow(sk, ym, l); return r && r.obs ? '<div class="ind-obs"><b>' + esc(l) + "</b><p>" + esc(r.obs) + "</p></div>" : ""; }).join("");
+    var obsBox = '<section class="card pad ind-box"><div class="ind-box-h"><h3>' + esc(sec.obs) + '</h3></div>' + (obs ? '<div class="ind-obs-grid">' + obs + "</div>" : '<p class="muted">Nada registrado neste mês. Use <b>Lançar dados do mês</b> para escrever.</p>') + "</section>";
+
+    var nCom = linhas.filter(function (l) { var r = indRow(sk, ym, l); return r && indInputs(sec).some(function (x) { return indNum(r[x.k]) != null; }); }).length;
+    var aviso = nCom < linhas.length ? '<div class="banner warn">' + nCom + " de " + linhas.length + " " + (sk === "trafego" ? "contas" : "lojas") + " com dados em " + esc(mesLabel(ym)) + ". O total do grupo considera só as lançadas.</div>" : "";
+    el.innerHTML = head + aviso + '<div class="ind-cards">' + cards + "</div>" + lojaxloja + dist + evo + full + obsBox;
+    indBind(el);
+  }
+
+  function indBind(el) {
+    $$("[data-insec]", el).forEach(function (b) { b.onclick = function () { indF.sec = b.dataset.insec; LS.set("indSec", indF.sec); renderIndicadores(); }; });
+    $$("[data-inmes]", el).forEach(function (b) { b.onclick = function () { indF.mes = addMes(indF.mes, +b.dataset.inmes); renderIndicadores(); }; });
+    if ($("#inMesPick")) $("#inMesPick").onchange = function () { if (/^\d{4}-\d{2}$/.test(this.value)) { indF.mes = this.value; renderIndicadores(); } };
+    $$("[data-inmetric]", el).forEach(function (b) { b.onclick = function () { indF.metric[indF.sec] = b.dataset.inmetric; renderIndicadores(); }; });
+    $$("[data-inhist]", el).forEach(function (b) { b.onclick = function () { indF.hist = +b.dataset.inhist; renderIndicadores(); }; });
+    ["#inLancar", "#inLancar2", "#inLancar3"].forEach(function (s) { if ($(s)) $(s).onclick = function () { indLancar(indF.sec, indF.mes); }; });
+    if ($("#inMetas")) $("#inMetas").onclick = function () { indMetasModal(indF.sec, indF.mes); };
+    if ($("#inPdf")) $("#inPdf").onclick = function () { indPdfModal(); };
+    if ($("#inAddLinha")) $("#inAddLinha").onclick = function () { indNovaLinha(indF.sec, renderIndicadores); };
+  }
+
+  function indNovaLinha(sk, then) {
+    var sec = IND_SECS[sk], L = listas(), key = sec.linhas;
+    var nome = window.prompt(sk === "trafego" ? "Nome da conta / plataforma (ex: AM · Meta Ads)" : "Nome da nova unidade");
+    nome = (nome || "").trim(); if (!nome) return;
+    if ((L[key] || []).indexOf(nome) >= 0) { toast("Já existe"); return; }
+    var patch = {}; patch[key] = (L[key] || []).concat([nome]);
+    saveListas(patch).then(function () { toast(sk === "trafego" ? "Conta adicionada" : "Unidade adicionada"); if (then) setTimeout(then, 50); });
+  }
+
+  function indInputVal(v, m) {
+    if (v == null || v === "") return "";
+    if (m.f === "brl") return numBR(v);
+    return String(v).replace(".", ",");
+  }
+  function indParse(s, m) {
+    s = String(s || "").trim(); if (!s) return null;
+    if (m.f === "brl") return parseBRL(s);
+    if (m.f === "min") { var hm = s.match(/^(\d+)\s*[h:]\s*(\d{1,2})?/i); if (hm && /[h:]/i.test(s)) return +hm[1] * 60 + (+hm[2] || 0); }
+    s = s.replace(/[%\s]/g, "");
+    if (m.f === "int") s = s.replace(/\./g, "");
+    s = s.replace(",", ".");
+    var n = parseFloat(s); return isNaN(n) ? null : n;
+  }
+
+  function indLancar(sk, ym0) {
+    var sec = IND_SECS[sk], ins = indInputs(sec), ym = ym0;
+    var draw = function () {
+      var linhas = indLinhas(sk), d = indMesDoc(ym), dados = (d && d[sk]) || {};
+      var copiar = !indTemDados(sk, ym) && indTemDados(sk, addMes(ym, -1));
+      var m = openModal('<header><div><div class="eyebrow">' + esc(sec.nome) + '</div><h3>Lançar dados do mês</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
+        '<div class="row"><div class="field"><label>Mês</label><input type="month" id="ilMes" value="' + ym + '"></div><p class="hint" style="flex:1;min-width:220px">' +
+        (sk === "atend" ? "Números do relatório de atendimento do Bitrix. Tempo em minutos (ou 1h20). Qualidade em %." : sk === "nps" ? "Resultado da pesquisa de cada loja. NPS de -100 a 100; promotores, neutros e detratores em %." : "Números do gerenciador de anúncios. CTR, custo por clique, custo por lead e ROAS são calculados sozinhos.") + " Deixe em branco o que não tiver.</p></div>" +
+        (linhas.length ? '<div class="tbl-wrap"><table class="tbl ind-in"><thead><tr><th>' + esc(sec.linhaNome) + "</th>" + ins.map(function (x) { return "<th>" + esc(x.l) + (x.hint ? '<small>' + esc(x.hint) + "</small>" : "") + "</th>"; }).join("") + "</tr></thead><tbody>" +
+          linhas.map(function (l, i) { var r = dados[l] || {}; return '<tr><td><b>' + esc(l) + "</b></td>" + ins.map(function (x) { return '<td><input type="text" inputmode="decimal" data-l="' + i + '" data-k="' + x.k + '" value="' + esc(indInputVal(r[x.k], x)) + '" placeholder="' + (x.f === "brl" ? "0,00" : x.f === "min" ? "min" : x.f === "pct" ? "%" : "") + '"></td>'; }).join("") + "</tr>"; }).join("") +
+          "</tbody></table></div>" : '<div class="empty">Nenhuma ' + (sk === "trafego" ? "conta" : "unidade") + " cadastrada.</div>") +
+        '<div class="row"><button class="btn ghost small" id="ilAdd">+ ' + (sk === "trafego" ? "conta / plataforma" : "unidade") + "</button>" + (copiar ? '<span class="hint">' + esc(mesLabel(ym)) + " está vazio.</span>" : "") + "</div>" +
+        '<details class="ind-obs-in"' + (linhas.some(function (l) { return dados[l] && dados[l].obs; }) ? " open" : "") + "><summary>" + esc(sec.obs) + " (por " + (sk === "trafego" ? "conta" : "loja") + ")</summary>" +
+          linhas.map(function (l, i) { return '<div class="field"><label>' + esc(l) + '</label><textarea data-obs="' + i + '" placeholder="' + (sk === "nps" ? "Elogios, reclamações, frases que se repetem" : sk === "trafego" ? "Campanhas no ar, o que funcionou, o que mudou" : "O que explica o resultado") + '">' + esc((dados[l] || {}).obs || "") + "</textarea></div>"; }).join("") + "</details>" +
+        "</div><footer><span></span><button class=\"btn\" id=\"ilSave\">Salvar <span class=\"arrow\">→</span></button></footer>", { wide: true });
+      $("[data-close]", m).onclick = closeModal;
+      $("#ilMes").onchange = function () { if (/^\d{4}-\d{2}$/.test(this.value)) { ym = this.value; draw(); } };
+      $("#ilAdd").onclick = function () { indNovaLinha(sk, draw); };
+      // colar uma coluna vinda de planilha: distribui para as linhas de baixo
+      $$("input[data-k]", m).forEach(function (inp) {
+        inp.addEventListener("paste", function (e) {
+          var t = (e.clipboardData || window.clipboardData).getData("text"); if (!/[\n\t]/.test(t)) return;
+          e.preventDefault();
+          var linhasTxt = t.replace(/\r/g, "").split("\n").filter(function (x) { return x !== ""; });
+          var li = +inp.dataset.l, ki = ins.findIndex(function (x) { return x.k === inp.dataset.k; });
+          linhasTxt.forEach(function (row, a) { row.split("\t").forEach(function (cell, b) { var target = $('input[data-l="' + (li + a) + '"][data-k="' + ((ins[ki + b] || {}).k) + '"]', m); if (target) target.value = cell.trim(); }); });
+        });
+      });
+      $("#ilSave").onclick = function () {
+        var out = {};
+        linhas.forEach(function (l, i) {
+          var r = {}, any = false;
+          ins.forEach(function (x) { var v = indParse($('input[data-l="' + i + '"][data-k="' + x.k + '"]', m).value, x); if (v != null) { r[x.k] = v; any = true; } });
+          var o = $('textarea[data-obs="' + i + '"]', m).value.trim(); if (o) { r.obs = o; any = true; }
+          if (any) out[l] = r;
+        });
+        // mantém o que é de linhas que saíram da lista
+        Object.keys(dados).forEach(function (k) { if (linhas.indexOf(k) < 0) out[k] = dados[k]; });
+        var patch = {}; patch[sk] = out; patch.atualizadoEm = new Date().toISOString(); patch.atualizadoPor = me;
+        var cur = indMesDoc(ym);
+        (cur ? Store.upd("indicadores", ym, patch) : Store.set("indicadores", ym, patch)).then(function () { toast("Dados de " + mesLabel(ym) + " salvos"); }, fail);
+        indF.mes = ym; closeModal(); renderIndicadores();
+      };
+    };
+    draw();
+  }
+
+  function indMetasModal(sk, ym0) {
+    var sec = IND_SECS[sk], ym = ym0;
+    var draw = function () {
+      var linhas = indLinhas(sk), md = indMetasDoc(ym), s = (md && md[sk]) || {}, g = s.geral || {}, ls = s.linhas || {};
+      var vigente = md ? md.id.slice(6) : null;
+      var m = openModal('<header><div><div class="eyebrow">' + esc(sec.nome) + '</div><h3>Metas</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
+        '<div class="row"><div class="field"><label>Valem a partir de</label><input type="month" id="imMes" value="' + ym + '"></div><p class="hint" style="flex:1;min-width:240px">' +
+        (vigente ? "Metas em vigor desde " + esc(mesLabel(vigente)) + ". Salvar aqui cria metas novas a partir do mês escolhido; os meses anteriores continuam com as metas antigas." : "Ainda não há metas. Elas valem para o mês escolhido em diante (e para os anteriores, até você criar outras).") + "</p></div>" +
+        '<p class="hint">Linha <b>Grupo</b> é a meta do grupo inteiro. Nas lojas, deixe em branco para usar a do grupo (vale para taxas, notas e tempo; totais como atendimentos e respostas precisam de meta por loja, ou o grupo soma as metas das lojas).</p>' +
+        '<div class="tbl-wrap"><table class="tbl ind-in"><thead><tr><th></th>' + sec.metrics.map(function (x) { return "<th>" + esc(x.l) + '<small>' + (x.dir === "down" ? "máximo" : x.dir === "teto" ? "orçamento" : "mínimo") + (x.hint ? " · " + esc(x.hint) : "") + "</small></th>"; }).join("") + "</tr></thead><tbody>" +
+        '<tr class="grp"><td><b>Grupo</b></td>' + sec.metrics.map(function (x) { return '<td><input type="text" inputmode="decimal" data-l="-1" data-k="' + x.k + '" value="' + esc(indInputVal(g[x.k], x)) + '"></td>'; }).join("") + "</tr>" +
+        linhas.map(function (l, i) { var r = ls[l] || {}; return "<tr><td>" + esc(l) + "</td>" + sec.metrics.map(function (x) { return '<td><input type="text" inputmode="decimal" data-l="' + i + '" data-k="' + x.k + '" value="' + esc(indInputVal(r[x.k], x)) + '" placeholder="' + (x.agg === "sum" ? "" : "grupo") + '"></td>'; }).join("") + "</tr>"; }).join("") +
+        "</tbody></table></div></div><footer><span></span><button class=\"btn\" id=\"imSave\">Salvar metas <span class=\"arrow\">→</span></button></footer>", { wide: true });
+      $("[data-close]", m).onclick = closeModal;
+      $("#imMes").onchange = function () { if (/^\d{4}-\d{2}$/.test(this.value)) { ym = this.value; } };
+      $("#imSave").onclick = function () {
+        var geral = {}, porLinha = {};
+        sec.metrics.forEach(function (x) { var v = indParse($('input[data-l="-1"][data-k="' + x.k + '"]', m).value, x); if (v != null) geral[x.k] = v; });
+        linhas.forEach(function (l, i) { var r = {}, any = false; sec.metrics.forEach(function (x) { var v = indParse($('input[data-l="' + i + '"][data-k="' + x.k + '"]', m).value, x); if (v != null) { r[x.k] = v; any = true; } }); if (any) porLinha[l] = r; });
+        var id = "metas-" + ym, cur = S.indicadores.find(function (x) { return x.id === id; });
+        var base = cur ? {} : (function () { var ef = indMetasDoc(ym) || {}, o = {}; Object.keys(IND_SECS).forEach(function (k) { if (ef[k]) o[k] = ef[k]; }); return o; })(); // herda as metas das outras abas
+        var doc = Object.assign({}, cur || {}, base); delete doc.id;
+        doc[sk] = { geral: geral, linhas: porLinha }; doc.atualizadoEm = new Date().toISOString(); doc.atualizadoPor = me;
+        Store.set("indicadores", id, doc).then(function () { toast("Metas salvas"); }, fail);
+        closeModal(); renderIndicadores();
+      };
+    };
+    draw();
+  }
+
+  function indPdfModal() {
+    var ym = indF.mes;
+    var m = openModal('<header><h3>Resumo em PDF</h3><button class="x" data-close>✕</button></header><div class="body">' +
+      '<div class="field"><label>Mês</label><input type="month" id="ipMes" value="' + ym + '"></div>' +
+      '<div class="field"><label>O que entra</label><div class="ind-checks">' + Object.keys(IND_SECS).map(function (k) { return '<label><input type="checkbox" data-ipsec="' + k + '"' + (k === indF.sec ? " checked" : "") + "> " + esc(IND_SECS[k].nome) + "</label>"; }).join("") + "</div></div>" +
+      '<div class="field"><label>Comparar com</label><select id="ipHist"><option value="3">3 meses anteriores</option><option value="6" selected>6 meses anteriores</option><option value="12">12 meses anteriores</option></select></div>' +
+      '<label class="ind-checks"><input type="checkbox" id="ipObs" checked> Incluir comentários e observações</label>' +
+      '<p class="hint">Abre o relatório numa janela nova. Na janela de impressão, escolha <b>Salvar como PDF</b>.</p></div>' +
+      '<footer><span></span><button class="btn" id="ipGo">Gerar PDF <span class="arrow">→</span></button></footer>');
+    $("[data-close]", m).onclick = closeModal;
+    $("#ipGo").onclick = function () {
+      var mes = /^\d{4}-\d{2}$/.test($("#ipMes").value) ? $("#ipMes").value : ym;
+      var secs = $$("[data-ipsec]", m).filter(function (c) { return c.checked; }).map(function (c) { return c.dataset.ipsec; });
+      if (!secs.length) { toast("Escolha pelo menos uma parte"); return; }
+      var hist = +$("#ipHist").value, comObs = $("#ipObs").checked;
+      closeModal();
+      indRelatorio(mes, secs, hist, comObs);
+    };
+  }
+
+  function indRelatorio(ym, secs, hist, comObs) {
+    var prev = addMes(ym, -1), ms = indMeses(ym, hist + 1);
+    var pct = function (v, mt, x) { var p = indPct(v, mt, x); if (p == null) return ""; var st = indStatus(p, x); return '<span class="pill p-' + st + '">' + indPctTxt(p) + "% · " + esc(indStLabel(st, x)) + "</span>"; };
+    var dl = function (v, p, x) { var d = indDelta(v, p, x); if (!d) return '<span class="muted">—</span>'; return '<span class="' + (d.bom === true ? "ok" : d.bom === false ? "bad" : "") + '">' + d.seta + " " + esc(d.txt) + "</span>"; };
+    var kpis = [];
+    secs.forEach(function (sk) { var sec = IND_SECS[sk]; sec.metrics.filter(function (x) { return !x.calc; }).slice(0, sk === "trafego" ? 1 : 2).forEach(function (x) { var v = indValGrupo(sk, ym, x), mt = indMeta(sk, ym, null, x), p = indPct(v, mt, x); kpis.push([x.l, esc(indFmt(v, x.f)) + (p != null ? ' <small style="font-size:11px;color:#6b6b6b">' + indPctTxt(p) + "% da meta</small>" : "")]); }); });
+    if (secs.indexOf("trafego") >= 0) { var ro = IND_SECS.trafego.metrics.find(function (x) { return x.k === "roas"; }); kpis.push(["ROAS", esc(indFmt(indValGrupo("trafego", ym, ro), "x"))]); }
+    abrirRelatorio({
+      titulo: "Indicadores " + mesLabel(ym), heading: "Indicadores · " + mesLabel(ym),
+      sub: secs.map(function (k) { return IND_SECS[k].nome; }).join(" · "),
+      kpis: kpis.slice(0, 8),
+      body: function () {
+        var css = "<style>.p-ok{background:#d8f5e3;color:#11623a}.p-warn{background:#fff1d1;color:#8a5a00}.p-late{background:#ffdcdc;color:#9a1c1c}span.ok{color:#11623a;font-weight:600}span.bad{color:#9a1c1c;font-weight:600}.c-ok{background:#eefaf2}.c-warn{background:#fff8e6}.c-late{background:#fff0f0}" +
+          ".bars{margin-top:6px}.bar{display:grid;grid-template-columns:130px 1fr 90px 120px;gap:8px;align-items:center;margin:4px 0;font-size:11px}.bt{position:relative;height:12px;background:#f1f1f1;border-radius:3px}.bt i{position:absolute;top:0;bottom:0;left:0;border-radius:3px;background:#141414}.bt i.ok{background:#1f9d57}.bt i.warn{background:#d99a00}.bt i.late{background:#d64545}.bt b{position:absolute;top:-3px;bottom:-3px;width:2px;background:#141414}" +
+          ".stk{display:flex;height:16px;border-radius:3px;overflow:hidden;gap:2px}.stk i{display:flex;align-items:center;justify-content:center;color:#fff;font-style:normal;font-size:9.5px;font-weight:600}.stk .det{background:#d64545}.stk .neu{background:#9a9a9a}.stk .pro{background:#1f9d57}.lg span{display:inline-flex;align-items:center;gap:4px;margin-right:12px;font-size:10.5px}.lg i{width:10px;height:10px;border-radius:2px;display:inline-block}" +
+          ".cm{columns:2;gap:12px}.cm .box{margin-top:0;margin-bottom:10px}td small{color:#6b6b6b}</style>";
+        return css + secs.map(function (sk, si) {
+          var sec = IND_SECS[sk], linhas = indLinhas(sk);
+          if (!indTemDados(sk, ym)) return '<h2 class="sec' + (si ? " pb" : "") + '">' + esc(sec.nome) + '</h2><p class="muted">Sem dados lançados em ' + esc(mesLabel(ym)) + ".</p>";
+          var h = '<h2 class="sec' + (si ? " pb" : "") + '">' + esc(sec.nome) + " · grupo</h2>" +
+            "<table><thead><tr><th>Indicador</th><th class=\"r\">" + mesCurto(ym) + '</th><th class="r">Meta</th><th>% da meta</th><th class="r">' + mesCurto(prev) + "</th><th>Variação</th></tr></thead><tbody>" +
+            sec.metrics.map(function (x) { var v = indValGrupo(sk, ym, x), p = indValGrupo(sk, prev, x), mt = indMeta(sk, ym, null, x); return "<tr><td><b>" + esc(x.l) + '</b></td><td class="r">' + esc(indFmt(v, x.f)) + '</td><td class="r">' + esc(indFmt(mt, x.f)) + "</td><td>" + pct(v, mt, x) + '</td><td class="r">' + esc(indFmt(p, x.f)) + "</td><td>" + dl(v, p, x) + "</td></tr>"; }).join("") + "</tbody></table>";
+          h += '<h2 class="sec">' + (sk === "trafego" ? "Conta x conta" : "Loja x loja") + "</h2><table><thead><tr><th>" + esc(sec.linhaNome) + "</th>" + sec.metrics.map(function (x) { return '<th class="r">' + esc(x.l) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+            linhas.map(function (l) { return "<tr><td><b>" + esc(l) + "</b></td>" + sec.metrics.map(function (x) { var v = indValLinha(sk, ym, l, x), mt = indMeta(sk, ym, l, x), p = indPct(v, mt, x), st = indStatus(p, x); return '<td class="r' + (st ? " c-" + st : "") + '">' + esc(indFmt(v, x.f)) + (p != null ? "<br><small>" + indPctTxt(p) + "% meta</small>" : "") + "</td>"; }).join("") + "</tr>"; }).join("") +
+            "</tbody></table>";
+          // barras do indicador principal
+          var main = sec.metrics[0], rows = linhas.map(function (l) { var v = indValLinha(sk, ym, l, main); return { l: l, v: v, mt: indMeta(sk, ym, l, main) }; }).filter(function (r) { return r.v != null; }).sort(function (a, b) { return main.dir === "down" ? a.v - b.v : b.v - a.v; });
+          var esc2 = Math.max.apply(null, rows.map(function (r) { return Math.abs(r.v); }).concat(rows.map(function (r) { return r.mt ? Math.abs(r.mt) : 0; }))) || 1;
+          if (rows.length && !rows.some(function (r) { return r.v < 0; })) h += '<div class="box"><h3>' + esc(main.l) + ' por ' + (sk === "trafego" ? "conta" : "loja") + '</h3><div class="muted" style="font-size:10.5px">a barra preta vertical é a meta</div><div class="bars">' + rows.map(function (r) { var p = indPct(r.v, r.mt, main), st = indStatus(p, main); return '<div class="bar"><span>' + esc(r.l) + '</span><div class="bt"><i class="' + (st || "") + '" style="width:' + (r.v / esc2 * 100) + '%"></i>' + (r.mt != null ? '<b style="left:' + (r.mt / esc2 * 100) + '%"></b>' : "") + "</div><span><b>" + esc(indFmt(r.v, main.f)) + "</b></span><span>" + pct(r.v, r.mt, main) + "</span></div>"; }).join("") + "</div></div>";
+          if (sk === "nps") {
+            var sg = function (r, lab) { var d = indNum(r.detratores) || 0, n = indNum(r.neutros) || 0, p = indNum(r.promotores) || 0, t = d + n + p; if (!t) return ""; var pt = function (v, c) { var w = v / t * 100; return w > 0 ? '<i class="' + c + '" style="width:' + w + '%">' + (w >= 8 ? Math.round(v) + "%" : "") + "</i>" : ""; }; return '<div class="bar" style="grid-template-columns:130px 1fr"><span>' + esc(lab) + '</span><div class="stk">' + pt(d, "det") + pt(n, "neu") + pt(p, "pro") + "</div></div>"; };
+            var gr = {}; ["detratores", "neutros", "promotores"].forEach(function (k) { gr[k] = indValGrupo("nps", ym, sec.metrics.find(function (x) { return x.k === k; })); });
+            h += '<div class="box"><h3>Promotores, neutros e detratores</h3><div class="lg"><span><i style="background:#d64545"></i>Detratores</span><span><i style="background:#9a9a9a"></i>Neutros</span><span><i style="background:#1f9d57"></i>Promotores</span></div><div class="bars">' + sg(gr, "Grupo") + linhas.map(function (l) { return sg(indRow("nps", ym, l) || {}, l); }).join("") + "</div></div>";
+          }
+          // comparativo com meses anteriores
+          var comp = sec.metrics.filter(function (x) { return !x.calc || sk === "trafego"; }).slice(0, sk === "trafego" ? 10 : 6);
+          h += '<h2 class="sec">Grupo mês a mês</h2><table><thead><tr><th>Indicador</th>' + ms.map(function (x) { return '<th class="r">' + mesCurto(x) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+            comp.map(function (x) { return "<tr><td><b>" + esc(x.l) + "</b></td>" + ms.map(function (mm) { var v = indValGrupo(sk, mm, x), st = indStatus(indPct(v, indMeta(sk, mm, null, x), x), x); return '<td class="r' + (st ? " c-" + st : "") + '">' + esc(indFmt(v, x.f)) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>";
+          h += '<h2 class="sec">' + esc(main.l) + " por " + (sk === "trafego" ? "conta" : "loja") + ", mês a mês</h2><table><thead><tr><th>" + esc(sec.linhaNome) + "</th>" + ms.map(function (x) { return '<th class="r">' + mesCurto(x) + "</th>"; }).join("") + "</tr></thead><tbody>" +
+            linhas.map(function (l) { return "<tr><td><b>" + esc(l) + "</b></td>" + ms.map(function (mm) { var v = indValLinha(sk, mm, l, main), st = indStatus(indPct(v, indMeta(sk, mm, l, main), main), main); return '<td class="r' + (st ? " c-" + st : "") + '">' + esc(indFmt(v, main.f)) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table>";
+          if (comObs) { var ob = linhas.map(function (l) { var r = indRow(sk, ym, l); return r && r.obs ? '<div class="box"><h3>' + esc(l) + '</h3><div class="txt">' + esc(r.obs) + "</div></div>" : ""; }).join(""); if (ob) h += '<h2 class="sec">' + esc(sec.obs) + '</h2><div class="cm">' + ob + "</div>"; }
+          return h;
+        }).join("") + '<p class="muted" style="margin-top:14px;font-size:10px">Cores: verde bateu a meta, âmbar chegou a 85% ou mais, vermelho ficou abaixo. Em investimento, a meta é o orçamento: verde é dentro dele.</p>';
+      }
+    });
+  }
+
+  /* ================================================================
      CONTA (antigo Ajustes)
      ================================================================ */
   $("#openSettings").onclick = function () {
@@ -2727,7 +3392,7 @@
   $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); });
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas"].indexOf(view) >= 0)) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores"].indexOf(view) >= 0)) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;
