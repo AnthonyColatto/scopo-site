@@ -45,6 +45,8 @@ window.GESTAO_DEFAULTS = (function () {
       categoriasCofre: ["Redes sociais", "Anúncios", "Site e hospedagem", "Email", "Ferramentas", "Fornecedores", "Outros"],
       lojas: [],
       unidades: ["Coronel", "Zahran", "Bandeirantes", "Dourados", "Maracaju", "Golden"],
+      categoriasFornecedor: ["Rádio", "TV", "Outdoor e OOH", "Digital", "Jornal e revista", "Gráfica e impressos", "Produção de vídeo", "Eventos e buffet", "Brindes", "PDV e materiais", "Prestador PJ", "Ferramentas", "Outros"],
+      tiposMidia: ["Rádio", "TV", "Carro de som", "Outdoor", "Painel de LED", "Digital", "Jornal e revista", "Outro"],
       canaisTrafego: ["AM · Meta Ads", "AM · Google Ads", "AG · Meta Ads", "AG · Google Ads"],
       setoresVisita: ["Fachada", "Limpeza", "Banheiros", "Precificação", "Exposição", "PDV e comunicação", "Tabloide exposto", "Rádio e TV interna", "Atendimento"],
       tiposEventoOrg: ["Evento de profissionais", "Treinamento", "Endomarketing", "Inauguração", "Outro"],

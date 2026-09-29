@@ -43,7 +43,7 @@
 
   /* ================= estado ================= */
   var Store = null;
-  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [], visitas: [], eventos_org: [], campanhas: [], reunioes_dir: [], documentos: [], indicadores: [] };
+  var S = { pauta: [], pessoas: [], ciclo: [], modelos: [], quadros: [], cartoes: [], config: [], eventos: [], mapas: [], nfs: [], contratos: [], orcamento: [], cooperada: [], cofre: [], visitas: [], eventos_org: [], campanhas: [], reunioes_dir: [], documentos: [], indicadores: [], midias: [], fornecedores: [] };
   var R = {}; // dados como vieram da base; S é o que esta pessoa pode ver
   var loaded = {};
   var view = LS.get("tab", "pauta");
@@ -69,6 +69,8 @@
       checklistCampanha: c.checklistCampanha || D.checklistCampanha || [],
       categoriasDoc: c.categoriasDoc || D.categoriasDoc || ["Outros"],
       unidades: c.unidades || D.unidades || ["Coronel", "Zahran", "Bandeirantes", "Dourados", "Maracaju", "Golden"],
+      categoriasFornecedor: c.categoriasFornecedor || D.categoriasFornecedor || ["Rádio", "TV", "Outdoor e OOH", "Digital", "Jornal e revista", "Gráfica e impressos", "Produção de vídeo", "Eventos e buffet", "Brindes", "PDV e materiais", "Prestador PJ", "Ferramentas", "Outros"],
+      tiposMidia: c.tiposMidia || D.tiposMidia || ["Rádio", "TV", "Carro de som", "Outdoor", "Painel de LED", "Digital", "Jornal e revista", "Outro"],
       canaisTrafego: c.canaisTrafego || D.canaisTrafego || ["AM · Meta Ads", "AM · Google Ads", "AG · Meta Ads", "AG · Google Ads"]
     };
   }
@@ -92,7 +94,7 @@
   /* ================= acessos e permissões =================
      Espelha as regras do banco (supabase-setup.sql). No Supabase quem manda é o banco;
      aqui a tela só evita que a pessoa tente algo que vai ser recusado. */
-  var FIN = ["nfs", "contratos", "orcamento", "cooperada", "indicadores"];
+  var FIN = ["nfs", "contratos", "orcamento", "cooperada", "indicadores", "midias", "fornecedores"];
   function acessosLista() {
     var c = S.config.find(function (x) { return x.id === "acessos"; });
     var D = window.GESTAO_DEFAULTS && window.GESTAO_DEFAULTS.config.acessos;
@@ -105,7 +107,7 @@
   }
   function meu(col, d) {
     d = d || {};
-    if (col === "pauta") return d.resp === me || d.criadoPor === me;
+    if (col === "pauta") return d.resp === me || d.criadoPor === me || (d.acompanha || []).indexOf(me) >= 0;
     if (col === "cartoes") return (d.resp || []).indexOf(me) >= 0 || d.criadoPor === me;
     if (col === "eventos") return (d.quem || []).indexOf(me) >= 0 || d.criadoPor === me;
     if (col === "visitas") return d.resp === me || d.criadoPor === me;
@@ -242,8 +244,9 @@
     if (fs) {
       fs.innerHTML = '<button type="button" data-f="meu" aria-pressed="' + focoMeu() + '" title="Mostra só o que é seu">Só meu</button><button type="button" data-f="geral" aria-pressed="' + !focoMeu() + '" title="' + (adm ? "Visão de gestão: tudo do time" : "Tudo que foi liberado para você") + '">' + (adm ? "Geral" : "Tudo") + "</button>";
     }
-    if (!adm && (view === "verba" || view === "admin" || view === "eventosorg" || view === "campanhas" || view === "reunioes" || view === "indicadores")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    if (!adm && (view === "verba" || view === "admin" || view === "eventosorg" || view === "campanhas" || view === "reunioes" || view === "indicadores" || view === "midia" || view === "fornecedores")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
+    backupLembrete(); tabsScrollUpd();
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -282,6 +285,10 @@
     return true;
   }
   var addConta = "Ambas";
+  var addAcompSel = "";
+  var pautaAba = LS.get("pAba", "todas");
+  function acompDe(i) { return Array.isArray(i.acompanha) ? i.acompanha : []; }
+  function acompOpts() { var g = pessoas().filter(function (p) { return p.gestor; }).map(function (p) { return p.nome; }); ["Tony", "Ellyn"].forEach(function (n) { if (g.indexOf(n) < 0 && nomes().indexOf(n) >= 0) g.push(n); }); var o = [["", "Sem acompanhamento"]]; nomes().forEach(function (n) { o.push([n, "Acompanha: " + n]); }); if (g.length >= 2) o.push([g.join("|"), "Acompanham: " + g.join(" e ")]); return o; }
   var addRespSel = ""; // só guarda quando a pessoa escolhe; senão o padrão é quem está usando
   var confirmDel = null;
 
@@ -295,19 +302,22 @@
         '<p class="muted">De manhã, pelo celular: dê seguimento, delegue e cobre. Tudo que chegar entra aqui primeiro. Se precisa ser discutido, marque a reunião e a pauta dela se monta sozinha.</p></div><div id="pNow"></div></div>' +
         '<form class="card add" id="addForm" autocomplete="off">' +
           '<div class="main"><input type="text" id="addTitle" placeholder="Lembrou de algo? Escreve e aperta Enter" aria-label="Nova pendência"><button class="btn" type="submit">Adicionar <span class="arrow">→</span></button></div>' +
-          '<div class="opts"><div class="seg" id="addConta"></div><select id="addResp" aria-label="Responsável"></select><select id="addReuniao" aria-label="Levar para reunião"></select><select id="addArea" aria-label="Frente"></select><input type="date" id="addPrazo" aria-label="Prazo"></div>' +
+          '<div class="opts"><div class="seg" id="addConta"></div><select id="addResp" aria-label="Responsável"></select><select id="addReuniao" aria-label="Levar para reunião"></select><select id="addArea" aria-label="Frente"></select><input type="date" id="addPrazo" aria-label="Prazo"><select id="addAcomp" aria-label="Acompanhamento" title="Quem acompanha também vê na pauta dele"></select></div>' +
         "</form>" +
+        '<div class="seg p-aba" id="pAba"></div>' +
         '<div class="stats" id="pStats"></div>' +
         '<div class="filters"><span class="lbl">Filtrar</span><select id="fR" aria-label="Reunião"></select><select id="fC" aria-label="Conta"></select><select id="fP" aria-label="Responsável"></select><select id="fV" aria-label="Vencimento"></select><span id="fPer" class="row" hidden><input type="date" id="fDe" aria-label="De" style="width:auto"><span class="hint">até</span><input type="date" id="fAte" aria-label="Até" style="width:auto"></span><button type="button" class="linkbtn" id="fMine">só as minhas</button><button type="button" class="linkbtn" id="fClear">limpar filtros</button></div>' +
         '<div id="pMeet"></div><div id="pList"></div>';
       $("#addForm").addEventListener("submit", function (e) {
         e.preventDefault();
         var t = $("#addTitle").value.trim(); if (!t) { $("#addTitle").focus(); return; }
-        Store.add("pauta", { titulo: t, conta: addConta, resp: $("#addResp").value, reuniao: $("#addReuniao").value, area: $("#addArea").value || "Outro", prazo: $("#addPrazo").value, status: "aberto", notas: "", criadoEm: new Date().toISOString(), criadoPor: me })
+        Store.add("pauta", { titulo: t, conta: addConta, resp: $("#addResp").value, reuniao: $("#addReuniao").value, area: $("#addArea").value || "Outro", prazo: $("#addPrazo").value, status: "aberto", notas: "", acompanha: ($("#addAcomp").value ? $("#addAcomp").value.split("|") : []).filter(function (n) { return n !== $("#addResp").value; }), criadoEm: new Date().toISOString(), criadoPor: me })
           .then(function () { toast("Na pauta"); }, fail);
         $("#addTitle").value = ""; $("#addPrazo").value = ""; $("#addTitle").focus();
       });
       $("#addResp").addEventListener("change", function () { addRespSel = this.value; });
+      $("#addAcomp").addEventListener("change", function () { addAcompSel = this.value; });
+      $("#pAba").addEventListener("click", function (e) { var b = e.target.closest("button[data-aba]"); if (!b) return; pautaAba = b.dataset.aba; LS.set("pAba", pautaAba); drawPautaList(); });
       $("#addConta").addEventListener("click", function (e) { var b = e.target.closest("button"); if (!b) return; addConta = b.dataset.v; $$("#addConta button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); });
       ["fR", "fC", "fP", "fV", "fDe", "fAte"].forEach(function (id) { $("#" + id).addEventListener("change", function () { pautaF.reuniao = $("#fR").value; pautaF.conta = $("#fC").value; pautaF.resp = $("#fP").value; pautaF.venc = $("#fV").value; pautaF.de = $("#fDe").value; pautaF.ate = $("#fAte").value; LS.set("fR", pautaF.reuniao); LS.set("fV", pautaF.venc); $("#fPer").hidden = pautaF.venc !== "periodo"; drawPautaList(); }); });
       $("#fClear").addEventListener("click", function () { pautaF = { reuniao: "*", conta: "", resp: "", venc: "", de: "", ate: "" }; LS.set("fR", "*"); LS.set("fV", ""); renderPauta(); });
@@ -318,6 +328,7 @@
     $("#addConta").innerHTML = L.contas.map(function (c) { return '<button type="button" data-v="' + esc(c) + '" aria-pressed="' + (c === addConta) + '">' + esc(c) + "</button>"; }).join("");
     var keepResp = addRespSel || me;
     $("#addResp").innerHTML = respOpts().map(function (n) { return "<option" + (n === keepResp ? " selected" : "") + ">" + esc(n) + "</option>"; }).join("");
+    $("#addAcomp").innerHTML = acompOpts().map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === addAcompSel ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("");
     var keepR = $("#addReuniao").value;
     $("#addReuniao").innerHTML = '<option value="">Sem reunião</option>' + L.reunioes.map(function (r) { return "<option" + (r === keepR ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("");
     var keepA = $("#addArea").value;
@@ -342,6 +353,7 @@
       (p ? '<span class="num ' + (late ? "late-txt" : "") + '">· ' + (late ? "atrasado " : "") + fmt(p) + " " + DOW[p.getDay()] + "</span>" : "") +
       (i.reuniao ? '<span class="tag">' + esc(i.reuniao) + "</span>" : "") +
       (i.cartao ? '<span class="tag solid">no quadro</span>' : "") +
+      (acompDe(i).length ? '<span class="tag acomp' + (acompDe(i).indexOf(me) >= 0 ? " eu" : "") + '" title="Acompanhamento">👁 ' + esc(acompDe(i).indexOf(me) >= 0 && i.resp !== me ? "você acompanha" : acompDe(i).join(", ")) + "</span>" : "") +
       (i.notas ? '<span title="Tem anotação">✎</span>' : "") +
       "</div></div>" +
       '<div class="actions">' +
@@ -354,7 +366,11 @@
     if (!$("#pList")) return;
     var f = pautaF, t0 = today();
     var wEnd = new Date(t0); wEnd.setDate(t0.getDate() + (7 - t0.getDay()) % 7);
-    var vis = S.pauta.filter(function (i) { return (f.reuniao === "*" || i.reuniao === f.reuniao) && (!f.conta || i.conta === f.conta) && (!f.resp || i.resp === f.resp) && (!focoMeu() || i.resp === me) && vencOk(i); });
+    var segue = function (i) { return acompDe(i).indexOf(me) >= 0; };
+    var nAcomp = S.pauta.filter(function (i) { return segue(i) && i.status !== "feito"; }).length;
+    if (pautaAba === "acomp" && !S.pauta.some(segue)) pautaAba = "todas";
+    $("#pAba").innerHTML = '<button type="button" data-aba="todas" aria-pressed="' + (pautaAba === "todas") + '">Pauta</button><button type="button" data-aba="acomp" aria-pressed="' + (pautaAba === "acomp") + '" title="Itens de outras pessoas que você acompanha">Acompanhamento' + (nAcomp ? " <b>" + nAcomp + "</b>" : "") + "</button>";
+    var vis = S.pauta.filter(function (i) { return (f.reuniao === "*" || i.reuniao === f.reuniao) && (!f.conta || i.conta === f.conta) && (!f.resp || i.resp === f.resp) && (pautaAba === "acomp" ? segue(i) : (!focoMeu() || i.resp === me || segue(i))) && vencOk(i); });
     var open = vis.filter(function (i) { return i.status !== "feito"; });
     var byDate = function (a, b) { return (a.prazo || "9999").localeCompare(b.prazo || "9999") || (a.criadoEm || "").localeCompare(b.criadoEm || ""); };
     var late = open.filter(function (i) { var p = parse(i.prazo); return p && p < t0; }).sort(byDate);
@@ -408,14 +424,19 @@
         '<div class="field"><label>Prazo</label><input type="date" id="piP" value="' + esc(it.prazo || "") + '"></div>' +
         '<div class="field"><label>Status</label><select id="piS">' + Object.keys(STATUS).map(function (k) { return '<option value="' + k + '"' + (k === it.status ? " selected" : "") + ">" + STATUS[k] + "</option>"; }).join("") + "</select></div>" +
       "</div>" +
+      '<div class="field"><label>Acompanhamento</label><div class="chips" id="piAc">' + nomes().map(function (n) { return '<button type="button" data-ac="' + esc(n) + '" aria-pressed="' + (acompDe(it).indexOf(n) >= 0) + '">' + esc(n) + "</button>"; }).join("") + '</div><p class="hint">Quem acompanha vê o item na pauta dele (aba Acompanhamento). Se alguém marcar como feito, fica feito para todos.</p></div>' +
       '<div class="field"><label>Anotações</label><textarea id="piN" placeholder="Contexto, combinados, links">' + esc(it.notas || "") + "</textarea></div>" +
       (boards.length ? '<div class="field"><label>Virar cartão num quadro</label><div class="row"><select id="piB" style="width:auto">' + boards.map(function (q) { return '<option value="' + esc(q.id) + '">' + esc(q.nome) + "</option>"; }).join("") + '</select><button class="btn ghost small" id="piToCard" type="button">Criar cartão</button></div><p class="hint">O cartão vai para a primeira coluna com título, conta, responsável, prazo e anotações.</p></div>' : "") +
       "</div>" +
       '<footer><span class="hint">Criado por ' + esc(it.criadoPor || "—") + '</span><button class="btn" id="piSave">Salvar <span class="arrow">→</span></button></footer>'
     );
     $("[data-close]").onclick = closeModal;
+    $("#piAc").onclick = function (e) { var b = e.target.closest("[data-ac]"); if (b) b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true")); };
     $("#piSave").onclick = function () {
-      Store.upd("pauta", it.id, { titulo: $("#piT").value.trim() || it.titulo, conta: $("#piC").value, resp: $("#piR").value, reuniao: $("#piM").value, area: $("#piA").value, prazo: $("#piP").value, status: $("#piS").value, notas: $("#piN").value })
+      var ac = $$("#piAc [data-ac]").filter(function (b) { return b.getAttribute("aria-pressed") === "true"; }).map(function (b) { return b.dataset.ac; }).filter(function (n) { return n !== $("#piR").value; });
+      var patch = { titulo: $("#piT").value.trim() || it.titulo, conta: $("#piC").value, resp: $("#piR").value, reuniao: $("#piM").value, area: $("#piA").value, prazo: $("#piP").value, status: $("#piS").value, notas: $("#piN").value };
+      if (ac.length || acompDe(it).length) patch.acompanha = ac;
+      Store.upd("pauta", it.id, patch)
         .then(function () { toast("Salvo"); }, fail); closeModal();
     };
     var tc = $("#piToCard");
@@ -679,9 +700,10 @@
   var openCardId = null;
   function openCard(id) {
     var c = S.cartoes.find(function (x) { return x.id === id; }); if (!c) return;
-    openCardId = id;
+    openCardId = id; cmConf = null; cmEdit = null;
     drawCardModal(c);
   }
+  var cmConf = null, cmEdit = null;
   function patchCard(c, p) {
     if (!canWrite("cartoes", c, Object.assign({}, c, p), "upd")) { denyToast(); return; }
     Object.assign(c, p);
@@ -703,7 +725,10 @@
           '<ul class="cl">' + cl.map(function (x) { return '<li class="' + (x.ok ? "ok" : "") + '"><button class="check ' + (x.ok ? "on" : "") + '" data-clt="' + esc(x.id) + '" aria-label="Marcar"></button><span>' + esc(x.t) + '</span><button class="x" data-cld="' + esc(x.id) + '" aria-label="Remover">✕</button></li>'; }).join("") + "</ul>" +
           '<div class="row"><input type="text" id="clNew" placeholder="Adicionar item" style="flex:1"><button class="btn ghost small" id="clAdd">Adicionar</button></div></div>' +
         '<div class="field"><label>Comentários</label><div class="row"><input type="text" id="cmNew" placeholder="Escreva um comentário como ' + esc(me) + '" style="flex:1"><button class="btn ghost small" id="cmAdd">Comentar</button></div>' +
-          '<div class="comments">' + (c.comentarios || []).slice().reverse().map(function (m) { var d = new Date(m.em); return '<div class="comment"><div class="who"><b>' + esc(m.autor) + "</b> · " + fmt(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + "</div>" + esc(m.texto) + "</div>"; }).join("") + "</div></div>" +
+          '<div class="comments">' + (c.comentarios || []).map(function (m, idx) { return [m, idx]; }).reverse().map(function (x) { var m = x[0], idx = x[1], d = new Date(m.em), meuC = m.autor === me, pode = meuC || isAdmin();
+            var acts = pode ? '<span class="cm-act">' + (cmConf === idx ? 'Apagar? <button data-cmyes="' + idx + '">sim</button><button data-cmno>não</button>' : (meuC ? '<button data-cmed="' + idx + '">editar</button>' : "") + '<button data-cmdel="' + idx + '">apagar</button>') + "</span>" : "";
+            var corpo = cmEdit === idx ? '<div class="row" style="margin-top:4px"><input type="text" data-cmtxt="' + idx + '" value="' + esc(m.texto) + '" style="flex:1"><button class="btn ghost small" data-cmsave="' + idx + '">Salvar</button><button class="linkbtn" data-cmno>cancelar</button></div>' : esc(m.texto) + (m.editadoEm ? ' <span class="hint">(editado)</span>' : "");
+            return '<div class="comment"><div class="who"><span><b>' + esc(m.autor) + "</b> · " + fmt(d) + " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) + "</span>" + acts + "</div>" + corpo + "</div>"; }).join("") + "</div></div>" +
       "</div>" +
       '<div style="display:grid;gap:14px;align-content:start">' +
         '<div class="field"><label>Coluna</label><select id="cCol">' + (q.colunas || []).map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === c.coluna ? " selected" : "") + ">" + esc(x.nome) + "</option>"; }).join("") + "</select></div>" +
@@ -730,6 +755,16 @@
     $("#clNew").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); $("#clAdd").click(); } };
     $$("[data-clt]", m).forEach(function (b) { b.onclick = function () { patchCard(c, { checklist: c.checklist.map(function (x) { return x.id === b.dataset.clt ? { id: x.id, t: x.t, ok: !x.ok } : x; }) }); }; });
     $$("[data-cld]", m).forEach(function (b) { b.onclick = function () { patchCard(c, { checklist: c.checklist.filter(function (x) { return x.id !== b.dataset.cld; }) }); }; });
+    var cmBox = $("#modalRoot .comments");
+    if (cmBox) cmBox.onclick = function (e) {
+      var t = e.target, lista = (c.comentarios || []).slice();
+      if (t.dataset.cmdel != null) { cmConf = +t.dataset.cmdel; cmEdit = null; drawCardModal(c); return; }
+      if (t.hasAttribute("data-cmno")) { cmConf = null; cmEdit = null; drawCardModal(c); return; }
+      if (t.dataset.cmed != null) { cmEdit = +t.dataset.cmed; cmConf = null; drawCardModal(c); var i = $('[data-cmtxt="' + cmEdit + '"]'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } return; }
+      if (t.dataset.cmyes != null) { var k = +t.dataset.cmyes; cmConf = null; if (lista[k] && (lista[k].autor === me || isAdmin())) { lista.splice(k, 1); patchCard(c, { comentarios: lista }); toast("Comentário apagado"); } return; }
+      if (t.dataset.cmsave != null) { var j = +t.dataset.cmsave, v = ($('[data-cmtxt="' + j + '"]').value || "").trim(); cmEdit = null; if (lista[j] && lista[j].autor === me && v) { lista[j] = Object.assign({}, lista[j], { texto: v, editadoEm: new Date().toISOString() }); patchCard(c, { comentarios: lista }); } else drawCardModal(c); }
+    };
+    if (cmBox) cmBox.onkeydown = function (e) { if (e.key === "Enter" && e.target.dataset.cmtxt != null) { e.preventDefault(); var b = $('[data-cmsave="' + e.target.dataset.cmtxt + '"]'); if (b) b.click(); } };
     $("#cmAdd").onclick = function () { var t = $("#cmNew").value.trim(); if (!t) return; patchCard(c, { comentarios: (c.comentarios || []).concat([{ autor: me, texto: t, em: new Date().toISOString() }]) }); };
     $("#cmNew").onkeydown = function (e) { if (e.key === "Enter") { e.preventDefault(); $("#cmAdd").click(); } };
     $("#cCol").onchange = function () { patchCard(c, { coluna: this.value, ordem: nextOrder(c.quadro, this.value) }); };
@@ -1030,7 +1065,7 @@
     var passP = function (who) { return !quem || (Array.isArray(who) ? who.indexOf(quem) >= 0 : who === quem); };
     var passC = function (c) { return !calF.conta || c === calF.conta || c === "Ambas"; };
     if (calF.eventos) S.eventos.forEach(function (e) { var d = parse(e.data); if (d && passP(e.quem || []) && passC(e.conta)) push(d, { k: "evento", id: e.id, t: (e.hora ? e.hora + " " : "") + e.titulo, sort: e.hora || "00", conta: e.conta }); });
-    if (calF.pauta) S.pauta.forEach(function (i) { var d = parse(i.prazo); if (d && passP(i.resp) && passC(i.conta)) push(d, { k: "pauta", id: i.id, t: i.titulo, done: i.status === "feito", sort: "50", conta: i.conta }); });
+    if (calF.pauta) S.pauta.forEach(function (i) { var d = parse(i.prazo); if (d && (passP(i.resp) || (quem && acompDe(i).indexOf(quem) >= 0)) && passC(i.conta)) push(d, { k: "pauta", id: i.id, t: i.titulo, done: i.status === "feito", sort: "50", conta: i.conta }); });
     if (calF.cartoes) S.cartoes.forEach(function (c) { var d = parse(c.prazo); if (d && !c.arquivado && passP(c.resp || []) && passC(c.conta)) push(d, { k: "cartao", id: c.id, t: c.titulo, sort: "60", cor: (c.etiquetas || []).length ? labelColor(c.etiquetas[0]) : "", conta: c.conta }); });
     if (calF.ciclo) [-1, 0, 1].forEach(function (o) { cycleFor(y, m + o).forEach(function (c) { if (passP(c.quem || []) && passC(c.conta)) push(c.d, { k: "ciclo", id: c.id, t: c.titulo, sort: "40" }); }); });
     if (calF.vencimentos && isAdmin() && !focoMeu()) S.nfs.forEach(function (n) { var d = parse(n.vencimento); if (d && n.status !== "paga" && passC(n.conta)) push(d, { k: "venc", id: n.id, t: brl(n.valor) + " · " + (n.fornecedor || n.descricao || "NF"), sort: "45" }); });
@@ -1479,8 +1514,11 @@
     var out = [];
     return files.reduce(function (p, f) {
       return p.then(function () {
-        return Store.upload(f, pasta).then(function (m) { m.por = me; out.push(m); }, function (e) {
-          toast((e && e.code === "too_large") ? f.name + ": acima de 50 MB" : "Não enviou " + f.name);
+        if (/^video\//.test(f.type || "") && f.size > VIDEO_AVISO && !window.confirm(f.name + " tem " + fileSize(f.size) + ". Vídeo pesado ocupa o espaço do time rápido. Prefira subir no Drive e colar o link no cartão.\n\nEnviar mesmo assim?")) return;
+        return comprimirImagem(f).then(function (f2) {
+          return Store.upload(f2, pasta).then(function (m) { m.por = me; out.push(m); }, function (e) {
+            toast((e && e.code === "too_large") ? f.name + ": acima de 50 MB" : "Não enviou " + f.name);
+          });
         });
       });
     }, Promise.resolve()).then(function () { if (out.length) toast(out.length + " anexo" + (out.length > 1 ? "s" : "") + " enviado" + (out.length > 1 ? "s" : "")); return out; });
@@ -1588,6 +1626,7 @@
   function share(docConta, conta) { if (!conta) return 1; if (docConta === conta) return 1; if (docConta === "Ambas") return 0.5; return 0; }
   function fornecedores() {
     var set = {};
+    S.fornecedores.forEach(function (f) { if (f.nome && f.ativo !== false) set[f.nome] = 1; });
     S.nfs.concat(S.contratos, S.cooperada).forEach(function (x) { if (x.fornecedor) set[x.fornecedor] = 1; });
     return Object.keys(set).sort(function (a, b) { return a.localeCompare(b, "pt-BR"); });
   }
@@ -1762,6 +1801,7 @@
     attachBlock($("#nfAtt"), { titulo: "NF, boleto, comprovante, planilha", lista: anexos, pasta: "verba/nfs/" + draftId, accept: ".pdf,.xlsx,.xls,.csv,.docx,.doc,image/*,.xml", podeEditar: true, dropTarget: $("#modalRoot .modal"),
       onChange: function (l) { anexos = l; if (!isNew) Store.upd("nfs", n.id, { anexos: l }).catch(fail); } });
     $("[data-close]").onclick = closeModal;
+    fornHook($("#nfF"));
     $("#nfK").onchange = function () { var c = S.contratos.find(function (x) { return x.id === $("#nfK").value; }); if (c) { if (!$("#nfF").value) $("#nfF").value = c.fornecedor; if (!parseBRL($("#nfV").value)) $("#nfV").value = numBR(c.valor); $("#nfC").value = c.categoria; $("#nfA").value = c.conta; } };
     $("#nfSave").onclick = function () {
       var f = $("#nfF").value.trim(); if (!f) { $("#nfF").focus(); return; }
@@ -1812,6 +1852,7 @@
     attachBlock($("#kAtt"), { titulo: "Contrato, PI, aditivos", lista: anexos, pasta: "verba/contratos/" + id, accept: ".pdf,.docx,.doc,.xlsx,.xls,.csv,image/*", podeEditar: true, dropTarget: $("#modalRoot .modal"),
       onChange: function (l) { anexos = l; if (!isNew) Store.upd("contratos", id, { anexos: l }).catch(fail); } });
     $("[data-close]").onclick = closeModal;
+    fornHook($("#kF"));
     $("#kSave").onclick = function () {
       var f = $("#kF").value.trim(); if (!f) { $("#kF").focus(); return; }
       Store.set("contratos", id, { fornecedor: f, objeto: $("#kO").value.trim(), categoria: $("#kC").value, conta: $("#kA").value, valor: parseBRL($("#kV").value), diaVenc: Number($("#kD").value) || "", inicio: $("#kI").value, fim: $("#kFi").value, pagamento: $("#kP").value, ativo: $("#kAt").checked, obs: $("#kOb").value, anexos: anexos, criadoPor: d.criadoPor || me })
@@ -1909,6 +1950,7 @@
     attachBlock($("#cpAtt"), { titulo: "Acordo e comprovações (fotos, tabloide, planilha)", lista: anexos, pasta: "verba/cooperada/" + id, accept: ".pdf,.docx,.doc,.xlsx,.xls,.csv,image/*,video/*", podeEditar: true, dropTarget: $("#modalRoot .modal"),
       onChange: function (l) { anexos = l; if (!isNew) Store.upd("cooperada", id, { anexos: l }).catch(fail); } });
     $("[data-close]").onclick = closeModal;
+    fornHook($("#cpF"));
     $("#cpSave").onclick = function () {
       var f = $("#cpF").value.trim(); if (!f) { $("#cpF").focus(); return; }
       Store.set("cooperada", id, { fornecedor: f, conta: $("#cpA").value, valor: parseBRL($("#cpV").value), recebido: parseBRL($("#cpR").value), competencia: $("#cpM").value, prazo: $("#cpP").value, status: $("#cpS").value, acao: $("#cpAc").value.trim(), obs: $("#cpO").value, anexos: anexos, criadoPor: d.criadoPor || me })
@@ -1935,6 +1977,8 @@
     ["canaisCampanha", "Canais de campanha", ""],
     ["checklistCampanha", "Checklist padrão de campanha", "Toda campanha nova começa com estes itens."],
     ["categoriasDoc", "Categorias de documentos", "Organizam os documentos da aba Reuniões."],
+    ["categoriasFornecedor", "Categorias de fornecedor", "Organizam a aba Fornecedores."],
+    ["tiposMidia", "Tipos de mídia", "Usados na aba Mídia (rádio, TV, outdoor…)."],
     ["unidades", "Unidades (Indicadores)", "Lojas do atendimento Bitrix e das pesquisas NPS."],
     ["canaisTrafego", "Contas de tráfego pago (Indicadores)", "Ex: AM · Meta Ads. Cada uma recebe os números do mês."]
   ];
@@ -1948,9 +1992,11 @@
     categoriasCofre: [["cofre", "categoria"]],
     lojas: [["visitas", "loja"]],
     tiposEventoOrg: [["eventos_org", "tipo"]],
-    categoriasDoc: [["documentos", "categoria"]]
+    categoriasDoc: [["documentos", "categoria"]],
+    tiposMidia: [["midias", "tipo"]],
+    categoriasFornecedor: [["fornecedores", "categoria"]]
   };
-  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre, lojas: L.lojas, setoresVisita: L.setoresVisita, tiposEventoOrg: L.tiposEventoOrg, itensCustoEvento: L.itensCustoEvento, canaisCampanha: L.canaisCampanha, checklistCampanha: L.checklistCampanha, categoriasDoc: L.categoriasDoc, unidades: L.unidades, canaisTrafego: L.canaisTrafego }, patch); return Store.set("config", "listas", doc).catch(fail); }
+  function saveListas(patch) { var L = listas(); var doc = Object.assign({ contas: L.contas, reunioes: L.reunioes, areas: L.areas, etiquetas: L.etiquetas, tiposEvento: L.tiposEvento, categoriasVerba: L.categoriasVerba, pagamentos: L.pagamentos, categoriasCofre: L.categoriasCofre, lojas: L.lojas, setoresVisita: L.setoresVisita, tiposEventoOrg: L.tiposEventoOrg, itensCustoEvento: L.itensCustoEvento, canaisCampanha: L.canaisCampanha, checklistCampanha: L.checklistCampanha, categoriasDoc: L.categoriasDoc, unidades: L.unidades, canaisTrafego: L.canaisTrafego, tiposMidia: L.tiposMidia, categoriasFornecedor: L.categoriasFornecedor }, patch); return Store.set("config", "listas", doc).catch(fail); }
   function renameEverywhere(key, from, to) {
     var n = 0;
     (LIST_USE[key] || []).forEach(function (u) { S[u[0]].forEach(function (d) { if (d[u[1]] === from) { var p = {}; p[u[1]] = to; Store.upd(u[0], d.id, p).catch(fail); n++; } }); });
@@ -1980,9 +2026,11 @@
         LIST_DEFS.map(function (x) { return '<div class="chipedit" data-list="' + x[0] + '"><div class="lbl">' + esc(x[1]) + "</div>" + (x[2] ? '<p class="hint">' + esc(x[2]) + "</p>" : "") + '<div class="ce-items">' + (L[x[0]] || []).map(function (v, i) { return '<span class="ce"><button class="ce-name" data-ren="' + i + '">' + esc(v) + '</button><button class="ce-x" data-del="' + i + '" aria-label="Remover">✕</button></span>'; }).join("") + '</div><input type="text" class="ce-add" placeholder="+ adicionar e Enter"></div>'; }).join("") +
         '<div class="chipedit" data-list="etiquetas"><div class="lbl">Etiquetas dos quadros</div><div class="ce-items">' + L.etiquetas.map(function (e, i) { return '<span class="ce"><input type="color" value="' + esc(e.cor) + '" data-cor="' + i + '" aria-label="Cor"><button class="ce-name" data-ren="' + i + '">' + esc(e.nome) + '</button><button class="ce-x" data-del="' + i + '" aria-label="Remover">✕</button></span>'; }).join("") + '</div><input type="text" class="ce-add" placeholder="+ nova etiqueta e Enter"></div>' +
       "</section>" +
+      backupSectionHTML() +
       '<section class="card pad adm"><h3>Conteúdo padrão</h3><p class="muted">Recarrega pessoas, ciclo do mês, modelos, quadros, o mapa padrão e as listas. Pauta, cartões, eventos e toda a parte de verba ficam como estão.</p><span id="admSeedW"><button class="btn ghost small" id="admSeed">Carregar conteúdo padrão</button></span></section>' +
       "</div>";
     drawPerfis();
+    bindBackup(el);
     $("#admAdd").onsubmit = function (e) {
       e.preventDefault();
       var p = { email: $("#aEmail").value.trim().toLowerCase(), nome: $("#aNome").value, papel: $("#aPapel").value };
@@ -2215,6 +2263,9 @@
     var setores = setoresDe(list), mx = matriz(list);
     var scores = list.map(visitaScore).filter(function (x) { return x != null; });
     var media = scores.length ? Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length) : null;
+    var acTotal = 0, acAbertas = [];
+    list.forEach(function (v) { (v.acoes || []).forEach(function (a) { acTotal++; if (!acaoFeita(a)) acAbertas.push({ v: v, a: a }); }); });
+    acAbertas.sort(function (x, y) { return (x.a.prazo || "9999").localeCompare(y.a.prazo || "9999") || (y.v.data || "").localeCompare(x.v.data || ""); });
     var criticos = 0; mx.lojas.forEach(function (l) { setores.forEach(function (s) { var a = mx.get(l, s); if (a != null && a < 1.5) criticos++; }); });
     el.innerHTML =
       '<div class="view-head"><div><div class="eyebrow">Visitas às lojas</div><h2>Checklist e avaliação por setor</h2><p class="muted">Registre cada visita com o resumo e a nota de cada setor. O painel mostra a média por loja e setor, e o relatório sai em PDF para a diretoria.</p></div>' +
@@ -2225,7 +2276,10 @@
       '<select id="viL" style="width:auto"><option value="">Todas as lojas</option>' + L.lojas.map(function (l) { return "<option" + (l === viF.loja ? " selected" : "") + ">" + esc(l) + "</option>"; }).join("") + "</select>" +
       '<select id="viC" style="width:auto"><option value="">Todas as contas</option>' + L.contas.filter(function (c) { return c !== "Ambas"; }).map(function (c) { return "<option" + (c === viF.conta ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select>" +
       (isAdmin() ? '<button class="linkbtn" id="viCfg">editar lojas e setores</button>' : "") + "</div>" +
-      '<div class="vtiles"><div class="vtile"><span>Visitas</span><b>' + list.length + '</b><small>' + esc(viRangeLabel()) + '</small></div><div class="vtile"><span>Lojas visitadas</span><b>' + mx.lojas.length + (L.lojas.length ? " / " + L.lojas.length : "") + '</b></div><div class="vtile nota-' + scoreClass(media) + '"><span>Nota média</span><b>' + (media == null ? "—" : media + "%") + '</b></div><div class="vtile ' + (criticos ? "neg" : "") + '"><span>Pontos críticos</span><b>' + criticos + "</b><small>setores com média Ruim</small></div></div>" +
+      '<div class="vtiles"><div class="vtile"><span>Visitas</span><b>' + list.length + '</b><small>' + esc(viRangeLabel()) + '</small></div><div class="vtile"><span>Lojas visitadas</span><b>' + mx.lojas.length + (L.lojas.length ? " / " + L.lojas.length : "") + '</b></div><div class="vtile nota-' + scoreClass(media) + '"><span>Nota média</span><b>' + (media == null ? "—" : media + "%") + '</b></div><div class="vtile ' + (criticos ? "neg" : "") + '"><span>Pontos críticos</span><b>' + criticos + "</b><small>setores com média Ruim</small></div>" +
+      '<div class="vtile"><span>Ações do checklist</span><b>' + acAbertas.length + '</b><small>' + (acTotal ? "em aberto · " + (acTotal - acAbertas.length) + " de " + acTotal + " feitas" : "nenhuma ação criada") + "</small></div></div>" +
+      (acAbertas.length ? '<div class="card pad vi-acbox"><div class="section-title"><h3>Checklist das visitas · em aberto <small class="hint">' + acAbertas.length + '</small></h3><button class="btn ghost small" id="viAllPauta">Levar todas para a pauta</button></div><ul class="items vi-acoes">' +
+        acAbertas.map(function (x) { var a = x.a, v = x.v, p = parse(a.prazo), late = p && p < today(); return '<li class="item" data-avid="' + esc(v.id) + '" data-aid="' + esc(a.id) + '"><button class="check" data-dtog aria-label="Marcar como feita"></button><div><div class="t">' + esc(a.texto) + '</div><div class="meta"><b>' + esc(v.loja) + "</b><span>visita " + fmt(parse(v.data)) + "</span>" + (a.setor ? '<span class="tag">' + esc(a.setor) + "</span>" : "") + "<span>" + esc(a.resp || v.resp || "") + "</span>" + (p ? '<span class="num ' + (late ? "late-txt" : "") + '">· ' + (late ? "atrasada " : "") + fmt(p) + "</span>" : "") + (a.pautaId ? '<span class="tag solid">na pauta</span>' : '<button class="linkbtn" data-dpauta>virar pauta viva</button>') + "</div></div></li>"; }).join("") + "</ul></div>" : "") +
       (mx.lojas.length ? '<div><div class="lbl" style="margin-bottom:6px">Média por loja e setor no período</div><div class="tbl-wrap"><table class="tbl mtx"><thead><tr><th>Loja</th>' + setores.map(function (s) { return "<th>" + esc(s) + "</th>"; }).join("") + '<th class="r">Nota</th></tr></thead><tbody>' +
         mx.lojas.map(function (l) {
           var vs = list.filter(function (v) { return v.loja === l; }), sc = vs.map(visitaScore).filter(function (x) { return x != null; });
@@ -2236,7 +2290,8 @@
         }).join("") + "</tbody></table></div></div>" : "") +
       '<div class="group"><h3>Visitas <small>' + list.length + "</small></h3>" + (list.length ? '<div class="vi-list">' + list.map(function (v) {
         var sc = visitaScore(v), ruins = Object.keys(v.notas || {}).filter(function (k) { return (v.notas[k] || {}).nota === "ruim"; });
-        return '<button class="vi-item" data-vid="' + esc(v.id) + '"><span class="vi-date"><b>' + fmt(parse(v.data)) + "</b>" + DOW[parse(v.data).getDay()] + '</span><span class="vi-main"><b>' + esc(v.loja || "Sem loja") + "</b>" + (v.conta ? ' <span class="tag ' + esc(v.conta) + '">' + esc(v.conta) + "</span>" : "") + '<span class="hint">' + esc((v.resumo || "").slice(0, 140)) + (ruins.length ? ' · <span class="late-txt">Ruim: ' + esc(ruins.join(", ")) + "</span>" : "") + "</span></span>" +
+        var ac = v.acoes || [], acF = ac.filter(acaoFeita).length, nf = Object.keys(v.notas || {}).reduce(function (t, k) { return t + ((v.notas[k] || {}).fotos || []).length; }, 0) + (v.anexos || []).length;
+        return '<button class="vi-item" data-vid="' + esc(v.id) + '"><span class="vi-date"><b>' + fmt(parse(v.data)) + "</b>" + DOW[parse(v.data).getDay()] + '</span><span class="vi-main"><b>' + esc(v.loja || "Sem loja") + "</b>" + (v.conta ? ' <span class="tag ' + esc(v.conta) + '">' + esc(v.conta) + "</span>" : "") + '<span class="hint">' + esc((v.resumo || "").slice(0, 140)) + (ruins.length ? ' · <span class="late-txt">Ruim: ' + esc(ruins.join(", ")) + "</span>" : "") + "</span>" + (ac.length || nf ? '<span class="vi-badges">' + (ac.length ? '<span class="tag' + (acF < ac.length ? "" : " solid") + '">✓ ' + acF + "/" + ac.length + " ações</span>" : "") + (nf ? '<span class="tag">📷 ' + nf + "</span>" : "") + "</span>" : "") + "</span>" +
           '<span class="nota ' + scoreClass(sc) + '">' + (sc == null ? "sem notas" : sc + "%") + "</span></button>";
       }).join("") + "</div>" : '<div class="empty">Nenhuma visita neste período.</div>') + "</div>";
     $("#viNew").onclick = function () { openVisita(null); };
@@ -2248,61 +2303,154 @@
     if ($("#viDe")) { $("#viDe").onchange = function () { viF.de = this.value; renderVisitas(); }; $("#viAte").onchange = function () { viF.ate = this.value; renderVisitas(); }; }
     $("#viL").onchange = function () { viF.loja = this.value; renderVisitas(); };
     $("#viC").onchange = function () { viF.conta = this.value; renderVisitas(); };
+    if ($("#viAllPauta")) $("#viAllPauta").onclick = function () {
+      var alvo = acAbertas.filter(function (x) { return !x.a.pautaId; }); if (!alvo.length) { toast("Todas já estão na pauta"); return; }
+      var porV = {};
+      alvo.reduce(function (pr, x) { return pr.then(function () { return acaoParaPauta(x.v, x.a).then(function (pid) { porV[x.v.id] = porV[x.v.id] || {}; porV[x.v.id][x.a.id] = pid; }); }); }, Promise.resolve()).then(function () {
+        return Promise.all(Object.keys(porV).map(function (vid) { var v = S.visitas.find(function (y) { return y.id === vid; }); return Store.upd("visitas", vid, { acoes: (v.acoes || []).map(function (a) { return porV[vid][a.id] ? Object.assign({}, a, { pautaId: porV[vid][a.id] }) : a; }) }); }));
+      }).then(function () { toast(alvo.length + " pendência" + (alvo.length > 1 ? "s" : "") + " na pauta"); }, fail);
+    };
     el.onclick = function (e) {
+      var li = e.target.closest("[data-aid]");
+      if (li) {
+        var v0 = S.visitas.find(function (x) { return x.id === li.dataset.avid; }), a0 = v0 && (v0.acoes || []).find(function (x) { return x.id === li.dataset.aid; });
+        if (!a0) return;
+        if (e.target.closest("[data-dtog]")) { if (!canEdit("visitas", v0)) { denyToast(); return; } marcarAcao(v0, a0.id, true).then(function () { toast("Ação feita"); }, fail); return; }
+        if (e.target.closest("[data-dpauta]")) { acaoParaPauta(v0, a0).then(function (pid) { return Store.upd("visitas", v0.id, { acoes: (v0.acoes || []).map(function (x) { return x.id === a0.id ? Object.assign({}, x, { pautaId: pid }) : x; }) }); }).then(function () { toast("Na pauta viva"); }, fail); return; }
+        openVisita(v0); return;
+      }
       var b = e.target.closest("[data-vid]"); if (b) { openVisita(S.visitas.find(function (x) { return x.id === b.dataset.vid; })); return; }
       var tr = e.target.closest("tr[data-vloja]"); if (tr) { viF.loja = tr.dataset.vloja; renderVisitas(); }
     };
   }
+  // ações do checklist: feita aqui ou feita na pauta (quando virou pendência)
+  function acaoFeita(a) {
+    if (a.feito) return true;
+    if (a.pautaId) { var p = S.pauta.find(function (x) { return x.id === a.pautaId; }); if (p && p.status === "feito") return true; }
+    return false;
+  }
+  function acaoParaPauta(v, a) {
+    var resp = a.resp || v.resp || me;
+    return Store.add("pauta", { titulo: "[" + (v.loja || "Loja") + "] " + a.texto, conta: v.conta || "Ambas", resp: resp, reuniao: "", area: "Loja / VM", prazo: a.prazo || "", status: "aberto",
+      notas: "Da visita de " + fmt(parse(v.data)) + (a.setor ? " · setor " + a.setor : "") + ".", acompanha: resp !== me ? [me] : [], visita: v.id, criadoEm: new Date().toISOString(), criadoPor: me });
+  }
+  function marcarAcao(v, acaoId, feito) {
+    var acoes = (v.acoes || []).map(function (a) { return a.id === acaoId ? Object.assign({}, a, { feito: feito, feitoEm: feito ? new Date().toISOString() : "" }) : a; });
+    var a = acoes.find(function (x) { return x.id === acaoId; });
+    if (a && a.pautaId) { var p = S.pauta.find(function (x) { return x.id === a.pautaId; }); if (p && (p.status === "feito") !== feito) Store.upd("pauta", p.id, feito ? { status: "feito", feitoEm: new Date().toISOString() } : { status: "aberto", feitoEm: "" }).catch(function () {}); }
+    return Store.upd("visitas", v.id, { acoes: acoes });
+  }
   function openVisita(v) {
     var L = listas(), isNew = !v, id = isNew ? Store.uid() : v.id;
-    var d = Object.assign({ loja: viF.loja || L.lojas[0] || "", data: iso(today()), conta: "Ambas", resp: me, resumo: "", notas: {}, anexos: [] }, v || {});
+    var d = Object.assign({ loja: viF.loja || L.lojas[0] || "", data: iso(today()), conta: "Ambas", resp: me, resumo: "", notas: {}, anexos: [], acoes: [] }, v || {});
     var notas = JSON.parse(JSON.stringify(d.notas || {}));
+    var acoes = JSON.parse(JSON.stringify(d.acoes || []));
+    var anexos = (d.anexos || []).slice();
     var setores = L.setoresVisita.slice(); Object.keys(notas).forEach(function (k) { if (setores.indexOf(k) < 0) setores.push(k); });
     var pode = isNew || canEdit("visitas", v);
     var lojasOpt = L.lojas.slice(); if (d.loja && lojasOpt.indexOf(d.loja) < 0) lojasOpt.push(d.loja);
+    var limpa = function (s) { var n = notas[s]; if (n && !n.nota && !n.obs && !(n.fotos || []).length) delete notas[s]; };
+    function fotosHTML(i) {
+      var fs = ((notas[setores[i]] || {}).fotos || []);
+      return fs.map(function (a, k) { return '<span class="ck-foto"><button type="button" class="ck-th" data-fopen="' + i + ":" + k + '" data-src-ref="' + esc(JSON.stringify(a)) + '" title="' + esc(a.nome) + '"></button>' + (pode ? '<button type="button" class="ck-fx" data-frm="' + i + ":" + k + '" aria-label="Remover foto">✕</button>' : "") + "</span>"; }).join("");
+    }
+    function acoesHTML() {
+      if (!acoes.length) return '<p class="hint">Nenhuma ação ainda. Use <b>Gerar dos Regular e Ruim</b> ou <b>+ Ação</b>.</p>';
+      return '<ul class="items vi-acoes">' + acoes.map(function (a, i) {
+        var feita = acaoFeita(a);
+        return '<li class="item ' + (feita ? "done" : "") + '" data-ai="' + i + '"><button type="button" class="check ' + (feita ? "on" : "") + '" data-atog="' + i + '" aria-label="' + (feita ? "Reabrir" : "Marcar como feita") + '"></button>' +
+          '<div class="vi-a-main"><input type="text" class="vi-a-t" data-ak="texto" value="' + esc(a.texto) + '" placeholder="O que precisa ser feito">' +
+          '<div class="meta">' + (a.setor ? '<span class="tag">' + esc(a.setor) + "</span>" : "") +
+          '<select data-ak="resp" aria-label="Responsável">' + opt(respOpts(), a.resp || d.resp) + '</select><input type="date" data-ak="prazo" value="' + esc(a.prazo || "") + '" aria-label="Prazo">' +
+          (a.pautaId ? '<span class="tag solid">na pauta</span>' : '<button type="button" class="linkbtn" data-apauta="' + i + '">virar pauta viva</button>') + "</div></div>" +
+          '<button type="button" class="x" data-adel="' + i + '" aria-label="Remover ação">✕</button></li>';
+      }).join("") + "</ul>";
+    }
     openModal('<header><h3>' + (isNew ? "Nova visita" : "Visita · " + esc(d.loja)) + '</h3><button class="x" data-close>✕</button></header><div class="body">' +
       '<div class="grid2"><div class="field"><label>Loja</label><select id="viLo">' + (lojasOpt.length ? opt(lojasOpt, d.loja) : '<option value="">Cadastre as lojas no Admin</option>') + "</select></div>" +
       '<div class="field"><label>Data</label><input type="date" id="viDa" value="' + esc(d.data) + '"></div>' +
       '<div class="field"><label>Conta</label><select id="viCo">' + opt(L.contas, d.conta) + "</select></div>" +
       '<div class="field"><label>Quem visitou</label><select id="viRe">' + opt(nomes(), d.resp) + "</select></div></div>" +
       '<div class="field"><label>Resumo da visita</label><textarea id="viRs" style="min-height:90px" placeholder="Como estava a loja, conversa com o gerente, o que precisa de ação">' + esc(d.resumo) + "</textarea></div>" +
-      '<div class="field"><div class="section-title"><label>Checklist por setor</label><span class="hint" id="viScore"></span></div><div class="ck-list">' +
+      '<div class="field"><div class="section-title"><label>Avaliação por setor</label><span class="hint" id="viScore"></span></div><div class="ck-list">' +
         setores.map(function (s, i) {
           var n = notas[s] || {};
           return '<div class="ck-row" data-si="' + i + '"><div class="ck-name">' + esc(s) + '</div><div class="ck-opts">' +
             NOTAS.map(function (o) { return '<button type="button" class="ck-b ' + o[0] + '" data-n="' + o[0] + '" aria-pressed="' + (n.nota === o[0]) + '">' + o[1] + "</button>"; }).join("") +
-            '</div><input type="text" class="ck-obs" data-obs="' + i + '" value="' + esc(n.obs || "") + '" placeholder="Observação (opcional)"></div>';
-        }).join("") + '</div><p class="hint">Clique de novo na nota para limpar. Setores sem nota não entram na média.</p></div>' +
+            '</div><input type="text" class="ck-obs" data-obs="' + i + '" value="' + esc(n.obs || "") + '" placeholder="Comentário">' +
+            '<div class="ck-fotos"><span class="ck-fl" data-fl="' + i + '">' + fotosHTML(i) + "</span>" +
+            (pode ? '<label class="ck-cam" title="Anexar fotos deste setor"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="2"/></svg><span>Anexo</span><input type="file" accept="image/*,video/*" multiple hidden data-fup="' + i + '"></label>' : "") + "</div></div>";
+        }).join("") + '</div><p class="hint">Clique de novo na nota para limpar. Setores sem nota não entram na média. As fotos de cada setor saem no relatório.</p></div>' +
+      '<div class="field vi-ck"><div class="section-title"><label>Checklist de ações <span class="hint" id="viAcCount"></span></label><span class="row">' +
+        (pode ? '<button type="button" class="btn ghost small" id="viGen">Gerar dos Regular e Ruim</button><button type="button" class="btn ghost small" id="viAdd">+ Ação</button>' : "") + "</span></div>" +
+        '<div id="viAcoes">' + acoesHTML() + "</div></div>" +
       '<div class="field" id="viAtt"></div>' +
-      "</div><footer><span class=\"row\">" + (isNew ? "" : '<span id="viDelW"><button class="btn ghost small" id="viDel">Excluir</button></span>') + '<button class="btn ghost small" id="viPauta">Levar os "Ruim" para a pauta</button></span><button class="btn" id="viSave">Salvar visita <span class="arrow">→</span></button></footer>', { wide: true });
-    var anexos = (d.anexos || []).slice();
-    attachBlock($("#viAtt"), { titulo: "Fotos da visita", lista: anexos, pasta: "visitas/" + id, accept: "image/*,video/*,.pdf", podeEditar: pode, dropTarget: $("#modalRoot .modal"),
+      "</div><footer><span class=\"row\">" + (isNew ? "" : '<span id="viDelW"><button class="btn ghost small" id="viDel">Excluir</button></span>') + (pode ? '<button class="btn ghost small" id="viPauta">Levar ações abertas para a pauta</button>' : "") + '</span><button class="btn" id="viSave">Salvar visita <span class="arrow">→</span></button></footer>', { wide: true });
+    var m = $("#modalRoot .modal");
+    hydrateMedia(m);
+    attachBlock($("#viAtt"), { titulo: "Fotos gerais da visita", lista: anexos, pasta: "visitas/" + id, accept: "image/*,video/*,.pdf", podeEditar: pode, dropTarget: m,
       onChange: function (l) { anexos = l; if (!isNew) Store.upd("visitas", id, { anexos: l }).catch(fail); } });
     var upScore = function () { var p = visitaScore({ notas: notas }); $("#viScore").innerHTML = p == null ? "" : 'Nota da visita: <span class="nota ' + scoreClass(p) + '">' + p + "%</span>"; };
-    var collect = function () { $$(".ck-obs").forEach(function (inp) { var s = setores[+inp.dataset.obs], o = inp.value.trim(); if (o) { notas[s] = Object.assign({}, notas[s] || {}, { obs: o }); } else if (notas[s]) { delete notas[s].obs; if (!notas[s].nota) delete notas[s]; } }); };
-    upScore();
-    $("[data-close]").onclick = closeModal;
-    $(".ck-list").onclick = function (e) {
+    var upCount = function () { var f = acoes.filter(acaoFeita).length; $("#viAcCount").textContent = acoes.length ? f + " de " + acoes.length + " feitas" : ""; };
+    var syncAcoes = function () { $$("#viAcoes [data-ai]").forEach(function (li) { var a = acoes[+li.dataset.ai]; if (!a) return; $$("[data-ak]", li).forEach(function (inp) { a[inp.dataset.ak] = inp.value; }); a.texto = (a.texto || "").trim(); }); };
+    var drawAcoes = function () { $("#viAcoes").innerHTML = acoesHTML(); upCount(); };
+    var collect = function () { $$(".ck-obs", m).forEach(function (inp) { var s = setores[+inp.dataset.obs], o = inp.value.trim(); if (o) { notas[s] = Object.assign({}, notas[s] || {}, { obs: o }); } else if (notas[s]) { delete notas[s].obs; limpa(s); } }); syncAcoes(); };
+    var doc = function () { collect(); return { loja: $("#viLo").value, data: $("#viDa").value || iso(today()), conta: $("#viCo").value, resp: $("#viRe").value, resumo: $("#viRs").value.trim(), notas: notas, anexos: anexos, acoes: acoes.filter(function (a) { return a.texto; }), criadoPor: d.criadoPor || me, criadoEm: d.criadoEm || new Date().toISOString() }; };
+    var persist = function (msg) { var x = doc(); if (!x.loja) { toast("Escolha a loja"); return Promise.reject({ code: "denied" }); } return Store.set("visitas", id, x).then(function () { isNew = false; if (msg) toast(msg); return x; }); };
+    upScore(); upCount();
+    $("[data-close]", m).onclick = closeModal;
+    m.addEventListener("change", function (e) {
+      var up = e.target.closest("[data-fup]"); if (!up) return;
+      var i = +up.dataset.fup, s = setores[i], files = up.files; if (!files || !files.length) return;
+      uploadMany(files, "visitas/" + id).then(function (ms) {
+        up.value = ""; if (!ms.length) return;
+        notas[s] = Object.assign({}, notas[s] || {}); notas[s].fotos = (notas[s].fotos || []).concat(ms);
+        var box = $('[data-fl="' + i + '"]', m); box.innerHTML = fotosHTML(i); hydrateMedia(box);
+        if (!isNew) { collect(); Store.upd("visitas", id, { notas: notas }).catch(fail); }
+      });
+    });
+    $(".ck-list", m).onclick = function (e) {
+      var fo = e.target.closest("[data-fopen]"); if (fo) { var p = fo.dataset.fopen.split(":"); lightbox(notas[setores[+p[0]]].fotos[+p[1]]); return; }
+      var fr = e.target.closest("[data-frm]");
+      if (fr) { var q = fr.dataset.frm.split(":"), s0 = setores[+q[0]], lista = notas[s0].fotos, rm = lista[+q[1]]; notas[s0].fotos = lista.filter(function (x) { return x !== rm; }); Store.removeFile(rm); limpa(s0); var bx = $('[data-fl="' + q[0] + '"]', m); bx.innerHTML = fotosHTML(+q[0]); hydrateMedia(bx); if (!isNew) { collect(); Store.upd("visitas", id, { notas: notas }).catch(fail); } return; }
       var b = e.target.closest("[data-n]"); if (!b) return;
       var row = b.closest("[data-si]"), s = setores[+row.dataset.si], cur = (notas[s] || {}).nota;
       var nv = cur === b.dataset.n ? "" : b.dataset.n;
-      notas[s] = Object.assign({}, notas[s] || {}); if (nv) notas[s].nota = nv; else delete notas[s].nota; if (!notas[s].nota && !notas[s].obs) delete notas[s];
+      notas[s] = Object.assign({}, notas[s] || {}); if (nv) notas[s].nota = nv; else delete notas[s].nota; limpa(s);
       $$("[data-n]", row).forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.n === nv)); });
       upScore();
     };
-    var doc = function () { collect(); return { loja: $("#viLo").value, data: $("#viDa").value || iso(today()), conta: $("#viCo").value, resp: $("#viRe").value, resumo: $("#viRs").value.trim(), notas: notas, anexos: anexos, criadoPor: d.criadoPor || me, criadoEm: d.criadoEm || new Date().toISOString() }; };
-    $("#viSave").onclick = function () {
-      var x = doc(); if (!x.loja) { toast("Escolha a loja"); return; }
-      Store.set("visitas", id, x).then(function () { toast("Visita salva"); isNew = false; }, fail); closeModal();
+    if ($("#viGen")) $("#viGen").onclick = function () {
+      collect();
+      var novos = setores.filter(function (s) { var n = notas[s] || {}; return (n.nota === "ruim" || n.nota === "regular") && !acoes.some(function (a) { return a.setor === s; }); });
+      if (!novos.length) { toast("Nenhum setor Regular ou Ruim sem ação"); return; }
+      novos.forEach(function (s) { var n = notas[s]; acoes.push({ id: Store.uid(), texto: (n.nota === "ruim" ? "Corrigir " : "Melhorar ") + s.toLowerCase() + (n.obs ? ": " + n.obs : ""), setor: s, resp: $("#viRe").value || me, prazo: "", feito: false }); });
+      drawAcoes(); toast(novos.length + (novos.length > 1 ? " ações" : " ação") + " no checklist");
     };
-    $("#viPauta").onclick = function () {
-      var x = doc(); var ruins = Object.keys(x.notas).filter(function (k) { return x.notas[k].nota === "ruim"; });
-      if (!ruins.length) { toast("Nenhum setor marcado como Ruim"); return; }
-      Promise.all(ruins.map(function (s) {
-        return Store.add("pauta", { titulo: "[" + x.loja + "] " + s + (x.notas[s].obs ? ": " + x.notas[s].obs : ""), conta: x.conta, resp: me, reuniao: "", area: "Loja / VM", prazo: "", status: "aberto", notas: "Da visita de " + fmt(parse(x.data)) + ".", criadoEm: new Date().toISOString(), criadoPor: me });
-      })).then(function () { toast(ruins.length + " pendência" + (ruins.length > 1 ? "s" : "") + " na pauta"); }, fail);
+    if ($("#viAdd")) $("#viAdd").onclick = function () { collect(); acoes.push({ id: Store.uid(), texto: "", setor: "", resp: $("#viRe").value || me, prazo: "", feito: false }); drawAcoes(); var ins = $$("#viAcoes .vi-a-t"); if (ins.length) ins[ins.length - 1].focus(); };
+    $("#viAcoes").onclick = function (e) {
+      var t = e.target.closest("[data-atog],[data-adel],[data-apauta]"); if (!t) return;
+      collect();
+      if (t.dataset.atog != null) {
+        var a = acoes[+t.dataset.atog], nv = !acaoFeita(a); a.feito = nv; a.feitoEm = nv ? new Date().toISOString() : "";
+        if (a.pautaId) { var p = S.pauta.find(function (x) { return x.id === a.pautaId; }); if (p && (p.status === "feito") !== nv) Store.upd("pauta", p.id, nv ? { status: "feito", feitoEm: new Date().toISOString() } : { status: "aberto", feitoEm: "" }).catch(function () {}); }
+        drawAcoes(); if (!isNew) Store.upd("visitas", id, { acoes: acoes.filter(function (x) { return x.texto; }) }).catch(fail); return;
+      }
+      if (t.dataset.adel != null) { acoes.splice(+t.dataset.adel, 1); drawAcoes(); return; }
+      if (t.dataset.apauta != null) {
+        var ac = acoes[+t.dataset.apauta]; if (!ac.texto) { toast("Escreva a ação primeiro"); return; }
+        var vv = doc();
+        acaoParaPauta(Object.assign({ id: id }, vv), ac).then(function (pid) { ac.pautaId = pid; drawAcoes(); return persist(); }).then(function () { toast("Na pauta viva"); }, fail);
+      }
     };
-    if ($("#viDel")) $("#viDel").onclick = function () { delConfirm("#viDelW", "Excluir esta visita?", function () { anexos.forEach(function (a) { Store.removeFile(a); }); Store.del("visitas", id).catch(fail); closeModal(); }); };
+    if ($("#viPauta")) $("#viPauta").onclick = function () {
+      var vv = doc(), abertas = acoes.filter(function (a) { return a.texto && !a.pautaId && !acaoFeita(a); });
+      if (!abertas.length) { toast(acoes.length ? "Todas as ações já estão na pauta ou feitas" : "Crie as ações do checklist primeiro"); return; }
+      abertas.reduce(function (pr, a) { return pr.then(function () { return acaoParaPauta(Object.assign({ id: id }, vv), a).then(function (pid) { a.pautaId = pid; }); }); }, Promise.resolve())
+        .then(function () { drawAcoes(); return persist(); }).then(function () { toast(abertas.length + " pendência" + (abertas.length > 1 ? "s" : "") + " na pauta"); }, fail);
+    };
+    $("#viSave").onclick = function () { persist("Visita salva").then(function () { closeModal(); }, function (e) { if (!e || e.code !== "denied") fail(e); }); };
+    if ($("#viDel")) $("#viDel").onclick = function () { delConfirm("#viDelW", "Excluir esta visita?", function () { anexos.forEach(function (a) { Store.removeFile(a); }); Object.keys(notas).forEach(function (s) { (notas[s].fotos || []).forEach(function (a) { Store.removeFile(a); }); }); Store.del("visitas", id).catch(fail); closeModal(); }); };
   }
 
   /* ---------- relatório para a diretoria (abre pronto para salvar em PDF) ---------- */
@@ -2314,7 +2462,10 @@
     var setores = setoresDe(list), mx = matriz(list);
     var ANEXOS_POR_VISITA = 4;
     var jobs = [];
-    list.forEach(function (v) { (v.anexos || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, ANEXOS_POR_VISITA).forEach(function (a) { jobs.push(Store.fileUrl(a).then(function (u) { a._u = u; }, function () {})); }); });
+    list.forEach(function (v) {
+      (v.anexos || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, ANEXOS_POR_VISITA).forEach(function (a) { jobs.push(Store.fileUrl(a).then(function (u) { a._u = u; }, function () {})); });
+      Object.keys(v.notas || {}).forEach(function (s) { ((v.notas[s] || {}).fotos || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, 3).forEach(function (a) { jobs.push(Store.fileUrl(a).then(function (u) { a._u = u; }, function () {})); }); });
+    });
     Promise.all(jobs).then(function () {
       var logo = new URL("logo.png", location.href).href;
       var scores = list.map(visitaScore).filter(function (x) { return x != null; });
@@ -2330,7 +2481,9 @@
             var fotos = (v.anexos || []).filter(function (a) { return a._u; });
             return '<div class="visita"><h3>Visita de ' + fmt(parse(v.data)) + "/" + v.data.slice(0, 4) + ' <span class="muted">· ' + esc(v.resp || "") + (visitaScore(v) != null ? " · nota " + visitaScore(v) + "%" : "") + "</span></h3>" +
               (v.resumo ? '<p class="resumo">' + esc(v.resumo).replace(/\n/g, "<br>") + "</p>" : "") +
-              (fotos.length ? '<div class="fotos">' + fotos.map(function (a) { return '<img src="' + esc(a._u) + '" alt="">'; }).join("") + "</div>" : "") + "</div>";
+              (fotos.length ? '<div class="fotos">' + fotos.map(function (a) { return '<img src="' + esc(a._u) + '" alt="">'; }).join("") + "</div>" : "") +
+              (function () { var fs = []; Object.keys(v.notas || {}).forEach(function (s) { var n = v.notas[s] || {}; ((n.fotos || []).filter(function (a) { return a._u; }).slice(0, 3)).forEach(function (a) { fs.push('<figure><img src="' + esc(a._u) + '" alt=""><figcaption>' + esc(s) + (n.nota ? " · " + NOTA_L[n.nota] : "") + "</figcaption></figure>"); }); }); return fs.length ? '<div class="lbl2">Fotos por setor</div><div class="fotos setor">' + fs.join("") + "</div>" : ""; })() +
+              ((v.acoes || []).length ? '<div class="lbl2">Checklist de ações · ' + v.acoes.filter(acaoFeita).length + " de " + v.acoes.length + ' feitas</div><ul class="acs">' + v.acoes.map(function (a) { var f = acaoFeita(a); return '<li class="' + (f ? "ok" : "") + '"><span class="bx">' + (f ? "✓" : "") + "</span>" + esc(a.texto) + '<span class="muted"> · ' + esc(a.resp || "") + (a.prazo ? " · até " + fmt(parse(a.prazo)) : "") + (a.pautaId ? " · na pauta" : "") + "</span></li>"; }).join("") + "</ul>" : "") + "</div>";
           }).join("") + "</section>";
       }).join("");
       var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de visitas · ' + esc(viRangeLabel()) + '</title>' +
@@ -2347,6 +2500,8 @@
         ".loja{break-before:page;padding-top:4px}.lh{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #F5DF00;padding-bottom:6px;margin-bottom:10px}.lh h2{font-size:19px}.ls{display:flex;gap:10px;align-items:center}" +
         ".obs{font-size:10px;color:#555;margin-top:2px}.visita{margin-top:14px;break-inside:avoid}.visita h3{font-size:12.5px;margin-bottom:4px}.resumo{margin:0 0 6px;padding:8px 10px;background:#fafafa;border-left:3px solid #F5DF00}" +
         ".fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.fotos img{width:100%;height:110px;object-fit:cover;border-radius:6px}" +
+        ".fotos.setor figure{margin:0}.fotos.setor figcaption{font-size:9.5px;color:#555;margin-top:2px}.lbl2{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:#6b6b6b;font-weight:700;margin:10px 0 4px}" +
+        ".acs{list-style:none;margin:0;padding:0;display:grid;gap:3px}.acs li{display:flex;gap:6px;align-items:flex-start}.acs .bx{width:12px;height:12px;border:1.5px solid #999;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:none;margin-top:2px}.acs li.ok{color:#6b6b6b;text-decoration:line-through}.acs li.ok .bx{background:#1f9d57;border-color:#1f9d57;color:#fff}" +
         "@media screen{body{max-width:1100px;margin:0 auto;padding:24px}}" +
         ".foot{margin-top:20px;font-size:10px;color:#8a8a8a;text-align:center}.tip{background:#fff8c6;border:1px solid #f0dc50;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px}@media print{.tip{display:none}}" +
         "</style></head><body>" +
@@ -2479,10 +2634,10 @@
         '<div class="field"><label>Local</label><input type="text" data-ef="local" value="' + esc(d.local) + '"></div>' +
         '<div class="field"><label>Público estimado</label><input type="number" min="0" data-ef="publico" value="' + esc(d.publico) + '"></div></div>' +
         '<div class="field"><label>Objetivo</label><textarea data-ef="objetivo" style="min-height:50px" placeholder="O que o evento precisa entregar">' + esc(d.objetivo) + "</textarea></div>" +
-        '<div class="field"><div class="section-title"><label>Estimativa de custos</label><button class="btn ghost small" data-add="custo">+ Item</button></div>' +
+        '<div class="field"><div class="section-title"><label>Estimativa de custos</label><span class="row"><button type="button" class="btn ghost small" id="evFornNew">+ Novo fornecedor</button><button class="btn ghost small" data-add="custo">+ Item</button></span></div>' +
         '<div class="tbl-wrap"><table class="tbl ev-costs"><thead><tr><th>Item</th><th class="r">Qtd</th><th class="r">Valor unit.</th><th class="r">Estimado</th><th class="r">Real (depois)</th><th>Fornecedor</th><th></th></tr></thead><tbody>' +
-        d.custos.map(function (c, i) { return '<tr data-crow="' + i + '"><td><input type="text" data-k="item" list="evItens" value="' + esc(c.item) + '"></td><td class="r"><input type="text" inputmode="decimal" data-k="qtd" class="num-in" value="' + esc(c.qtd) + '"></td><td class="r"><input type="text" inputmode="decimal" data-k="unit" class="money" value="' + (c.unit ? numBR(c.unit) : "") + '" placeholder="0,00"></td><td class="r num">' + brl((Number(c.qtd) || 0) * (Number(c.unit) || 0)) + '</td><td class="r"><input type="text" inputmode="decimal" data-k="real" class="money" value="' + (c.real ? numBR(c.real) : "") + '" placeholder="0,00"></td><td><input type="text" data-k="fornecedor" value="' + esc(c.fornecedor) + '"></td><td><button class="x" data-del="custo" data-i="' + i + '">✕</button></td></tr>'; }).join("") +
-        '</tbody></table></div><datalist id="evItens">' + L.itensCustoEvento.map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist>" +
+        d.custos.map(function (c, i) { return '<tr data-crow="' + i + '"><td><input type="text" data-k="item" list="evItens" value="' + esc(c.item) + '"></td><td class="r"><input type="text" inputmode="decimal" data-k="qtd" class="num-in" value="' + esc(c.qtd) + '"></td><td class="r"><input type="text" inputmode="decimal" data-k="unit" class="money" value="' + (c.unit ? numBR(c.unit) : "") + '" placeholder="0,00"></td><td class="r num">' + brl((Number(c.qtd) || 0) * (Number(c.unit) || 0)) + '</td><td class="r"><input type="text" inputmode="decimal" data-k="real" class="money" value="' + (c.real ? numBR(c.real) : "") + '" placeholder="0,00"></td><td><input type="text" data-k="fornecedor" list="evForn" value="' + esc(c.fornecedor) + '"></td><td><button class="x" data-del="custo" data-i="' + i + '">✕</button></td></tr>'; }).join("") +
+        '</tbody></table></div>' + fornList("evForn") + '<datalist id="evItens">' + L.itensCustoEvento.map(function (n) { return '<option value="' + esc(n) + '">'; }).join("") + "</datalist>" +
         (faltam.length ? '<div class="chips" style="margin-top:6px"><span class="hint" style="align-self:center">Adicionar rápido:</span>' + faltam.map(function (n) { return '<button type="button" data-quick="' + esc(n) + '">+ ' + esc(n) + "</button>"; }).join("") + "</div>" : "") + "</div>" +
         '<div class="field"><label>Verba cooperada e patrocínio</label>' +
         '<div class="coop-row"><label class="ct"><input type="checkbox" id="eCoopTem"' + (d.cooperada.tem ? " checked" : "") + '> tem verba cooperada</label><input type="text" id="eCoopInd" placeholder="Indústria" value="' + esc(d.cooperada.industria) + '"><input type="text" inputmode="decimal" id="eCoopVal" class="money" placeholder="Valor" value="' + (d.cooperada.valor ? numBR(d.cooperada.valor) : "") + '"></div>' +
@@ -2500,6 +2655,7 @@
       attachBlock($("#evLista"), { titulo: "Lista de convidados (planilha, PDF ou Word)", lista: d.listaAnexos || [], pasta: "eventos/" + id, accept: ".xlsx,.xls,.csv,.pdf,.docx,.doc", podeEditar: true, dropTarget: m, onChange: function (l) { d.listaAnexos = l; } });
       attachBlock($("#evFotos"), { titulo: "Fotos e materiais do evento", lista: d.anexos || [], pasta: "eventos/" + id, accept: "image/*,video/*,.pdf", podeEditar: true, onChange: function (l) { d.anexos = l; } });
       $("[data-close]", m).onclick = closeModal;
+      $("#evFornNew").onclick = function () { fornRapido("", function () { sync(); draw(); }); };
       $$("[data-add]", m).forEach(function (b) { b.onclick = function () { sync(); if (b.dataset.add === "custo") d.custos.push({ item: "", qtd: 1, unit: 0, real: 0, fornecedor: "" }); else d.patrocinios.push({ empresa: "", valor: 0, contrapartida: "" }); draw(); }; });
       $$("[data-del]", m).forEach(function (b) { b.onclick = function () { sync(); (b.dataset.del === "custo" ? d.custos : d.patrocinios).splice(+b.dataset.i, 1); draw(); }; });
       $$("[data-quick]", m).forEach(function (b) { b.onclick = function () { sync(); d.custos.push({ item: b.dataset.quick, qtd: 1, unit: 0, real: 0, fornecedor: "" }); draw(); }; });
@@ -2908,6 +3064,399 @@
       closeModal();
     };
     if ($("#dcDel")) $("#dcDel").onclick = function () { delConfirm("#dcDelW", "Excluir o documento e os arquivos?", function () { anexos.forEach(function (a) { Store.removeFile(a); }); Store.del("documentos", id).catch(fail); closeModal(); }); };
+  }
+
+  /* ================================================================
+     FORNECEDORES · cadastro único usado em Verba, Mídia e Eventos (só admins)
+     ================================================================ */
+  var fnF = { q: "", cat: "" };
+  function fornCad() { return S.fornecedores.slice().sort(function (a, b) { return (a.nome || "").localeCompare(b.nome || "", "pt-BR"); }); }
+  function fornPorNome(n) { n = String(n || "").trim().toLowerCase(); if (!n) return null; return S.fornecedores.find(function (f) { return (f.nome || "").trim().toLowerCase() === n; }) || null; }
+  function fornUso(nome) {
+    var n = String(nome || "").trim().toLowerCase(), eq = function (x) { return String(x || "").trim().toLowerCase() === n; };
+    var nfs = S.nfs.filter(function (x) { return eq(x.fornecedor); });
+    var mid = S.midias.filter(function (x) { return eq(x.veiculo); });
+    var ctr = S.contratos.filter(function (x) { return eq(x.fornecedor); });
+    var evs = []; S.eventos_org.forEach(function (e) { (e.custos || []).forEach(function (c) { if (eq(c.fornecedor)) evs.push({ e: e, c: c }); }); });
+    var ano = String(new Date().getFullYear());
+    var gastoAno = nfs.filter(function (x) { return (x.competencia || "").slice(0, 4) === ano; }).reduce(function (t, x) { return t + (Number(x.valor) || 0); }, 0);
+    return { nfs: nfs, mid: mid, ctr: ctr, evs: evs, gastoAno: gastoAno };
+  }
+  // liga um campo de fornecedor ao cadastro: lista de sugestões + "cadastrar" + preenchimento automático
+  function fornHook(input, onPick) {
+    if (!input || input.dataset.fornHook) return; input.dataset.fornHook = "1";
+    var box = document.createElement("span"); box.className = "forn-hint"; input.insertAdjacentElement("afterend", box);
+    var upd = function () {
+      var f = fornPorNome(input.value);
+      var h = f ? '<span class="ok-txt">✓ cadastrado' + (f.categoria ? " · " + esc(f.categoria) : "") + "</span>" : (input.value.trim() ? '<button type="button" class="linkbtn">+ cadastrar “' + esc(input.value.trim().slice(0, 40)) + '” nos fornecedores</button>' : '<button type="button" class="linkbtn">+ novo fornecedor</button>');
+      if (box._h === h) return; box._h = h; box.innerHTML = h;
+      var b = $("button", box); if (b) b.onclick = function () { fornRapido(input.value.trim(), function (nf) { input.value = nf.nome; input.dispatchEvent(new Event("input", { bubbles: true })); upd(); if (onPick) onPick(nf); }); };
+    };
+    input.addEventListener("input", upd);
+    input.addEventListener("change", function () { upd(); var f = fornPorNome(input.value); if (f && onPick) onPick(f); });
+    upd();
+  }
+  // cadastro rápido por cima do que estiver aberto (não fecha a janela atual)
+  function fornRapido(nome, then) {
+    var old = $("#fornPop"); if (old) old.remove();
+    var L = listas(), p = document.createElement("div"); p.id = "fornPop"; p.className = "forn-pop";
+    p.innerHTML = '<div class="forn-card" role="dialog" aria-modal="true"><div class="section-title"><h3>Novo fornecedor</h3><button class="x" data-fx aria-label="Fechar">✕</button></div>' +
+      '<div class="grid2"><div class="field"><label>Nome</label><input type="text" id="frN" value="' + esc(nome || "") + '"></div>' +
+      '<div class="field"><label>Categoria</label><select id="frC">' + opt(L.categoriasFornecedor, "", "—") + "</select></div>" +
+      '<div class="field"><label>CNPJ</label><input type="text" id="frJ" placeholder="00.000.000/0000-00"></div>' +
+      '<div class="field"><label>Contato</label><input type="text" id="frK" placeholder="nome"></div>' +
+      '<div class="field"><label>Telefone / WhatsApp</label><input type="text" id="frT"></div>' +
+      '<div class="field"><label>Email</label><input type="text" id="frE"></div></div>' +
+      '<p class="hint">Os outros dados (PIX, banco, contrato) você completa depois na aba Fornecedores.</p>' +
+      '<div class="row" style="justify-content:flex-end"><button class="btn ghost small" data-fx>Cancelar</button><button class="btn small" id="frOk">Cadastrar</button></div></div>';
+    document.body.appendChild(p);
+    var fechar = function () { p.remove(); };
+    $$("[data-fx]", p).forEach(function (b) { b.onclick = fechar; });
+    p.addEventListener("mousedown", function (e) { if (e.target === p) fechar(); });
+    p.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.stopPropagation(); fechar(); } });
+    $("#frN").focus();
+    $("#frOk").onclick = function () {
+      var n = $("#frN").value.trim(); if (!n) { $("#frN").focus(); return; }
+      if (fornPorNome(n)) { toast("Já existe um fornecedor com esse nome"); fechar(); if (then) then(fornPorNome(n)); return; }
+      var doc = { nome: n, categoria: $("#frC").value, cnpj: $("#frJ").value.trim(), contato: $("#frK").value.trim(), telefone: $("#frT").value.trim(), email: $("#frE").value.trim(), razao: "", cidade: "", pix: "", banco: "", obs: "", anexos: [], ativo: true, criadoEm: new Date().toISOString(), criadoPor: me };
+      Store.add("fornecedores", doc).then(function (id) { toast("Fornecedor cadastrado"); fechar(); if (then) then(Object.assign({ id: id }, doc)); }, fail);
+    };
+  }
+
+  function renderFornecedores() {
+    var el = $("#v-fornecedores"), L = listas();
+    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    var q = fnF.q.trim().toLowerCase();
+    var list = fornCad().filter(function (f) { return (!fnF.cat || f.categoria === fnF.cat) && (!q || [f.nome, f.razao, f.cnpj, f.contato, f.cidade, f.categoria].join(" ").toLowerCase().indexOf(q) >= 0); });
+    var cad = {}; S.fornecedores.forEach(function (f) { cad[(f.nome || "").trim().toLowerCase()] = 1; });
+    var soltos = {}; S.nfs.concat(S.contratos, S.cooperada).forEach(function (x) { if (x.fornecedor && !cad[x.fornecedor.trim().toLowerCase()]) soltos[x.fornecedor.trim()] = 1; }); S.midias.forEach(function (m) { if (m.veiculo && !cad[m.veiculo.trim().toLowerCase()]) soltos[m.veiculo.trim()] = 1; });
+    var nSoltos = Object.keys(soltos).length;
+    el.innerHTML =
+      '<div class="view-head"><div><div class="eyebrow">Fornecedores</div><h2>Cadastro de fornecedores</h2><p class="muted">Um cadastro só para Verba e NFs, Mídia e Eventos. Na ficha de cada um aparece o histórico: notas, veiculações, contratos e custos de eventos.</p></div>' +
+      '<div class="row"><button class="btn" id="fnNew">+ Fornecedor <span class="arrow">→</span></button></div></div>' +
+      (nSoltos ? '<div class="banner warn fn-soltos"><span>' + nSoltos + " nome" + (nSoltos > 1 ? "s" : "") + " usado" + (nSoltos > 1 ? "s" : "") + ' em lançamentos, contratos ou mídia ainda sem cadastro.</span><button class="btn small" id="fnImp">Cadastrar todos de uma vez</button></div>' : "") +
+      '<div class="row"><input type="search" id="fnQ" placeholder="Buscar por nome, CNPJ, contato, cidade" value="' + esc(fnF.q) + '" style="max-width:360px">' +
+      '<select id="fnC" style="width:auto"><option value="">Todas as categorias</option>' + L.categoriasFornecedor.map(function (c) { return "<option" + (c === fnF.cat ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select>" +
+      '<span class="hint">' + list.length + " de " + S.fornecedores.length + "</span></div>" +
+      (list.length ? '<div class="tbl-wrap"><table class="tbl fn-tbl"><thead><tr><th>Fornecedor</th><th>Categoria</th><th>Contato</th><th>CNPJ</th><th class="r">Gasto em ' + new Date().getFullYear() + '</th><th class="r">Uso</th></tr></thead><tbody>' +
+        list.map(function (f) { var u = fornUso(f.nome); return '<tr data-fn="' + esc(f.id) + '" class="' + (f.ativo === false ? "off" : "") + '"><td><b>' + esc(f.nome) + "</b>" + (f.razao ? '<div class="hint">' + esc(f.razao) + "</div>" : "") + "</td><td>" + (f.categoria ? '<span class="tag">' + esc(f.categoria) + "</span>" : "—") + "</td><td>" + esc([f.contato, f.telefone].filter(Boolean).join(" · ") || "—") + (f.email ? '<div class="hint">' + esc(f.email) + "</div>" : "") + '</td><td class="num">' + esc(f.cnpj || "—") + '</td><td class="r num"><b>' + (u.gastoAno ? brl(u.gastoAno) : "—") + '</b></td><td class="r hint">' + [u.nfs.length ? u.nfs.length + " NF" : "", u.mid.length ? u.mid.length + " mídia" : "", u.ctr.length ? u.ctr.length + " contrato" : "", u.evs.length ? u.evs.length + " evento" : ""].filter(Boolean).join(" · ") + "</td></tr>"; }).join("") +
+        "</tbody></table></div>" : '<div class="empty">' + (S.fornecedores.length ? "Nenhum fornecedor com esse filtro." : "Nenhum fornecedor cadastrado ainda.") + "</div>");
+    $("#fnNew").onclick = function () { openFornecedor(null); };
+    $("#fnQ").oninput = function () { fnF.q = this.value; clearTimeout(renderFornecedores._t); renderFornecedores._t = setTimeout(function () { renderFornecedores(); var i = $("#fnQ"); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 250); };
+    $("#fnC").onchange = function () { fnF.cat = this.value; renderFornecedores(); };
+    if ($("#fnImp")) $("#fnImp").onclick = function () {
+      var nomes = Object.keys(soltos);
+      nomes.reduce(function (pr, n) {
+        var m = S.midias.find(function (x) { return (x.veiculo || "").trim() === n; });
+        var cat = m ? ({ "Rádio": "Rádio", "TV": "TV", "Digital": "Digital", "Outdoor": "Outdoor e OOH", "Painel de LED": "Outdoor e OOH", "Carro de som": "Outdoor e OOH" }[m.tipo] || "") : "";
+        return pr.then(function () { return Store.add("fornecedores", { nome: n, categoria: cat, cnpj: m ? m.cnpjVeiculo || "" : "", contato: m ? m.contato || "" : "", telefone: "", email: "", razao: "", cidade: m ? m.praca || "" : "", pix: "", banco: "", obs: "", anexos: [], ativo: true, criadoEm: new Date().toISOString(), criadoPor: me }); });
+      }, Promise.resolve()).then(function () { toast(nomes.length + " fornecedor" + (nomes.length > 1 ? "es" : "") + " cadastrado" + (nomes.length > 1 ? "s" : "")); }, fail);
+    };
+    el.onclick = function (e) { var r = e.target.closest("tr[data-fn]"); if (r) openFornecedor(S.fornecedores.find(function (x) { return x.id === r.dataset.fn; })); };
+  }
+
+  function openFornecedor(fv) {
+    var L = listas(), isNew = !fv, id = isNew ? Store.uid() : fv.id;
+    var d = Object.assign({ nome: "", razao: "", cnpj: "", categoria: "", contato: "", telefone: "", email: "", cidade: "", pix: "", banco: "", obs: "", anexos: [], ativo: true }, fv || {});
+    var anexos = (d.anexos || []).slice(), u = isNew ? null : fornUso(d.nome);
+    var cats = L.categoriasFornecedor.slice(); if (d.categoria && cats.indexOf(d.categoria) < 0) cats.push(d.categoria);
+    var hist = "";
+    if (u) {
+      var nfs = u.nfs.slice().sort(function (a, b) { return (b.competencia || "").localeCompare(a.competencia || ""); });
+      hist = '<div class="md-block"><div class="lbl">Histórico</div>' +
+        '<div class="vtiles small"><div class="vtile"><span>Gasto em ' + new Date().getFullYear() + "</span><b>" + brl(u.gastoAno) + '</b></div><div class="vtile"><span>Notas</span><b>' + u.nfs.length + '</b></div><div class="vtile"><span>Veiculações</span><b>' + u.mid.length + '</b></div><div class="vtile"><span>Contratos</span><b>' + u.ctr.length + "</b></div></div>" +
+        (nfs.length ? '<div class="tbl-wrap"><table class="tbl fn-h"><thead><tr><th>Mês</th><th>Descrição</th><th>Conta</th><th class="r">Valor</th><th>Status</th></tr></thead><tbody>' + nfs.slice(0, 12).map(function (n) { return "<tr><td>" + esc(n.competencia ? mesCurto(n.competencia) : "—") + "</td><td>" + esc(n.descricao || n.categoria || "") + "</td><td>" + esc(n.conta || "") + '</td><td class="r num">' + brl(n.valor) + "</td><td>" + esc(stLabel(NF_ST, n.status)) + "</td></tr>"; }).join("") + "</tbody></table></div>" + (nfs.length > 12 ? '<p class="hint">Mostrando as 12 mais recentes.</p>' : "") : "") +
+        (u.mid.length ? '<div class="hint">Mídia: ' + u.mid.map(function (m) { return "PI " + esc(m.numero || "—") + " (" + esc(midPeriodo(m)) + ")"; }).join(" · ") + "</div>" : "") +
+        (u.ctr.length ? '<div class="hint">Contratos: ' + u.ctr.map(function (c) { return esc(c.objeto || c.categoria || "contrato") + " · " + brl(c.valor); }).join(" · ") + "</div>" : "") +
+        (u.evs.length ? '<div class="hint">Eventos: ' + u.evs.map(function (x) { return esc(x.e.nome || "evento") + " · " + esc(x.c.item); }).join(" · ") + "</div>" : "") +
+        (!nfs.length && !u.mid.length && !u.ctr.length && !u.evs.length ? '<p class="hint">Ainda não aparece em lançamentos, mídia, contratos ou eventos.</p>' : "") + "</div>";
+    }
+    var m = openModal('<header><div><div class="eyebrow">Fornecedor</div><h3>' + (isNew ? "Novo fornecedor" : esc(d.nome)) + '</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
+      '<div class="grid2"><div class="field"><label>Nome (como aparece nos lançamentos)</label><input type="text" id="fnN" value="' + esc(d.nome) + '" autofocus></div>' +
+      '<div class="field"><label>Razão social</label><input type="text" id="fnR" value="' + esc(d.razao) + '"></div>' +
+      '<div class="field"><label>CNPJ / CPF</label><input type="text" id="fnJ" value="' + esc(d.cnpj) + '"></div>' +
+      '<div class="field"><label>Categoria</label><select id="fnCat">' + opt(cats, d.categoria, "—") + "</select></div>" +
+      '<div class="field"><label>Contato</label><input type="text" id="fnK" value="' + esc(d.contato) + '"></div>' +
+      '<div class="field"><label>Telefone / WhatsApp</label><input type="text" id="fnT" value="' + esc(d.telefone) + '"></div>' +
+      '<div class="field"><label>Email</label><input type="text" id="fnE" value="' + esc(d.email) + '"></div>' +
+      '<div class="field"><label>Cidade / UF</label><input type="text" id="fnCi" value="' + esc(d.cidade) + '"></div>' +
+      '<div class="field"><label>Chave PIX</label><input type="text" id="fnP" value="' + esc(d.pix) + '"></div>' +
+      '<div class="field"><label>Banco, agência e conta</label><input type="text" id="fnB" value="' + esc(d.banco) + '"></div></div>' +
+      '<div class="field"><label>Observações</label><textarea id="fnO" style="min-height:60px" placeholder="Prazo de pagamento, o que costuma fornecer, avaliação">' + esc(d.obs) + "</textarea></div>" +
+      '<label class="ind-checks"><input type="checkbox" id="fnA"' + (d.ativo !== false ? " checked" : "") + "> Fornecedor ativo</label>" +
+      '<div class="field" id="fnAtt"></div>' + hist + "</div>" +
+      '<footer><span class="row">' + (isNew ? "" : '<span id="fnDelW"><button class="btn ghost small" id="fnDel">Excluir</button></span>') + '</span><button class="btn" id="fnSave">Salvar <span class="arrow">→</span></button></footer>', { wide: true });
+    attachBlock($("#fnAtt"), { titulo: "Contrato, proposta, cartão CNPJ, tabela de preços", lista: anexos, pasta: "verba/fornecedores/" + id, accept: ".pdf,.docx,.doc,.xlsx,.xls,.csv,image/*", podeEditar: true, dropTarget: m, onChange: function (l) { anexos = l; if (!isNew) Store.upd("fornecedores", id, { anexos: l }).catch(fail); } });
+    $("[data-close]", m).onclick = closeModal;
+    $("#fnSave").onclick = function () {
+      var n = $("#fnN").value.trim(); if (!n) { $("#fnN").focus(); return; }
+      var dup = fornPorNome(n); if (dup && dup.id !== id) { toast("Já existe um fornecedor com esse nome"); return; }
+      var doc = { nome: n, razao: $("#fnR").value.trim(), cnpj: $("#fnJ").value.trim(), categoria: $("#fnCat").value, contato: $("#fnK").value.trim(), telefone: $("#fnT").value.trim(), email: $("#fnE").value.trim(), cidade: $("#fnCi").value.trim(), pix: $("#fnP").value.trim(), banco: $("#fnB").value.trim(), obs: $("#fnO").value.trim(), anexos: anexos, ativo: $("#fnA").checked, criadoEm: d.criadoEm || new Date().toISOString(), criadoPor: d.criadoPor || me, atualizadoEm: new Date().toISOString() };
+      var antigo = d.nome, n2 = 0;
+      Store.set("fornecedores", id, doc).then(function () {
+        if (!isNew && antigo && antigo !== n) { // renomeou: atualiza onde o nome antigo aparece
+          ["nfs", "contratos", "cooperada"].forEach(function (col) { S[col].forEach(function (x) { if (x.fornecedor === antigo) { Store.upd(col, x.id, { fornecedor: n }).catch(fail); n2++; } }); });
+          S.midias.forEach(function (x) { if (x.veiculo === antigo) { Store.upd("midias", x.id, { veiculo: n }).catch(fail); n2++; } });
+          S.eventos_org.forEach(function (e) { if ((e.custos || []).some(function (c) { return c.fornecedor === antigo; })) { Store.upd("eventos_org", e.id, { custos: e.custos.map(function (c) { return c.fornecedor === antigo ? Object.assign({}, c, { fornecedor: n }) : c; }) }).catch(fail); n2++; } });
+        }
+        toast("Fornecedor salvo" + (n2 ? " · nome atualizado em " + n2 + " registro" + (n2 > 1 ? "s" : "") : ""));
+      }, fail);
+      closeModal();
+    };
+    if ($("#fnDel")) $("#fnDel").onclick = function () { delConfirm("#fnDelW", "Excluir o cadastro? (lançamentos ficam)", function () { anexos.forEach(function (a) { Store.removeFile(a); }); Store.del("fornecedores", id).catch(fail); closeModal(); }); };
+  }
+
+  /* ================================================================
+     MÍDIA · plano e controle de veiculações, PI em PDF, conversa com a Verba (só admins)
+     ================================================================ */
+  var MID_ST = [["previsto", "Previsto"], ["negociando", "Negociando"], ["aprovado", "Aprovado"], ["pi", "PI enviado"], ["noar", "No ar"], ["comprovado", "Comprovado"], ["cancelado", "Cancelado"]];
+  // colunas da programação conforme o tipo de mídia
+  var MID_COLS = {
+    "Rádio": { desc: "Programa / faixa horária", det: "Emissora / observação", dur: "Duração", dias: "Dias", qtd: "Inserções", unit: "Valor por inserção", dica: "Ex: Manhã 6h–9h · 30\" · seg a sex · 44 inserções." },
+    "TV": { desc: "Programa / intervalo", det: "Emissora / observação", dur: "Duração", dias: "Dias", qtd: "Inserções", unit: "Valor por inserção", dica: "Ex: Jornal do meio-dia · 30\" · seg a sáb · 12 inserções." },
+    "Carro de som": { desc: "Roteiro / bairros", det: "Horário", dur: "Horas por dia", dias: "Dias", qtd: "Total de horas", unit: "Valor por hora", dica: "Ex: Centro e Vila Planalto · 8h–12h · 4h/dia · 5 dias = 20 horas." },
+    "Outdoor": { desc: "Ponto / endereço", det: "Face / iluminado", dur: "Formato", dias: "Bi-semana", qtd: "Placas", unit: "Valor por placa", dica: "Ex: Av. Afonso Pena x Rua 14 · 9x3 m · bi-semana 22 · 1 placa." },
+    "Painel de LED": { desc: "Local do painel", det: "Horário de exibição", dur: "Duração do vídeo", dias: "Período", qtd: "Inserções / cotas", unit: "Valor unitário", dica: "Ex: Painel Shopping Norte · 15\" · 30 dias · 1 cota (180 inserções/dia)." },
+    "Digital": { desc: "Plataforma / formato", det: "Segmentação / objetivo", dur: "Peças", dias: "Período", qtd: "Qtd", unit: "Investimento", dica: "Ex: Meta Ads · reels e stories · 30 dias · raio 10 km das lojas." },
+    "Jornal e revista": { desc: "Título / caderno", det: "Página / posição", dur: "Formato", dias: "Datas", qtd: "Inserções", unit: "Valor por inserção", dica: "Ex: Correio do Estado · caderno Casa · 1/2 página cor · 2 domingos." }
+  };
+  var MID_COLS_PADRAO = { desc: "Item / formato", det: "Detalhe", dur: "Duração / formato", dias: "Período / dias", qtd: "Qtd", unit: "Valor unitário", dica: "" };
+  var MID_CAT = { "Rádio": "Mídia · rádio", "TV": "Mídia · TV", "Outdoor": "Mídia · outdoor e OOH", "Painel de LED": "Mídia · outdoor e OOH", "Carro de som": "Mídia · outdoor e OOH", "Digital": "Mídia digital · anúncios", "Jornal e revista": "Mídia · jornal e revista" };
+  var midF = { mes: iso(today()).slice(0, 7), tipo: "", conta: "", status: "" };
+
+  function midCols(tipo) { return MID_COLS[tipo] || MID_COLS_PADRAO; }
+  function midTot(m) {
+    var bruto = (m.itens || []).reduce(function (t, i) { return t + (Number(i.qtd) || 0) * (Number(i.unit) || 0); }, 0);
+    var desc = Math.min(100, Math.max(0, Number(m.desconto) || 0));
+    var liq = m.valorFechado ? Number(m.valorFechado) : bruto * (1 - desc / 100);
+    var ins = (m.itens || []).reduce(function (t, i) { return t + (Number(i.qtd) || 0); }, 0);
+    var coop = m.cooperada && m.cooperada.tem ? Number(m.cooperada.valor) || 0 : 0;
+    return { bruto: bruto, desc: desc, liquido: liq, ins: ins, coop: coop, custo: liq - coop };
+  }
+  // meses que a veiculação ocupa (para o filtro do mês)
+  function midNoMes(m, ym) {
+    var a = (m.inicio || m.competencia || "").slice(0, 7), b = (m.fim || m.inicio || m.competencia || "").slice(0, 7);
+    if (!a && !b) return false;
+    if (!a) a = b; if (!b) b = a;
+    return a <= ym && ym <= b || (m.competencia || "") === ym;
+  }
+  function midComp(m) { return m.competencia || (m.inicio || iso(today())).slice(0, 7); }
+  function midCategoria(tipo) { var L = listas(), c = MID_CAT[tipo]; if (c && L.categoriasVerba.indexOf(c) >= 0) return c; var mi = L.categoriasVerba.find(function (x) { return /m[ií]dia/i.test(x); }); return mi || L.categoriasVerba[0] || "Outros"; }
+  function midDados() { var c = S.config.find(function (x) { return x.id === "midiaDados"; }) || {}; return { AM: c.AM || {}, AG: c.AG || {}, emissor: c.emissor || {}, condicoes: c.condicoes != null ? c.condicoes : "Enviar a comprovação de veiculação (checking, fotos ou relatório) junto com a nota fiscal.\nA NF deve citar o número deste PI.\nQualquer alteração na programação precisa de aprovação por escrito." }; }
+  function midProxNum(ano) {
+    var max = 0; S.midias.forEach(function (m) { var r = String(m.numero || "").match(/^(\d{4})\/(\d+)$/); if (r && r[1] === String(ano)) max = Math.max(max, +r[2]); });
+    return ano + "/" + String(max + 1).padStart(3, "0");
+  }
+  function midStLabel(k) { return stLabel(MID_ST, k); }
+  function midPeriodo(m) { var a = parse(m.inicio), b = parse(m.fim); if (!a && !b) return "sem período"; if (a && b) return fmt(a) + " a " + fmt(b) + "/" + b.getFullYear(); return fmt(a || b) + "/" + (a || b).getFullYear(); }
+
+  function renderMidia() {
+    var el = $("#v-midia"), L = listas();
+    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    var ym = midF.mes;
+    var doMes = S.midias.filter(function (m) { return midNoMes(m, ym); });
+    var list = doMes.filter(function (m) { return (!midF.tipo || m.tipo === midF.tipo) && (!midF.conta || m.conta === midF.conta || m.conta === "Ambas") && (!midF.status || m.status === midF.status); })
+      .sort(function (a, b) { return (a.inicio || "9999").localeCompare(b.inicio || "9999"); });
+    var ativos = list.filter(function (m) { return m.status !== "cancelado"; });
+    var soma = function (arr, f) { return arr.reduce(function (t, m) { return t + f(m); }, 0); };
+    var previsto = soma(ativos, function (m) { return midTot(m).liquido; });
+    var fechado = soma(ativos.filter(function (m) { return ["aprovado", "pi", "noar", "comprovado"].indexOf(m.status) >= 0; }), function (m) { return midTot(m).liquido; });
+    var lancado = soma(ativos.filter(function (m) { return m.nfId; }), function (m) { return midTot(m).liquido; });
+    var teto = tetoOf(ym, midF.conta || null), gastoMes = realizado(ym, midF.conta || null);
+    // por tipo
+    var porTipo = {}; ativos.forEach(function (m) { porTipo[m.tipo || "Outro"] = (porTipo[m.tipo || "Outro"] || 0) + midTot(m).liquido; });
+    var tipos = Object.keys(porTipo).sort(function (a, b) { return porTipo[b] - porTipo[a]; }), maxT = Math.max.apply(null, tipos.map(function (t) { return porTipo[t]; }).concat([1]));
+    var pendPI = ativos.filter(function (m) { return (m.status === "aprovado") && !m.piEm; }).length;
+    var semComp = ativos.filter(function (m) { return m.status === "noar" && m.fim && m.fim < iso(today()); }).length;
+    el.innerHTML =
+      '<div class="view-head"><div><div class="eyebrow">Mídia</div><h2>Plano e controle de mídia</h2><p class="muted">Cadastre cada veiculação (rádio, TV, carro de som, outdoor, painel de LED, digital…), acompanhe do previsto até a comprovação, gere o PI em PDF e leve o valor para a Verba do mês.</p></div>' +
+      '<div class="row"><button class="btn ghost small" id="mdDados">Dados do PI</button><button class="btn ghost small" id="mdPlano">Plano do mês em PDF</button><button class="btn" id="mdNew">+ Nova veiculação <span class="arrow">→</span></button></div></div>' +
+      '<div class="ind-bar"><div class="ind-mes"><button class="btn ghost small" data-mdmes="-1" aria-label="Mês anterior">‹</button><b>' + esc(mesLabel(ym).replace(/^./, function (c) { return c.toUpperCase(); })) + '</b><button class="btn ghost small" data-mdmes="1" aria-label="Próximo mês">›</button></div>' +
+        '<div class="row"><select id="mdT" style="width:auto"><option value="">Todos os tipos</option>' + L.tiposMidia.map(function (t) { return "<option" + (t === midF.tipo ? " selected" : "") + ">" + esc(t) + "</option>"; }).join("") + "</select>" +
+        '<select id="mdC" style="width:auto"><option value="">AM e AG</option>' + L.contas.filter(function (c) { return c !== "Ambas"; }).map(function (c) { return "<option" + (c === midF.conta ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("") + "</select>" +
+        '<select id="mdS" style="width:auto"><option value="">Todos os status</option>' + MID_ST.map(function (s) { return '<option value="' + s[0] + '"' + (midF.status === s[0] ? " selected" : "") + ">" + s[1] + "</option>"; }).join("") + "</select></div></div>" +
+      '<div class="vtiles"><div class="vtile"><span>Previsto no mês</span><b>' + brl(previsto) + "</b><small>" + ativos.length + " veiculaç" + (ativos.length === 1 ? "ão" : "ões") + '</small></div>' +
+        '<div class="vtile"><span>Fechado</span><b>' + brl(fechado) + '</b><small>aprovado, PI enviado, no ar ou comprovado</small></div>' +
+        '<div class="vtile"><span>Já na Verba</span><b>' + brl(lancado) + "</b><small>" + (previsto - lancado > 0.5 ? brl(previsto - lancado) + " ainda não lançado" : "tudo lançado") + "</small></div>" +
+        '<div class="vtile ' + (teto && gastoMes > teto ? "neg" : "") + '"><span>Orçamento do mês' + (midF.conta ? " · " + esc(midF.conta) : "") + "</span><b>" + (teto ? brl(teto) : "sem teto") + "</b><small>" + (teto ? "lançado na Verba: " + brl(gastoMes) + " (" + Math.round(gastoMes / teto * 100) + "%)" : "defina em Verba e NFs") + "</small></div></div>" +
+      (pendPI || semComp ? '<div class="banner warn">' + [pendPI ? pendPI + " aprovada" + (pendPI > 1 ? "s" : "") + " sem PI gerado" : "", semComp ? semComp + " já terminou e falta a comprovação" : ""].filter(Boolean).join(" · ") + "</div>" : "") +
+      (tipos.length ? '<section class="card pad md-tipos"><div class="section-title"><h3>Por tipo de mídia</h3><span class="hint">valor líquido previsto no mês</span></div>' + tipos.map(function (t) { return '<div class="md-bar"><span>' + esc(t) + '</span><div class="ind-btrack"><i class="fill" style="left:0;width:' + Math.max(1, porTipo[t] / maxT * 100) + '%;background:var(--brand)"></i></div><b>' + brl(porTipo[t]) + '</b><span class="hint">' + (previsto ? Math.round(porTipo[t] / previsto * 100) : 0) + "%</span></div>"; }).join("") + "</section>" : "") +
+      (list.length ? '<div class="tbl-wrap"><table class="tbl md-tbl"><thead><tr><th>PI</th><th>Veículo</th><th>Tipo</th><th>Conta</th><th>Período</th><th class="r">Inserções</th><th class="r">Líquido</th><th>Status</th><th></th></tr></thead><tbody>' +
+        list.map(function (m) { var t = midTot(m); return '<tr data-md="' + esc(m.id) + '" class="' + (m.status === "cancelado" ? "off" : "") + '"><td class="num">' + esc(m.numero || "—") + "</td><td><b>" + esc(m.veiculo || "Sem veículo") + "</b>" + (m.campanha ? '<div class="hint">' + esc(m.campanha) + "</div>" : "") + "</td><td>" + esc(m.tipo || "") + '</td><td><span class="tag ' + esc(m.conta) + '">' + esc(m.conta || "") + '</span></td><td class="num">' + esc(midPeriodo(m)) + '</td><td class="r num">' + (t.ins || "—") + '</td><td class="r num"><b>' + brl(t.liquido) + '</b></td><td><span class="pill-st st-' + esc(m.status) + '">' + esc(midStLabel(m.status)) + '</span></td><td class="md-flags">' + (m.piEm ? '<span class="tag" title="PI gerado">PI</span>' : "") + (m.nfId ? '<span class="tag solid" title="Lançado na Verba">Verba</span>' : "") + ((m.comprovacao || []).length ? '<span class="tag" title="Comprovação anexada">✓ comp.</span>' : "") + "</td></tr>"; }).join("") +
+        '</tbody><tfoot><tr><td colspan="6">Total do filtro</td><td class="r num">' + brl(previsto) + '</td><td colspan="2"></td></tr></tfoot></table></div>'
+        : '<div class="empty">Nenhuma veiculação em ' + esc(mesLabel(ym)) + '. <button class="btn small" id="mdNew2">Cadastrar a primeira</button></div>');
+    $("#mdNew").onclick = function () { openMidia(null); };
+    if ($("#mdNew2")) $("#mdNew2").onclick = function () { openMidia(null); };
+    $("#mdDados").onclick = midDadosModal;
+    $("#mdPlano").onclick = function () { midPlanoPdf(ym, list); };
+    $$("[data-mdmes]", el).forEach(function (b) { b.onclick = function () { midF.mes = addMes(midF.mes, +b.dataset.mdmes); renderMidia(); }; });
+    $("#mdT").onchange = function () { midF.tipo = this.value; renderMidia(); };
+    $("#mdC").onchange = function () { midF.conta = this.value; renderMidia(); };
+    $("#mdS").onchange = function () { midF.status = this.value; renderMidia(); };
+    el.onclick = function (e) { var r = e.target.closest("tr[data-md]"); if (r) openMidia(S.midias.find(function (x) { return x.id === r.dataset.md; })); };
+  }
+
+  function openMidia(mv, copia) {
+    var L = listas(), isNew = !mv || !!copia, id = isNew ? Store.uid() : mv.id;
+    var base = { numero: "", tipo: midF.tipo || L.tiposMidia[0] || "Rádio", conta: midF.conta || "AM", status: "previsto", veiculo: "", cnpjVeiculo: "", contato: "", praca: "", campanha: "", material: "", entregaMaterial: "",
+      inicio: "", fim: "", competencia: midF.mes, itens: [{ desc: "", det: "", dur: "", dias: "", qtd: 1, unit: 0 }], desconto: 0, valorFechado: 0, pagamento: "", vencimento: "",
+      categoria: "", cooperada: { tem: false, industria: "", valor: 0 }, obs: "", anexos: [], comprovacao: [] };
+    var d = JSON.parse(JSON.stringify(Object.assign({}, base, mv || {})));
+    if (copia) { delete d.id; d.numero = ""; d.status = "previsto"; d.nfId = ""; d.piEm = ""; d.comprovacao = []; d.anexos = []; d.lancadoValor = 0; if (d.cooperada) d.cooperada.lancado = false; }
+    if (!d.categoria) d.categoria = midCategoria(d.tipo);
+    function sync() {
+      var m = $("#modalRoot .modal"); if (!m) return;
+      ["tipo", "conta", "status", "veiculo", "cnpjVeiculo", "contato", "praca", "campanha", "material", "entregaMaterial", "inicio", "fim", "competencia", "pagamento", "vencimento", "categoria", "obs"].forEach(function (k) { var i = $('[data-mf="' + k + '"]', m); if (i) d[k] = i.value; });
+      d.desconto = Number(String($('[data-mf="desconto"]', m).value).replace(",", ".")) || 0;
+      d.valorFechado = parseBRL($('[data-mf="valorFechado"]', m).value);
+      d.itens = $$("[data-mrow]", m).map(function (r) { var g = function (k) { return $('[data-k="' + k + '"]', r).value; }; return { desc: g("desc").trim(), det: g("det").trim(), dur: g("dur").trim(), dias: g("dias").trim(), qtd: Number(String(g("qtd")).replace(",", ".")) || 0, unit: parseBRL(g("unit")) }; });
+      d.cooperada = { tem: $("#mdCoopTem").checked, industria: $("#mdCoopInd").value.trim(), valor: parseBRL($("#mdCoopVal").value), lancado: d.cooperada && d.cooperada.lancado };
+    }
+    function orcHTML() {
+      var t = midTot(d), comp = d.competencia || midComp(d), contas = d.conta === "Ambas" ? ["AM", "AG"] : [d.conta];
+      var linhas = contas.map(function (c) {
+        var teto = tetoOf(comp, c), jaLanc = realizado(comp, c), este = t.liquido * (d.conta === "Ambas" ? 0.5 : 1);
+        var jaConta = d.nfId ? este : 0, depois = jaLanc - jaConta + este;
+        return '<div class="md-orc-l"><b>' + esc(c) + "</b><span>teto " + (teto ? brl(teto) : "não definido") + "</span><span>já lançado " + brl(jaLanc) + "</span><span>com esta " + brl(depois) + "</span>" + (teto ? '<span class="' + (depois > teto ? "late-txt" : "ok-txt") + '">' + (depois > teto ? "passa " + brl(depois - teto) + " do teto" : "sobra " + brl(teto - depois)) + "</span>" : "") + "</div>";
+      }).join("");
+      return '<div class="vtiles small"><div class="vtile"><span>Valor bruto</span><b>' + brl(t.bruto) + "</b><small>" + t.ins + ' unidades</small></div><div class="vtile"><span>Desconto</span><b>' + (d.valorFechado ? "valor fechado" : (t.desc ? numBR(t.desc).replace(/,00$/, "") + "%" : "—")) + '</b></div><div class="vtile"><span>Valor líquido</span><b>' + brl(t.liquido) + "</b>" + (t.coop ? "<small>custo real " + brl(t.custo) + " (−" + brl(t.coop) + " cooperada)</small>" : "") + "</div></div>" +
+        '<div class="md-orc"><div class="lbl">Orçamento de ' + esc(mesLabel(comp)) + "</div>" + linhas + "</div>";
+    }
+    function draw() {
+      var C = midCols(d.tipo), tipos = L.tiposMidia.slice(); if (d.tipo && tipos.indexOf(d.tipo) < 0) tipos.push(d.tipo);
+      var campanhas = S.campanhas.map(function (c) { return c.titulo || c.nome; }).filter(Boolean);
+      var html = '<header><div><div class="eyebrow">Mídia' + (d.numero ? " · PI " + esc(d.numero) : "") + "</div><h3>" + (isNew ? "Nova veiculação" : esc(d.veiculo || "Veiculação")) + '</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
+        '<div class="md-steps"><span class="on">1 · Previsão</span><span class="' + (["aprovado", "pi", "noar", "comprovado"].indexOf(d.status) >= 0 ? "on" : "") + '">2 · Aprovação e PI</span><span class="' + (["noar", "comprovado"].indexOf(d.status) >= 0 ? "on" : "") + '">3 · No ar</span><span class="' + (d.status === "comprovado" ? "on" : "") + '">4 · Comprovação</span></div>' +
+        '<div class="grid2"><div class="field"><label>Tipo de mídia</label><select data-mf="tipo">' + opt(tipos, d.tipo) + "</select></div>" +
+        '<div class="field"><label>Conta</label><select data-mf="conta">' + opt(L.contas, d.conta) + "</select></div>" +
+        '<div class="field"><label>Status</label><select data-mf="status">' + MID_ST.map(function (s) { return '<option value="' + s[0] + '"' + (d.status === s[0] ? " selected" : "") + ">" + s[1] + "</option>"; }).join("") + "</select></div>" +
+        '<div class="field"><label>Campanha</label><input type="text" data-mf="campanha" list="mdCamp" value="' + esc(d.campanha) + '" placeholder="ex: Semana do Porcelanato"><datalist id="mdCamp">' + campanhas.map(function (c) { return '<option value="' + esc(c) + '">'; }).join("") + "</datalist></div></div>" +
+        '<div class="md-block"><div class="lbl">Veículo / fornecedor</div><div class="grid2">' +
+          '<div class="field"><label>Nome</label><input type="text" data-mf="veiculo" list="mdForn" value="' + esc(d.veiculo) + '" placeholder="ex: Rádio Educativa FM"><datalist id="mdForn">' + fornecedores().concat(S.midias.map(function (x) { return x.veiculo; })).filter(function (v, i, a) { return v && a.indexOf(v) === i; }).map(function (f) { return '<option value="' + esc(f) + '">'; }).join("") + "</datalist></div>" +
+          '<div class="field"><label>CNPJ</label><input type="text" data-mf="cnpjVeiculo" value="' + esc(d.cnpjVeiculo) + '" placeholder="00.000.000/0000-00"></div>' +
+          '<div class="field"><label>Contato (nome, telefone, email)</label><input type="text" data-mf="contato" value="' + esc(d.contato) + '"></div>' +
+          '<div class="field"><label>Praça / cidade</label><input type="text" data-mf="praca" value="' + esc(d.praca) + '" placeholder="Campo Grande"></div></div></div>' +
+        '<div class="md-block"><div class="lbl">Período e material</div><div class="grid2">' +
+          '<div class="field"><label>Início</label><input type="date" data-mf="inicio" value="' + esc(d.inicio) + '"></div>' +
+          '<div class="field"><label>Fim</label><input type="date" data-mf="fim" value="' + esc(d.fim) + '"></div>' +
+          '<div class="field"><label>Material (spot, VT, arte)</label><input type="text" data-mf="material" value="' + esc(d.material) + '" placeholder="ex: Spot 30&quot; Porcelanato"></div>' +
+          '<div class="field"><label>Entrega do material até</label><input type="date" data-mf="entregaMaterial" value="' + esc(d.entregaMaterial) + '"></div></div></div>' +
+        '<div class="field"><div class="section-title"><label>Programação</label><button class="btn ghost small" data-madd>+ Linha</button></div>' +
+          (C.dica ? '<p class="hint" style="margin:0 0 6px">' + esc(C.dica) + "</p>" : "") +
+          '<div class="tbl-wrap"><table class="tbl ev-costs md-prog"><thead><tr><th>' + esc(C.desc) + "</th><th>" + esc(C.det) + "</th><th>" + esc(C.dur) + "</th><th>" + esc(C.dias) + '</th><th class="r">' + esc(C.qtd) + '</th><th class="r">' + esc(C.unit) + '</th><th class="r">Total</th><th></th></tr></thead><tbody>' +
+          d.itens.map(function (it, i) { return '<tr data-mrow="' + i + '"><td><input type="text" data-k="desc" value="' + esc(it.desc) + '"></td><td><input type="text" data-k="det" value="' + esc(it.det) + '"></td><td><input type="text" data-k="dur" value="' + esc(it.dur) + '" style="width:90px"></td><td><input type="text" data-k="dias" value="' + esc(it.dias) + '" style="width:110px"></td><td class="r"><input type="text" inputmode="decimal" data-k="qtd" class="num-in" value="' + esc(it.qtd) + '"></td><td class="r"><input type="text" inputmode="decimal" data-k="unit" class="money" value="' + (it.unit ? numBR(it.unit) : "") + '" placeholder="0,00"></td><td class="r num" data-tot>' + brl((Number(it.qtd) || 0) * (Number(it.unit) || 0)) + '</td><td><button class="x" data-mdel="' + i + '" aria-label="Remover linha">✕</button></td></tr>'; }).join("") +
+          "</tbody></table></div></div>" +
+        '<div class="md-block"><div class="lbl">Negociação e pagamento</div><div class="grid2">' +
+          '<div class="field"><label>Desconto negociado (%)</label><input type="text" inputmode="decimal" data-mf="desconto" value="' + (d.desconto ? String(d.desconto).replace(".", ",") : "") + '" placeholder="0"></div>' +
+          '<div class="field"><label>Ou valor fechado (R$)</label><input type="text" inputmode="decimal" data-mf="valorFechado" class="money" value="' + (d.valorFechado ? numBR(d.valorFechado) : "") + '" placeholder="se fechou um pacote"></div>' +
+          '<div class="field"><label>Forma de pagamento</label><select data-mf="pagamento">' + opt(L.pagamentos, d.pagamento, "—") + "</select></div>" +
+          '<div class="field"><label>Vencimento</label><input type="date" data-mf="vencimento" value="' + esc(d.vencimento) + '"></div>' +
+          '<div class="field"><label>Mês da verba (competência)</label><input type="month" data-mf="competencia" value="' + esc(d.competencia || midComp(d)) + '"></div>' +
+          '<div class="field"><label>Categoria na Verba</label><select data-mf="categoria">' + opt(L.categoriasVerba, d.categoria) + "</select></div></div>" +
+          '<div class="coop-row"><label class="ct"><input type="checkbox" id="mdCoopTem"' + (d.cooperada.tem ? " checked" : "") + '> tem verba cooperada</label><input type="text" id="mdCoopInd" placeholder="Indústria" value="' + esc(d.cooperada.industria) + '"><input type="text" inputmode="decimal" id="mdCoopVal" class="money" placeholder="Valor" value="' + (d.cooperada.valor ? numBR(d.cooperada.valor) : "") + '"></div></div>' +
+        '<div id="mdTot">' + orcHTML() + "</div>" +
+        '<div class="field"><label>Observações</label><textarea data-mf="obs" style="min-height:60px" placeholder="Bonificações, horários preferidos, combinados">' + esc(d.obs) + "</textarea></div>" +
+        '<div class="field" id="mdAtt"></div><div class="field" id="mdComp"></div>' +
+        '</div><footer><span class="row">' + (isNew ? "" : '<span id="mdDelW"><button class="btn ghost small" id="mdDel">Excluir</button></span><button class="btn ghost small" id="mdDup">Duplicar</button>') +
+          '<button class="btn ghost small" id="mdPi">Gerar PI em PDF</button><button class="btn ghost small" id="mdVerba">' + (d.nfId ? "Atualizar na Verba" : "Levar para a Verba") + "</button></span>" +
+          '<button class="btn" id="mdSave">Salvar <span class="arrow">→</span></button></footer>';
+      if ($("#mb")) $("#modalRoot .modal").innerHTML = html; else openModal(html, { wide: true });
+      var m = $("#modalRoot .modal");
+      attachBlock($("#mdAtt"), { titulo: "Proposta, mapa de programação, planilhas", lista: d.anexos || [], pasta: "midia/" + id, accept: ".xlsx,.xls,.csv,.pdf,.docx,.doc,.pptx,image/*", podeEditar: true, dropTarget: m, onChange: function (l) { d.anexos = l; if (!isNew) Store.upd("midias", id, { anexos: l }).catch(fail); } });
+      attachBlock($("#mdComp"), { titulo: "Comprovação de veiculação (checking, fotos, relatórios)", lista: d.comprovacao || [], pasta: "midia/" + id, accept: "image/*,video/*,.pdf,.xlsx,.xls,.mp3,.wav,audio/*", podeEditar: true, onChange: function (l) { d.comprovacao = l; if (!isNew) Store.upd("midias", id, { comprovacao: l }).catch(fail); } });
+      $("[data-close]", m).onclick = closeModal;
+      fornHook($('[data-mf="veiculo"]', m), function (f) { var set = function (k, v) { var i = $('[data-mf="' + k + '"]', m); if (i && !i.value && v) i.value = v; }; set("cnpjVeiculo", f.cnpj); set("contato", [f.contato, f.telefone, f.email].filter(Boolean).join(" · ")); set("praca", f.cidade); sync(); });
+      $("[data-madd]", m).onclick = function () { sync(); d.itens.push({ desc: "", det: "", dur: "", dias: "", qtd: 1, unit: 0 }); draw(); };
+      $$("[data-mdel]", m).forEach(function (b) { b.onclick = function () { sync(); d.itens.splice(+b.dataset.mdel, 1); if (!d.itens.length) d.itens.push({ desc: "", det: "", dur: "", dias: "", qtd: 1, unit: 0 }); draw(); }; });
+      $('[data-mf="tipo"]', m).onchange = function () { sync(); d.categoria = midCategoria(d.tipo); draw(); };
+      m.oninput = function (e) {
+        if (e.target.closest(".md-prog,[data-mf='desconto'],[data-mf='valorFechado'],.coop-row")) { sync(); $$("[data-mrow]", m).forEach(function (r, i) { $("[data-tot]", r).textContent = brl((d.itens[i].qtd || 0) * (d.itens[i].unit || 0)); }); $("#mdTot").innerHTML = orcHTML(); }
+      };
+      m.onchange = function (e) { if (e.target.closest("[data-mf='competencia'],[data-mf='conta'],[data-mf='inicio']")) { sync(); $("#mdTot").innerHTML = orcHTML(); } };
+      var save = function (then) {
+        sync(); if (!d.veiculo.trim()) { toast("Preencha o veículo / fornecedor"); $('[data-mf="veiculo"]', m).focus(); return; }
+        if (!d.numero) d.numero = midProxNum((d.inicio || iso(today())).slice(0, 4));
+        if (!d.competencia) d.competencia = midComp(d);
+        var doc = JSON.parse(JSON.stringify(d)); delete doc.id; doc.atualizadoEm = new Date().toISOString(); doc.criadoPor = d.criadoPor || me;
+        Store.set("midias", id, doc).then(function () { isNew = false; if (then) then(doc); else toast("Veiculação salva"); }, fail);
+      };
+      $("#mdSave").onclick = function () { save(); closeModal(); };
+      $("#mdPi").onclick = function () { save(function (doc) { if (!doc.piEm) { d.piEm = new Date().toISOString(); if (d.status === "previsto" || d.status === "negociando" || d.status === "aprovado") d.status = "pi"; Store.upd("midias", id, { piEm: d.piEm, status: d.status }).catch(fail); } midPiPdf(Object.assign({ id: id }, d)); draw(); }); };
+      $("#mdVerba").onclick = function () {
+        sync(); var t = midTot(d);
+        if (!t.liquido) { toast("Preencha a programação ou o valor fechado"); return; }
+        if (!d.veiculo.trim()) { toast("Preencha o veículo / fornecedor"); return; }
+        var comp = d.competencia || midComp(d);
+        if (!d.numero) d.numero = midProxNum((d.inicio || iso(today())).slice(0, 4));
+        var nf = { fornecedor: d.veiculo, descricao: "PI " + d.numero + " · " + (d.tipo || "Mídia") + (d.campanha ? " · " + d.campanha : "") + " · " + midPeriodo(d), categoria: d.categoria || midCategoria(d.tipo), conta: d.conta, valor: t.liquido, competencia: comp, vencimento: d.vencimento || "", pagamento: d.pagamento || "", obs: "Lançado da aba Mídia" + (d.obs ? ". " + d.obs : ""), midia: id };
+        var jobs = [];
+        var existe = d.nfId && S.nfs.find(function (x) { return x.id === d.nfId; });
+        if (existe) jobs.push(Store.upd("nfs", d.nfId, nf).then(function () { return "upd"; }));
+        else jobs.push(Store.add("nfs", Object.assign({ emissao: "", numero: "", status: "aguardando", contrato: "", anexos: [], criadoEm: new Date().toISOString(), criadoPor: me }, nf)).then(function (nid) { d.nfId = nid; return "add"; }));
+        if (d.cooperada.tem && d.cooperada.valor && !d.cooperada.lancado) { d.cooperada.lancado = true; jobs.push(Store.add("cooperada", { fornecedor: d.cooperada.industria || "Indústria", conta: d.conta, valor: d.cooperada.valor, recebido: 0, competencia: comp, prazo: "", status: "acordado", acao: "Mídia PI " + d.numero + " · " + d.veiculo, obs: "", anexos: [], criadoPor: me })); }
+        Promise.all(jobs).then(function (r) { d.lancadoValor = t.liquido; save(function () { toast(r[0] === "upd" ? "Lançamento atualizado em Verba e NFs" : "Lançado em Verba e NFs (" + mesLabel(comp) + ")" + (jobs.length > 1 ? " + cooperada" : "")); draw(); }); }, fail);
+      };
+      if ($("#mdDup")) $("#mdDup").onclick = function () { sync(); var src = JSON.parse(JSON.stringify(d)); closeModal(); setTimeout(function () { openMidia(src, true); toast("Cópia: ajuste o período e salve"); }, 30); };
+      if ($("#mdDel")) $("#mdDel").onclick = function () { delConfirm("#mdDelW", d.nfId ? "Excluir? (o lançamento na Verba fica)" : "Excluir a veiculação?", function () { (d.anexos || []).concat(d.comprovacao || []).forEach(function (a) { Store.removeFile(a); }); Store.del("midias", id).catch(fail); closeModal(); }); };
+    }
+    draw();
+  }
+
+  function midDadosModal() {
+    var dd = midDados();
+    var bloco = function (k, titulo) { var x = dd[k] || {}; return '<div class="md-block"><div class="lbl">' + esc(titulo) + '</div><div class="grid2">' +
+      [["razao", "Razão social"], ["cnpj", "CNPJ"], ["endereco", "Endereço"], ["cidade", "Cidade / UF"], ["contato", "Responsável"], ["email", "Email"], ["telefone", "Telefone"]].map(function (f) { return '<div class="field"><label>' + f[1] + '</label><input type="text" data-dd="' + k + "." + f[0] + '" value="' + esc(x[f[0]] || "") + '"></div>'; }).join("") + "</div></div>"; };
+    var m = openModal('<header><h3>Dados do PI</h3><button class="x" data-close>✕</button></header><div class="body">' +
+      '<p class="muted">Estes dados saem no cabeçalho de todo PI. Preencha uma vez.</p>' +
+      bloco("AM", "Anunciante · AM") + bloco("AG", "Anunciante · AG") + bloco("emissor", "Quem emite o PI (agência ou marketing)") +
+      '<div class="field"><label>Condições padrão (saem no rodapé do PI)</label><textarea id="ddCond" style="min-height:90px">' + esc(dd.condicoes) + "</textarea></div></div>" +
+      '<footer><span></span><button class="btn" id="ddSave">Salvar <span class="arrow">→</span></button></footer>', { wide: true });
+    $("[data-close]", m).onclick = closeModal;
+    $("#ddSave").onclick = function () {
+      var out = { AM: {}, AG: {}, emissor: {}, condicoes: $("#ddCond").value };
+      $$("[data-dd]", m).forEach(function (i) { var p = i.dataset.dd.split("."); out[p[0]][p[1]] = i.value.trim(); });
+      Store.set("config", "midiaDados", out).then(function () { toast("Dados do PI salvos"); }, fail); closeModal();
+    };
+  }
+
+  function midPiPdf(d) {
+    var t = midTot(d), C = midCols(d.tipo), dd = midDados();
+    var anunc = d.conta === "Ambas" ? null : dd[d.conta] || {};
+    var ender = function (x) { x = x || {}; return [x.razao ? "<b>" + esc(x.razao) + "</b>" : "", x.cnpj ? "CNPJ " + esc(x.cnpj) : "", [x.endereco, x.cidade].filter(Boolean).map(esc).join(" · "), [x.contato, x.telefone, x.email].filter(Boolean).map(esc).join(" · ")].filter(Boolean).join("<br>") || '<span class="muted">Preencha em Mídia › Dados do PI</span>'; };
+    abrirRelatorio({
+      titulo: "PI " + (d.numero || "") + " · " + (d.veiculo || ""), heading: "Pedido de Inserção nº " + (d.numero || "—"),
+      sub: [d.tipo, d.veiculo, d.praca, midPeriodo(d)].filter(Boolean).join(" · "),
+      kpis: [["Valor bruto", brl(t.bruto)], ["Desconto", d.valorFechado ? "valor fechado" : (t.desc ? numBR(t.desc).replace(/,00$/, "") + "%" : "—")], ["Valor líquido", brl(t.liquido)], ["Unidades", String(t.ins || "—")]],
+      body: function () {
+        return "<style>.pi-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:6px}.pi-grid .box{margin-top:0;font-size:11px}.pi-grid h3{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6b6b6b;margin-bottom:4px}.sign{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:46px}.sign div{border-top:1px solid #141414;padding-top:6px;text-align:center;font-size:10.5px}</style>" +
+          '<div class="pi-grid"><div class="box"><h3>Anunciante</h3>' + (anunc ? ender(anunc) : ender(dd.AM) + "<br><br>" + ender(dd.AG)) + '</div><div class="box"><h3>Emitido por</h3>' + ender(dd.emissor) + '</div><div class="box"><h3>Veículo</h3><b>' + esc(d.veiculo || "—") + "</b>" + (d.cnpjVeiculo ? "<br>CNPJ " + esc(d.cnpjVeiculo) : "") + (d.praca ? "<br>" + esc(d.praca) : "") + (d.contato ? "<br>" + esc(d.contato) : "") + "</div></div>" +
+          '<h2 class="sec">Campanha e material</h2><table><tbody><tr><th style="width:24%">Campanha</th><td>' + esc(d.campanha || "—") + "</td></tr><tr><th>Tipo de mídia</th><td>" + esc(d.tipo || "—") + "</td></tr><tr><th>Período</th><td>" + esc(midPeriodo(d)) + "</td></tr><tr><th>Material</th><td>" + esc(d.material || "—") + (d.entregaMaterial ? " · entrega até " + fmt(parse(d.entregaMaterial)) : "") + "</td></tr></tbody></table>" +
+          '<h2 class="sec">Programação</h2><table><thead><tr><th>' + esc(C.desc) + "</th><th>" + esc(C.det) + "</th><th>" + esc(C.dur) + "</th><th>" + esc(C.dias) + '</th><th class="r">' + esc(C.qtd) + '</th><th class="r">' + esc(C.unit) + '</th><th class="r">Total</th></tr></thead><tbody>' +
+          (d.itens || []).filter(function (i) { return i.desc || i.qtd * i.unit; }).map(function (i) { return "<tr><td>" + esc(i.desc) + "</td><td>" + esc(i.det) + "</td><td>" + esc(i.dur) + "</td><td>" + esc(i.dias) + '</td><td class="r">' + (Number(i.qtd) || 0).toLocaleString("pt-BR") + '</td><td class="r">' + brl(i.unit) + '</td><td class="r">' + brl((Number(i.qtd) || 0) * (Number(i.unit) || 0)) + "</td></tr>"; }).join("") +
+          '</tbody><tfoot><tr><td colspan="6">Valor bruto</td><td class="r">' + brl(t.bruto) + "</td></tr>" + (d.valorFechado ? '<tr><td colspan="6">Valor fechado (negociado)</td><td class="r">' + brl(t.liquido) + "</td></tr>" : (t.desc ? '<tr><td colspan="6">Desconto ' + numBR(t.desc).replace(/,00$/, "") + '%</td><td class="r">− ' + brl(t.bruto - t.liquido) + "</td></tr>" : "")) + '<tr><td colspan="6">Valor líquido a faturar</td><td class="r">' + brl(t.liquido) + "</td></tr></tfoot></table>" +
+          '<h2 class="sec">Faturamento e condições</h2><table><tbody><tr><th style="width:24%">Faturar para</th><td>' + esc(anunc && anunc.razao ? anunc.razao : d.conta || "—") + "</td></tr><tr><th>Forma de pagamento</th><td>" + esc(d.pagamento || "a combinar") + "</td></tr><tr><th>Vencimento</th><td>" + (d.vencimento ? fmt(parse(d.vencimento)) + "/" + d.vencimento.slice(0, 4) : "a combinar") + "</td></tr></tbody></table>" +
+          (dd.condicoes ? '<div class="txt">' + esc(dd.condicoes) + "</div>" : "") + (d.obs ? '<div class="txt">' + esc(d.obs) + "</div>" : "") +
+          '<div class="sign"><div>' + esc((dd.emissor && dd.emissor.contato) || me) + "<br>" + esc((dd.emissor && dd.emissor.razao) || "Emitente") + "</div><div>De acordo · " + esc(d.veiculo || "Veículo") + "<br>nome, data e assinatura</div></div>";
+      }
+    });
+  }
+
+  function midPlanoPdf(ym, list) {
+    var ativos = list.filter(function (m) { return m.status !== "cancelado"; });
+    if (!ativos.length) { toast("Nenhuma veiculação neste filtro."); return; }
+    var tot = ativos.reduce(function (s, m) { return s + midTot(m).liquido; }, 0), lanc = ativos.filter(function (m) { return m.nfId; }).reduce(function (s, m) { return s + midTot(m).liquido; }, 0);
+    var porTipo = {}; ativos.forEach(function (m) { porTipo[m.tipo || "Outro"] = (porTipo[m.tipo || "Outro"] || 0) + midTot(m).liquido; });
+    abrirRelatorio({
+      titulo: "Plano de mídia · " + mesLabel(ym), heading: "Plano de mídia · " + mesLabel(ym),
+      sub: [midF.conta || "AM e AG", midF.tipo, midF.status ? midStLabel(midF.status) : ""].filter(Boolean).join(" · "),
+      kpis: [["Veiculações", String(ativos.length)], ["Valor líquido", brl(tot)], ["Já na Verba", brl(lanc)], ["Teto do mês", tetoOf(ym, midF.conta || null) ? brl(tetoOf(ym, midF.conta || null)) : "—"]],
+      body: function () {
+        return '<h2 class="sec">Por tipo de mídia</h2><table><thead><tr><th>Tipo</th><th class="r">Valor líquido</th><th class="r">% do plano</th></tr></thead><tbody>' + Object.keys(porTipo).sort(function (a, b) { return porTipo[b] - porTipo[a]; }).map(function (k) { return "<tr><td>" + esc(k) + '</td><td class="r">' + brl(porTipo[k]) + '</td><td class="r">' + Math.round(porTipo[k] / tot * 100) + "%</td></tr>"; }).join("") + "</tbody></table>" +
+          '<h2 class="sec">Veiculações</h2><table><thead><tr><th>PI</th><th>Veículo</th><th>Tipo</th><th>Conta</th><th>Período</th><th>Campanha</th><th class="r">Unid.</th><th class="r">Líquido</th><th>Status</th></tr></thead><tbody>' +
+          ativos.map(function (m) { var t = midTot(m); return "<tr><td>" + esc(m.numero || "—") + "</td><td><b>" + esc(m.veiculo || "") + "</b>" + (m.praca ? '<div class="muted">' + esc(m.praca) + "</div>" : "") + "</td><td>" + esc(m.tipo || "") + "</td><td>" + esc(m.conta || "") + "</td><td>" + esc(midPeriodo(m)) + "</td><td>" + esc(m.campanha || "—") + '</td><td class="r">' + (t.ins || "—") + '</td><td class="r">' + brl(t.liquido) + '</td><td><span class="pill">' + esc(midStLabel(m.status)) + "</span></td></tr>"; }).join("") +
+          '</tbody><tfoot><tr><td colspan="7">Total</td><td class="r">' + brl(tot) + "</td><td></td></tr></tfoot></table>";
+      }
+    });
   }
 
   /* ================================================================
@@ -3372,6 +3921,159 @@
   }
 
   /* ================================================================
+     BACKUP (só admins) · baixa tudo num arquivo e restaura se precisar
+     ================================================================ */
+  function backupInfo() { return S.config.find(function (x) { return x.id === "backup"; }) || null; }
+  function diasDesde(isoStr) { if (!isoStr) return null; return Math.floor((Date.now() - new Date(isoStr).getTime()) / 86400000); }
+  function baixarBackup() {
+    if (!isAdmin()) return;
+    toast("Montando o backup…");
+    var perfisP = Store.mode === "supabase" && Store.perfis ? Store.perfis.list().catch(function () { return []; }) : Promise.resolve([]);
+    perfisP.then(function (perfis) {
+      var dados = {}, total = 0;
+      Object.keys(S).forEach(function (col) {
+        var list = R[col] || S[col] || [];
+        dados[col] = list.map(function (d) { return Object.assign({}, d); });
+        total += list.length;
+      });
+      var agora = new Date();
+      var pacote = { app: "Fluxo do Time · SCOPO", formato: 1, geradoEm: agora.toISOString(), por: me, itens: total, perfis: perfis, dados: dados,
+        aviso: "Os anexos (fotos, PDFs, planilhas) continuam no Supabase; aqui ficam os textos e a lista de anexos." };
+      var blob = new Blob([JSON.stringify(pacote)], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "fluxo-do-time-backup-" + iso(agora) + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      Store.set("config", "backup", { em: agora.toISOString(), por: me, itens: total }).catch(function () {});
+      toast("Backup baixado: " + total + " itens");
+    });
+  }
+  function restaurarBackup(file, done) {
+    var rd = new FileReader();
+    rd.onload = function () {
+      var p;
+      try { p = JSON.parse(rd.result); } catch (e) { toast("Arquivo inválido"); return; }
+      if (!p || !p.dados || p.app !== "Fluxo do Time · SCOPO") { toast("Este arquivo não é um backup do Fluxo do Time"); return; }
+      var cols = Object.keys(p.dados).filter(function (c) { return S[c] && Array.isArray(p.dados[c]); });
+      var n = cols.reduce(function (t, c) { return t + p.dados[c].length; }, 0);
+      var m = openModal('<header><h3>Restaurar backup</h3><button class="x" data-close>✕</button></header><div class="body">' +
+        '<p>Backup de <b>' + esc(fmt(new Date(p.geradoEm))) + "/" + new Date(p.geradoEm).getFullYear() + "</b>, feito por " + esc(p.por || "—") + ", com <b>" + n + " itens</b>.</p>" +
+        '<p class="muted">Cada item do backup volta como estava naquele dia. O que foi criado depois do backup continua no sistema (nada é apagado). Itens alterados depois do backup voltam para a versão do backup.</p>' +
+        '<div class="field"><label>Para confirmar, escreva RESTAURAR</label><input type="text" id="rbOk" autocomplete="off"></div><p class="hint" id="rbSt"></p></div>' +
+        '<footer><span></span><button class="btn danger" id="rbGo">Restaurar</button></footer>');
+      $("[data-close]", m).onclick = closeModal;
+      $("#rbGo").onclick = function () {
+        if ($("#rbOk").value.trim().toUpperCase() !== "RESTAURAR") { $("#rbOk").focus(); return; }
+        $("#rbGo").disabled = true;
+        var feitos = 0, erros = 0, fila = [];
+        cols.forEach(function (c) { p.dados[c].forEach(function (d) { if (d && d.id && !(c === "config" && d.id === "backup")) fila.push([c, d]); }); });
+        fila.reduce(function (pr, it) {
+          return pr.then(function () {
+            var doc = Object.assign({}, it[1]), id = doc.id; delete doc.id;
+            return Store.set(it[0], id, doc).then(function () { feitos++; }, function () { erros++; }).then(function () { if (feitos % 10 === 0 && $("#rbSt")) $("#rbSt").textContent = feitos + " de " + fila.length + "…"; });
+          });
+        }, Promise.resolve()).then(function () {
+          closeModal(); toast("Restaurado: " + feitos + " itens" + (erros ? " (" + erros + " com erro)" : ""));
+          if (done) done();
+        });
+      };
+    };
+    rd.readAsText(file);
+  }
+  function backupSectionHTML() {
+    var b = backupInfo(), d = b ? diasDesde(b.em) : null;
+    return '<section class="card pad adm" id="admBackup"><h3>Backup</h3>' +
+      '<p class="muted">Baixa tudo do sistema (pauta, quadros, verba, reuniões, campanhas, eventos, indicadores, acessos) num arquivo. Guarde no Drive. Faça pelo menos uma vez por semana.</p>' +
+      '<p class="bk-last ' + (d == null || d > 7 ? "late" : "ok") + '">' + (b ? "Último backup: " + esc(fmt(new Date(b.em))) + " (" + (d === 0 ? "hoje" : d === 1 ? "ontem" : "há " + d + " dias") + "), por " + esc(b.por || "—") + ", " + (b.itens || 0) + " itens." : "Nenhum backup feito ainda.") + "</p>" +
+      '<div class="row"><button class="btn small" id="bkDown">Baixar backup <span class="arrow">↓</span></button><label class="btn ghost small bk-up">Restaurar de um arquivo<input type="file" accept=".json,application/json" id="bkUp" hidden></label></div>' +
+      '<p class="hint">Os anexos continuam guardados no Supabase; o backup leva os textos e a referência de cada anexo.</p></section>';
+  }
+  function bindBackup(el) {
+    if ($("#bkDown", el)) $("#bkDown", el).onclick = baixarBackup;
+    if ($("#bkUp", el)) $("#bkUp", el).onchange = function () { var f = this.files[0]; this.value = ""; if (f) restaurarBackup(f); };
+  }
+  // lembrete para admins quando o último backup passou de 7 dias
+  function backupLembrete() {
+    var box = $("#bkBanner");
+    if (!box) { box = document.createElement("div"); box.id = "bkBanner"; var bb = $("#bootBanner"); if (!bb) return; bb.parentNode.insertBefore(box, bb.nextSibling); }
+    if (!isAdmin() || !loaded.config || !S.pessoas.length || view === "admin") { box.innerHTML = ""; return; }
+    var b = backupInfo(), d = b ? diasDesde(b.em) : null;
+    if (d != null && d <= 7) { box.innerHTML = ""; return; }
+    if (LS.get("bkAdiado", "") === iso(today())) { box.innerHTML = ""; return; }
+    box.innerHTML = '<div class="banner warn bk-banner"><span>' + (b ? "Faz " + d + " dias do último backup." : "Você ainda não fez nenhum backup do sistema.") + ' Leva 2 segundos.</span><span class="row"><button class="btn small" id="bkNow">Baixar backup</button><button class="btn ghost small" id="bkLater">Amanhã</button></span></div>';
+    $("#bkNow").onclick = function () { baixarBackup(); box.innerHTML = ""; };
+    $("#bkLater").onclick = function () { LS.set("bkAdiado", iso(today())); box.innerHTML = ""; };
+  }
+
+  /* ================================================================
+     ANEXOS MAIS LEVES · reduz fotos antes de subir
+     ================================================================ */
+  var IMG_MAX_LADO = 2000, IMG_QUAL = 0.82, IMG_MIN_BYTES = 350 * 1024;
+  function comprimirImagem(f) {
+    return new Promise(function (res) {
+      if (!f || !/^image\/(jpeg|png|webp|heic|heif)$/i.test(f.type || "") || f.size < IMG_MIN_BYTES) { res(f); return; }
+      var url = URL.createObjectURL(f), img = new Image();
+      var fim = function (out) { URL.revokeObjectURL(url); res(out); };
+      img.onerror = function () { fim(f); };
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, IMG_MAX_LADO / Math.max(w, h));
+          var c = document.createElement("canvas"); c.width = Math.round(w * k); c.height = Math.round(h * k);
+          var ctx = c.getContext("2d");
+          var png = /png/i.test(f.type);
+          if (!png) { ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, c.width, c.height); }
+          ctx.drawImage(img, 0, 0, c.width, c.height);
+          var tipo = "image/webp";
+          var test = c.toDataURL("image/webp", 0.1);
+          if (test.indexOf("data:image/webp") !== 0) { if (png) { fim(f); return; } tipo = "image/jpeg"; } // sem webp: png fica como está (transparência)
+          c.toBlob(function (bl) {
+            if (!bl || bl.size >= f.size * 0.9) { fim(f); return; }
+            var nome = f.name.replace(/\.[^.]+$/, "") + (tipo === "image/webp" ? ".webp" : ".jpg");
+            var nf; try { nf = new File([bl], nome, { type: tipo, lastModified: Date.now() }); } catch (e) { bl.name = nome; nf = bl; }
+            fim(nf);
+          }, tipo, IMG_QUAL);
+        } catch (e) { fim(f); }
+      };
+      img.src = url;
+    });
+  }
+  var VIDEO_AVISO = 15 * 1024 * 1024;
+
+  /* ================================================================
+     ABAS · setas para rolar no computador
+     ================================================================ */
+  function initTabsScroll() {
+    var tabs = $("#tabs"); if (!tabs || tabs.parentNode.classList.contains("tabs-wrap")) return;
+    var wrap = document.createElement("div"); wrap.className = "tabs-wrap";
+    tabs.parentNode.insertBefore(wrap, tabs); wrap.appendChild(tabs);
+    var mk = function (dir) { var b = document.createElement("button"); b.type = "button"; b.className = "tabs-arrow " + (dir < 0 ? "left" : "right"); b.setAttribute("aria-label", dir < 0 ? "Ver abas anteriores" : "Ver mais abas"); b.innerHTML = dir < 0 ? "‹" : "›"; b.onclick = function () { tabs.scrollBy({ left: dir * Math.max(200, tabs.clientWidth * 0.6), behavior: "smooth" }); }; return b; };
+    var L = mk(-1), Rr = mk(1); wrap.insertBefore(L, tabs); wrap.appendChild(Rr);
+    var upd = function () {
+      var max = tabs.scrollWidth - tabs.clientWidth;
+      var ini = tabs.scrollLeft > 4, fim = tabs.scrollLeft < max - 4;
+      wrap.classList.toggle("can-left", ini); wrap.classList.toggle("can-right", max > 4 && fim);
+    };
+    tabs.addEventListener("scroll", upd, { passive: true });
+    window.addEventListener("resize", upd);
+    // rodinha do mouse rola as abas para o lado
+    tabs.addEventListener("wheel", function (e) {
+      if (tabs.scrollWidth <= tabs.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault(); tabs.scrollLeft += e.deltaY;
+    }, { passive: false });
+    // arrastar com o mouse
+    var dragX = null, startL = 0, moved = false;
+    tabs.addEventListener("pointerdown", function (e) { if (e.pointerType !== "mouse") return; dragX = e.clientX; startL = tabs.scrollLeft; moved = false; });
+    window.addEventListener("pointermove", function (e) { if (dragX == null) return; var dx = e.clientX - dragX; if (Math.abs(dx) > 5) { moved = true; tabs.scrollLeft = startL - dx; } });
+    window.addEventListener("pointerup", function () { dragX = null; });
+    tabs.addEventListener("click", function (e) { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+    if (window.ResizeObserver) new ResizeObserver(upd).observe(tabs);
+    tabsScrollUpd = function () { upd(); var sel = $('#tabs button[aria-selected="true"]'); if (sel && !sel.hidden) { var l = sel.offsetLeft - tabs.offsetLeft, r = l + sel.offsetWidth; if (l < tabs.scrollLeft + 30 || r > tabs.scrollLeft + tabs.clientWidth - 30) tabs.scrollTo({ left: Math.max(0, l - 40), behavior: "smooth" }); } };
+    setTimeout(tabsScrollUpd, 50);
+  }
+  var tabsScrollUpd = function () {};
+
+  /* ================================================================
      CONTA (antigo Ajustes)
      ================================================================ */
   $("#openSettings").onclick = function () {
@@ -3392,7 +4094,8 @@
   $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); });
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores"].indexOf(view) >= 0)) return; render(); } }); }; })();
+  initTabsScroll();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;
