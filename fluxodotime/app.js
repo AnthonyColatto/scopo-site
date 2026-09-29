@@ -108,7 +108,7 @@
   function meu(col, d) {
     d = d || {};
     if (col === "pauta") return d.resp === me || d.criadoPor === me || (d.acompanha || []).indexOf(me) >= 0;
-    if (col === "cartoes") return (d.resp || []).indexOf(me) >= 0 || d.criadoPor === me;
+    if (col === "cartoes") return (d.resp || []).indexOf(me) >= 0 || d.criadoPor === me || (d.acompanha || []).indexOf(me) >= 0;
     if (col === "eventos") return (d.quem || []).indexOf(me) >= 0 || d.criadoPor === me;
     if (col === "visitas") return d.resp === me || d.criadoPor === me;
     if (col === "pessoas") return d.nome === me;
@@ -508,7 +508,7 @@
     if (!q) { el.innerHTML = head + '<div class="empty">' + (loaded.quadros ? "Nenhum quadro ainda. Crie o primeiro." : "Carregando…") + "</div>"; bindBoardBar(); return; }
     var sx = $(".kanban-wrap") ? $(".kanban-wrap").scrollLeft : 0;
     var cols = (q.colunas || []).map(function (col, ci) {
-      var cs = cardsOf(q.id, col.id).filter(function (c) { return (!boardF.conta || c.conta === boardF.conta) && (!boardF.pessoa || (c.resp || []).indexOf(boardF.pessoa) >= 0) && (!focoMeu() || (c.resp || []).indexOf(me) >= 0); });
+      var cs = cardsOf(q.id, col.id).filter(function (c) { return (!boardF.conta || c.conta === boardF.conta) && (!boardF.pessoa || (c.resp || []).indexOf(boardF.pessoa) >= 0) && (!focoMeu() || (c.resp || []).indexOf(me) >= 0 || c.criadoPor === me || (c.acompanha || []).indexOf(me) >= 0); });
       var menu = colMenu === col.id;
       var empty = cardsOf(q.id, col.id).length === 0;
       return '<div class="col" data-col="' + esc(col.id) + '">' +
@@ -535,7 +535,7 @@
   function addCardFromInput() {
     var q = currentBoard(); var t = ($("#newCardT").value || "").trim(); if (!t || !q) return;
     var col = addingIn;
-    Store.add("cartoes", { quadro: q.id, coluna: col, ordem: nextOrder(q.id, col), titulo: t, desc: "", conta: boardF.conta || "Ambas", resp: boardF.pessoa ? [boardF.pessoa] : [], prazo: "", etiquetas: [], checklist: [], comentarios: [], criadoEm: new Date().toISOString(), criadoPor: me }).catch(fail);
+    Store.add("cartoes", { quadro: q.id, coluna: col, ordem: nextOrder(q.id, col), titulo: t, desc: "", conta: boardF.conta || "Ambas", resp: boardF.pessoa ? [boardF.pessoa] : [me], prazo: "", etiquetas: [], checklist: [], comentarios: [], criadoEm: new Date().toISOString(), criadoPor: me }).catch(fail);
     $("#newCardT").value = ""; $("#newCardT").focus();
   }
   function saveCols(q, cols) { return Store.upd("quadros", q.id, { colunas: cols }).catch(fail); }
@@ -771,7 +771,7 @@
     $("#cQ").onchange = function () { var nq = S.quadros.find(function (x) { return x.id === $("#cQ").value; }); if (!nq || !nq.colunas.length) return; patchCard(c, { quadro: nq.id, coluna: nq.colunas[0].id, ordem: nextOrder(nq.id, nq.colunas[0].id) }); };
     $("#cC").onclick = function (e) { var b = e.target.closest("[data-v]"); if (b) patchCard(c, { conta: b.dataset.v }); };
     $("#cP").onchange = function () { patchCard(c, { prazo: this.value }); };
-    $("#cR").onclick = function (e) { var b = e.target.closest("[data-p]"); if (!b) return; var rs = (c.resp || []).slice(), i = rs.indexOf(b.dataset.p); if (i >= 0) rs.splice(i, 1); else rs.push(b.dataset.p); patchCard(c, { resp: rs }); };
+    $("#cR").onclick = function (e) { var b = e.target.closest("[data-p]"); if (!b) return; var rs = (c.resp || []).slice(), i = rs.indexOf(b.dataset.p); if (i >= 0) rs.splice(i, 1); else rs.push(b.dataset.p); var pt = { resp: rs }; if (!isAdmin() && rs.indexOf(me) < 0 && c.criadoPor !== me && (c.acompanha || []).indexOf(me) < 0) pt.acompanha = (c.acompanha || []).concat([me]); patchCard(c, pt); if (pt.acompanha) toast("Você segue acompanhando este cartão"); };
     $("#cArch").onclick = function () { Store.upd("cartoes", c.id, { arquivado: true }).then(function () { toast("Arquivado"); }, fail); closeModal(); };
     $("#cDel").onclick = function () {
       $("#cDelWrap").innerHTML = '<span class="confirm">Excluir de vez? <button class="yes" id="cDelY">sim</button><button class="no" id="cDelN">não</button></span>';
@@ -2464,7 +2464,7 @@
     var jobs = [];
     list.forEach(function (v) {
       (v.anexos || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, ANEXOS_POR_VISITA).forEach(function (a) { jobs.push(Store.fileUrl(a).then(function (u) { a._u = u; }, function () {})); });
-      Object.keys(v.notas || {}).forEach(function (s) { ((v.notas[s] || {}).fotos || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, 3).forEach(function (a) { jobs.push(Store.fileUrl(a).then(function (u) { a._u = u; }, function () {})); }); });
+      Object.keys(v.notas || {}).forEach(function (s) { ((v.notas[s] || {}).fotos || []).filter(function (a) { return fileKind(a) === "img"; }).slice(0, 8).forEach(function (a) { jobs.push(Store.fileUrl(a).then(function (u) { a._u = u; }, function () {})); }); });
     });
     Promise.all(jobs).then(function () {
       var logo = new URL("logo.png", location.href).href;
@@ -2481,9 +2481,17 @@
             var fotos = (v.anexos || []).filter(function (a) { return a._u; });
             return '<div class="visita"><h3>Visita de ' + fmt(parse(v.data)) + "/" + v.data.slice(0, 4) + ' <span class="muted">· ' + esc(v.resp || "") + (visitaScore(v) != null ? " · nota " + visitaScore(v) + "%" : "") + "</span></h3>" +
               (v.resumo ? '<p class="resumo">' + esc(v.resumo).replace(/\n/g, "<br>") + "</p>" : "") +
-              (fotos.length ? '<div class="fotos">' + fotos.map(function (a) { return '<img src="' + esc(a._u) + '" alt="">'; }).join("") + "</div>" : "") +
-              (function () { var fs = []; Object.keys(v.notas || {}).forEach(function (s) { var n = v.notas[s] || {}; ((n.fotos || []).filter(function (a) { return a._u; }).slice(0, 3)).forEach(function (a) { fs.push('<figure><img src="' + esc(a._u) + '" alt=""><figcaption>' + esc(s) + (n.nota ? " · " + NOTA_L[n.nota] : "") + "</figcaption></figure>"); }); }); return fs.length ? '<div class="lbl2">Fotos por setor</div><div class="fotos setor">' + fs.join("") + "</div>" : ""; })() +
-              ((v.acoes || []).length ? '<div class="lbl2">Checklist de ações · ' + v.acoes.filter(acaoFeita).length + " de " + v.acoes.length + ' feitas</div><ul class="acs">' + v.acoes.map(function (a) { var f = acaoFeita(a); return '<li class="' + (f ? "ok" : "") + '"><span class="bx">' + (f ? "✓" : "") + "</span>" + esc(a.texto) + '<span class="muted"> · ' + esc(a.resp || "") + (a.prazo ? " · até " + fmt(parse(a.prazo)) : "") + (a.pautaId ? " · na pauta" : "") + "</span></li>"; }).join("") + "</ul>" : "") + "</div>";
+              (function () {
+                var ss = setores.filter(function (s) { var n = (v.notas || {})[s] || {}; return n.nota || n.obs || (n.fotos || []).length; });
+                if (!ss.length) return "";
+                return '<div class="lbl2">Avaliação por setor</div><div class="setores">' + ss.map(function (s) {
+                  var n = v.notas[s] || {}, fs = (n.fotos || []).filter(function (a) { return a._u; });
+                  return '<div class="setor"><div class="sh"><b>' + esc(s) + "</b>" + cell(n.nota) + "</div>" + (n.obs ? '<div class="sobs">' + esc(n.obs) + "</div>" : "") +
+                    (fs.length ? '<div class="fotos">' + fs.map(function (a) { return '<img src="' + esc(a._u) + '" alt="">'; }).join("") + "</div>" : "") + "</div>";
+                }).join("") + "</div>";
+              })() +
+              (fotos.length ? '<div class="lbl2">Fotos gerais da visita</div><div class="fotos">' + fotos.map(function (a) { return '<img src="' + esc(a._u) + '" alt="">'; }).join("") + "</div>" : "") +
+((v.acoes || []).length ? '<div class="lbl2">Checklist de ações · ' + v.acoes.filter(acaoFeita).length + " de " + v.acoes.length + ' feitas</div><ul class="acs">' + v.acoes.map(function (a) { var f = acaoFeita(a); return '<li class="' + (f ? "ok" : "") + '"><span class="bx">' + (f ? "✓" : "") + "</span>" + esc(a.texto) + '<span class="muted"> · ' + esc(a.resp || "") + (a.prazo ? " · até " + fmt(parse(a.prazo)) : "") + (a.pautaId ? " · na pauta" : "") + "</span></li>"; }).join("") + "</ul>" : "") + "</div>";
           }).join("") + "</section>";
       }).join("");
       var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Relatório de visitas · ' + esc(viRangeLabel()) + '</title>' +
@@ -2500,7 +2508,7 @@
         ".loja{break-before:page;padding-top:4px}.lh{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #F5DF00;padding-bottom:6px;margin-bottom:10px}.lh h2{font-size:19px}.ls{display:flex;gap:10px;align-items:center}" +
         ".obs{font-size:10px;color:#555;margin-top:2px}.visita{margin-top:14px;break-inside:avoid}.visita h3{font-size:12.5px;margin-bottom:4px}.resumo{margin:0 0 6px;padding:8px 10px;background:#fafafa;border-left:3px solid #F5DF00}" +
         ".fotos{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.fotos img{width:100%;height:110px;object-fit:cover;border-radius:6px}" +
-        ".fotos.setor figure{margin:0}.fotos.setor figcaption{font-size:9.5px;color:#555;margin-top:2px}.lbl2{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:#6b6b6b;font-weight:700;margin:10px 0 4px}" +
+        ".setores{display:grid;gap:8px}.setor{border:1px solid #e7e7e7;border-radius:8px;padding:8px 10px;break-inside:avoid}.setor .sh{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}.setor .sobs{font-size:10.5px;color:#444;margin-top:3px}.setor .fotos{margin-top:6px}.lbl2{font-size:9.5px;letter-spacing:1px;text-transform:uppercase;color:#6b6b6b;font-weight:700;margin:10px 0 4px}" +
         ".acs{list-style:none;margin:0;padding:0;display:grid;gap:3px}.acs li{display:flex;gap:6px;align-items:flex-start}.acs .bx{width:12px;height:12px;border:1.5px solid #999;border-radius:3px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:none;margin-top:2px}.acs li.ok{color:#6b6b6b;text-decoration:line-through}.acs li.ok .bx{background:#1f9d57;border-color:#1f9d57;color:#fff}" +
         "@media screen{body{max-width:1100px;margin:0 auto;padding:24px}}" +
         ".foot{margin-top:20px;font-size:10px;color:#8a8a8a;text-align:center}.tip{background:#fff8c6;border:1px solid #f0dc50;padding:8px 12px;border-radius:6px;margin-bottom:12px;font-size:12px}@media print{.tip{display:none}}" +
