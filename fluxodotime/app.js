@@ -246,7 +246,7 @@
     }
     if (!adm && (view === "verba" || view === "admin" || view === "eventosorg" || view === "campanhas" || view === "reunioes" || view === "indicadores" || view === "midia" || view === "fornecedores")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
     backupLembrete(); tabsScrollUpd();
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -3075,6 +3075,17 @@
   }
 
   /* ================================================================
+     TABLOIDE · estúdio de tabloide dentro do Fluxo (pasta tabloide/)
+     ================================================================ */
+  function renderTabloide() {
+    var el = $("#v-tabloide");
+    if ($("#tbFrame", el)) return; // não recarrega o estúdio a cada atualização da base
+    el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">Tabloide</div><b>Estúdio de tabloide</b><span class="hint"> · monte o A3, as artes de redes e as peças. Use <b>Salvar no Fluxo</b> para o time abrir de qualquer computador.</span></div>' +
+      '<a class="btn ghost small" href="tabloide/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
+      '<iframe id="tbFrame" class="tb-frame" src="tabloide/" title="Estúdio de tabloide"></iframe>';
+  }
+
+  /* ================================================================
      FORNECEDORES · cadastro único usado em Verba, Mídia e Eventos (só admins)
      ================================================================ */
   var fnF = { q: "", cat: "" };
@@ -4103,7 +4114,7 @@
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
   initTabsScroll();
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;

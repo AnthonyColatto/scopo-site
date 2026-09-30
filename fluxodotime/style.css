@@ -821,3 +821,10 @@ li.done .vi-a-t{text-decoration:line-through;color:var(--ink-3)}
 .forn-pop{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;padding:70px 12px 20px;overflow-y:auto}
 .forn-card{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--brand);border-radius:12px;padding:16px 18px;display:grid;gap:12px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
 .forn-card h3{font-size:17px}
+
+/* ================= Tabloide (estúdio embutido) ================= */
+#v-tabloide{gap:10px}
+.tb-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.tb-head b{font-family:var(--head);font-size:16px}
+.tb-frame{width:100%;height:calc(100vh - 210px);min-height:560px;border:1px solid var(--line-2);border-radius:var(--r);background:#eceef1;display:block}
+@media (max-width:860px){.tb-frame{height:80vh}}
