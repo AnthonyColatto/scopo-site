@@ -213,7 +213,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .big .int{font-size:4.2em;letter-spacing:-.03em}
 .big .cw{display:flex;flex-direction:column;align-items:flex-start;margin-left:.06em}
 .big .cents{font-size:1.75em;line-height:.9;margin-top:.08em}
-.big .un{font-size:.62em;font-family:var(--fb);font-weight:900;margin-top:.15em}
+.big .un{font-size:.62em;font-family:var(--fb);font-weight:900;margin-top:var(--ung,.3em);margin-left:var(--ungx,.1em);letter-spacing:.02em}
+.pg>.tex{position:absolute;inset:0;pointer-events:none;background-position:center}
+.pg.texbg>*:not(.tex){position:relative;z-index:1}
+.pg.texbg>.tex{z-index:0}
+.pg.textop>.tex{z-index:5}
 .c-tot{font-size:.56em;font-weight:700;opacity:.9}
 .c-de{font-size:.56em;font-weight:700;text-decoration:line-through;opacity:.8}
 .card.dest .pill{background:var(--dfg);color:var(--dbg)}
@@ -248,12 +252,12 @@ button,input,select,textarea{font:inherit;color:inherit}
 .foot{flex:none;background:var(--fbg);color:var(--ftx);padding:22px 32px 18px;display:flex;flex-direction:column;gap:14px}
 .foot .fr{display:grid;grid-template-columns:auto 1fr;gap:36px;align-items:start}
 .foot .stores{display:grid;grid-template-columns:repeat(var(--sc,4),1fr);gap:10px 18px}
-.foot .store b{display:block;font-size:12px;text-transform:uppercase;font-weight:900}
-.foot .store .cty{font-size:11px;font-weight:900;color:var(--a);text-transform:uppercase;letter-spacing:.04em}
-.foot .store span{display:block;font-size:12px;line-height:1.3}
-.foot .pay{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:12px}
-.foot .pay i{font-style:normal;border:1px solid currentColor;padding:3px 8px;border-radius:99px;font-weight:700;font-size:11px}
-.foot .legal{font-size:9.5px;line-height:1.35;opacity:.85}
+.foot .store b{display:block;font-size:var(--fs,12px);text-transform:uppercase;font-weight:900}
+.foot .store .cty{font-size:calc(var(--fs,12px)*.92);font-weight:900;color:var(--a);text-transform:uppercase;letter-spacing:.04em}
+.foot .store span{display:block;font-size:var(--fs,12px);line-height:1.3}
+.foot .pay{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:var(--pfs,12px)}
+.foot .pay i{font-style:normal;border:1px solid currentColor;padding:3px 8px;border-radius:99px;font-weight:700;font-size:calc(var(--pfs,12px)*.92)}
+.foot .legal{font-size:var(--lfs,9.5px);line-height:1.35;opacity:.85}
 .logo-t{display:flex;flex-direction:column;line-height:.9}
 .logo-t b{font-family:var(--fd);font-weight:900;font-size:1em;text-transform:lowercase;letter-spacing:-.02em}
 .logo-t span{font-size:.28em;font-weight:600;margin-top:.15em}
@@ -273,7 +277,7 @@ button,input,select,textarea{font:inherit;color:inherit}
   <header class="top">
     <div class="brandmark"><i aria-hidden="true"></i><input id="projName" class="proj" type="text" aria-label="Nome do projeto"></div>
     <div class="seg" role="group" aria-label="O que montar">
-      <button data-mode="tab">Tabloide A3</button>
+      <button data-mode="tab">Tabloide / impresso</button>
       <button data-mode="soc">Redes (feed/story)</button>
       <button data-mode="pc">Peças individuais</button>
     </div>
@@ -317,8 +321,16 @@ function toast(m){const t=document.createElement('div');t.className='toast';t.te
 function norm(s){return String(s??'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'')}
 
 /* ================= formatos ================= */
+const PAPEIS={a3:['A3',297,420],a4:['A4',210,297],a5:['A5',148,210],f1015:['Filipeta 10×15',100,150],f1021:['Filipeta 10×21',100,210],dl:['Lâmina DL',99,210],custom:['Personalizado',0,0]};
+/* formato do tabloide: o desenho mantém o lado menor em 1123 px e a proporção do papel; na exportação vira o tamanho real em mm */
+function tabFmt(){const f=(typeof S!=='undefined'&&S&&S.formato)||{tipo:'a3'},P=PAPEIS[f.tipo]||PAPEIS.a3;
+  let w=f.tipo==='custom'?Math.max(20,+f.w||100):P[1],h=f.tipo==='custom'?Math.max(20,+f.h||150):P[2];
+  if(f.deitado&&f.tipo!=='custom'){const x=w;w=h;h=x}
+  const W=w<=h?1123:Math.round(1123*w/h),H=w<=h?Math.round(1123*h/w):1123;
+  return {w:W,h:H,mm:[w,h],name:f.tipo==='custom'?`${w}×${h} mm`:P[0]+(f.deitado?' deitado':'')}}
 const FMT={a3:{w:1123,h:1588,mm:[297,420],name:'A3'},a4:{w:794,h:1123,mm:[210,297],name:'A4'},story:{w:1080,h:1920,name:'Story'},feed:{w:1080,h:1350,name:'Feed'}};
 const FONTS=['Gotham','Archivo Black','Archivo','Montserrat','Anton','Bebas Neue','Poppins','Barlow Condensed','Oswald'];
+Object.defineProperty(FMT,'a3',{get:tabFmt,enumerable:true});
 const PRESETS={
   'Azul e amarelo':{primary:'#1f2a78',accent:'#ffd100',text:'#1f2a78',price:'#1f2a78',pill:'#ffd100',pillText:'#1f2a78',pageBg:'#ffffff',pageBg2:'#eef0f8',cardBg:'#ffffff',line:'#d7dbef',destBg:'#ffd100',destFg:'#1f2a78',footBg:'#1f2a78',footTx:'#ffffff',ctaBg:'#ffd100',ctaTx:'#1f2a78'},
   'Vermelho varejo':{primary:'#c8102e',accent:'#ffe14d',text:'#1d1d1f',price:'#c8102e',pill:'#1d1d1f',pillText:'#ffffff',pageBg:'#ffffff',pageBg2:'#fbeae6',cardBg:'#ffffff',line:'#f0d4ce',destBg:'#c8102e',destFg:'#ffffff',footBg:'#1d1d1f',footTx:'#ffffff',ctaBg:'#c8102e',ctaTx:'#ffffff'},
@@ -344,13 +356,14 @@ function merge(d,s){for(const k in s){if(isObj(d[k])&&isObj(s[k]))merge(d[k],s[k
 function hydrate(d){const s=merge(defaultState(),d);
   if(!s.gothamOk){if(s.theme.fontDisplay==='Archivo Black'&&s.theme.fontBody==='Archivo'){s.theme.fontDisplay='Gotham';s.theme.fontBody='Gotham'}s.gothamOk=true}s.offers=(s.offers||[]).map(o=>migrateOffer(merge(O('','','',null,null),o)));return s}
 function defaultState(){return {
-  v:1,gothamOk:true,name:'Tabloide Cobre Tudo (exemplo)',lam:2,
-  theme:{...PRESETS['Azul e amarelo'],fontDisplay:'Gotham',fontBody:'Gotham',radius:6,bgMode:'cor',bgImg:null,cardStyle:'linhas',upper:true,align:'dir',autoCrop:true},
+  v:1,gothamOk:true,name:'Tabloide Cobre Tudo (exemplo)',lam:2,formato:{tipo:'a3',w:297,h:420,deitado:false},
+  theme:{...PRESETS['Azul e amarelo'],fontDisplay:'Gotham',fontBody:'Gotham',radius:6,bgMode:'cor',bgImg:null,cardStyle:'linhas',upper:true,align:'dir',autoCrop:true,unGap:30,texImg:null,texOp:35,texOnde:'fundo',texModo:'cobrir',texEsc:100},
   grid:{capa:{cols:4,rows:3},interna:{cols:4,rows:5}},
   capa:{bannerH:34,bannerImg:null,textOnImg:false,kick:'Tem oferta menor?',title:'A gente cobre!',sub:'Ofertas válidas em todas as lojas',selo:'Cobre tudo',showSelo:true},
   pages:[{title:'',sub:''},{title:'Grandes formatos',sub:'Nº1 em pisos e revestimentos'},{title:'',sub:''},{title:'',sub:''},{title:'',sub:''},{title:'',sub:''}],
   cta:{t1:'Compre pelo WhatsApp (67) 3345.4000',t2:'alvoradams.com.br',img:null,where:'capa'},
-  footer:{logo:null,brand:'alvorada',tagline:'materiais de construção',where:'ultima',cols:5,
+  footer:{logo:null,brand:'alvorada',tagline:'materiais de construção',where:'ultima',cols:5,logoSize:54,storeFs:12,legalFs:9.5,payFs:12,padV:22,gap:36,showPay:true,logoPos:'esq',
+    capaLogo:66,
     stores:[{city:'Campo Grande',name:'Matriz',addr:'Av. Zahran, 1119',phone:''},{city:'Campo Grande',name:'Coronel Antonino',addr:'Av. Coronel Antonino, 1171',phone:''},{city:'Campo Grande',name:'Bandeirantes',addr:'Av. Bandeirantes, 3398',phone:''},{city:'Dourados',name:'Marcelino Pires',addr:'Av. Marcelino Pires, 6245',phone:''},{city:'Maracaju',name:'Maracaju',addr:'Rua Perimetral Norte Cesar Tereza, 1100 · Jardim Guanabara',phone:''}],
     pay:'Pix, Cartão em até 10x, Débito, Boleto',
     validade:'Ofertas válidas de 08/07/2026 a 31/07/2026 ou enquanto durarem os estoques.',
@@ -503,8 +516,10 @@ function parseSel(s,max){
 /* ================= construção das peças ================= */
 function vars(){const t=S.theme;
   let bg=t.pageBg; if(t.bgMode==='degrade')bg=`linear-gradient(180deg,${t.pageBg},${t.pageBg2})`; if(t.bgMode==='imagem'&&t.bgImg)bg=`${t.pageBg} url(${t.bgImg}) center/cover`;
-  return `--p:${t.primary};--a:${t.accent};--pbg:${bg};--cbg:${t.cardBg};--tx:${t.text};--pr:${t.price};--pill:${t.pill};--pillt:${t.pillText};--ln:${t.line};--dbg:${t.destBg};--dfg:${t.destFg};--fbg:${t.footBg};--ftx:${t.footTx};--ctabg:${t.ctaBg};--ctatx:${t.ctaTx};--r:${t.radius}px;--fd:'${t.fontDisplay}',Impact,sans-serif;--fb:'${t.fontBody}',Arial,sans-serif;background:${bg}`;
+  return `--p:${t.primary};--a:${t.accent};--pbg:${bg};--cbg:${t.cardBg};--tx:${t.text};--pr:${t.price};--pill:${t.pill};--pillt:${t.pillText};--ln:${t.line};--dbg:${t.destBg};--dfg:${t.destFg};--fbg:${t.footBg};--ftx:${t.footTx};--ctabg:${t.ctaBg};--ctatx:${t.ctaTx};--r:${t.radius}px;--fd:'${t.fontDisplay}',Impact,sans-serif;--fb:'${t.fontBody}',Arial,sans-serif;--ung:${(t.unGap??30)/100}em;--ungx:${(t.unGap??30)/300}em;background:${bg}`;
 }
+function texHTML(){const t=S.theme;if(!t.texImg)return '';const bg=t.texModo==='repetir'?`background-image:url(${t.texImg});background-repeat:repeat;background-size:${t.texEsc||100}px auto`:`background-image:url(${t.texImg});background-size:cover;background-repeat:no-repeat`;return `<div class="tex" style="${bg};opacity:${(t.texOp||35)/100}"></div>`}
+function texCls(){const t=S.theme;return t.texImg?(t.texOnde==='tudo'?' textop':' texbg'):''}
 function logoHTML(size,color){
   const f=S.footer;
   if(f.logo)return `<div class="logo-i" style="width:${size*4.4}px;height:${size*1.25}px;background-image:url(${f.logo})"></div>`;
@@ -548,13 +563,15 @@ function emptyCells(n,ed){return Array.from({length:Math.max(0,n)},()=>`<div cla
 function ctaHTML(){const c=S.cta;
   if(c.img)return `<div class="cta img" style="background-image:url(${c.img})"></div>`;
   return `<div class="cta"><span class="ct1">${esc(c.t1)}</span><span class="ct2">${esc(c.t2)}</span></div>`}
-function footHTML(){const f=S.footer;
+function footHTML(){const f=S.footer;const lsz=f.logoSize||54;
   const stores=f.stores.map(s=>`<div class="store">${s.city?`<span class="cty">${esc(s.city)}</span>`:''}<b>${esc(s.name)}</b><span>${esc(s.addr)}</span>${s.phone?`<span>${esc(s.phone)}</span>`:''}</div>`).join('');
-  const pay=f.pay?`<div class="pay"><b style="font-size:11px;text-transform:uppercase;font-weight:900;margin-right:4px">Formas de pagamento</b>${f.pay.split(',').map(p=>p.trim()).filter(Boolean).map(p=>`<i>${esc(p)}</i>`).join('')}</div>`:'';
-  return `<div class="foot"><div class="fr">${logoHTML(54,S.theme.footTx)}<div class="stores" style="--sc:${f.cols}">${stores}</div></div>${pay}<div class="legal">${esc(f.validade)} ${esc(f.legal)}</div></div>`;
+  const pay=f.pay&&f.showPay!==false?`<div class="pay"><b style="font-size:11px;text-transform:uppercase;font-weight:900;margin-right:4px">Formas de pagamento</b>${f.pay.split(',').map(p=>p.trim()).filter(Boolean).map(p=>`<i>${esc(p)}</i>`).join('')}</div>`:'';
+  const lg=logoHTML(lsz,S.theme.footTx),st=`<div class="stores" style="--sc:${f.cols}">${stores}</div>`;
+  const fr=f.logoPos==='dir'?`<div class="fr" style="grid-template-columns:1fr auto;gap:${f.gap??36}px">${st}${lg}</div>`:f.logoPos==='topo'?`<div style="display:flex;justify-content:center">${lg}</div>${st}`:f.logoPos==='nenhum'?st:`<div class="fr" style="gap:${f.gap??36}px">${lg}${st}</div>`;
+  return `<div class="foot" style="--fs:${f.storeFs||12}px;--lfs:${f.legalFs||9.5}px;--pfs:${f.payFs||12}px;padding:${f.padV??22}px 32px ${Math.round((f.padV??22)*.8)}px">${fr}${pay}<div class="legal">${esc(f.validade)} ${esc(f.legal)}</div></div>`;
 }
 function bannerHTML(h){const c=S.capa,up='';
-  const logo=`<div class="blogo">${logoHTML(66,'#fff')}</div>`;
+  const logo=`<div class="blogo">${logoHTML(S.footer.capaLogo||66,'#fff')}</div>`;
   if(c.bannerImg&&!c.textOnImg)return `<div class="bn img" style="height:${h}px;background-image:url(${c.bannerImg})"></div>`;
   return `<div class="bn${c.bannerImg?' img':''}" style="height:${h}px;${c.bannerImg?`background-image:url(${c.bannerImg})`:''}">
     ${c.bannerImg?'':'<div class="deco"></div>'}
@@ -567,7 +584,7 @@ function pageA3(i,pg,ed){
   const top=i===0?bannerHTML(Math.round(F.h*S.capa.bannerH/100)):(P.title||P.sub?`<div class="strip"><span class="st">${esc(P.title)}</span><span class="ss">${esc(P.sub)}</span></div>`:'');
   const showCta=S.cta.where==='todas'||(S.cta.where==='capa'&&i===0)||(S.cta.where==='ultima'&&last);
   const showFoot=S.footer.where==='todas'||(S.footer.where==='ultima'&&last)||(S.footer.where==='capa'&&i===0);
-  return `<div class="pg" style="width:${F.w}px;height:${F.h}px;${vars()}">${top}
+  return `<div class="pg${texCls()}" style="width:${F.w}px;height:${F.h}px;${vars()}">${texHTML()}${top}
     <div class="grid ${S.theme.cardStyle}" data-cols="${g.cols}" data-rows="${g.rows}" style="grid-template-columns:repeat(${g.cols},minmax(0,1fr));grid-template-rows:repeat(${g.rows},minmax(0,1fr))">${pg.items.map(it=>cardHTML(it,ed,{ctx:'tab'})).join('')}${pg.free.map(([r,c])=>`<div class="card empty${ed?' ed':''}" style="grid-area:${r}/${c}">${ed?'vaga livre':''}</div>`).join('')}</div>
     ${showCta?ctaHTML():''}${showFoot?footHTML():''}</div>`;
 }
@@ -587,7 +604,7 @@ function artPage(key,fk,items,cols,rows,badge,ed,opt={}){
   else if(C.show)bot=`<div class="ab" style="min-height:${C.h}px"><div class="ab-r"><span style="font-size:${Math.round(C.h*.24)}px">${esc(C.t1||S.cta.t1)}</span><span style="font-size:${Math.round(C.h*.18)}px;text-transform:none">${esc(C.t2||S.cta.t2)}</span></div>${lg?`<div class="ab-l" style="font-size:${Math.max(10,Math.round(C.h*.1))}px">${esc(lg)}</div>`:''}</div>`;
   else if(lg)bot=`<div class="ab-s" style="font-size:${small}px">${esc(lg)}</div>`;
   const solo=cols*rows===1;
-  return `<div class="${cls}" style="width:${F.w}px;height:${F.h}px;${vars()};${bgx}">${top}
+  return `<div class="${cls}${texCls()}" style="width:${F.w}px;height:${F.h}px;${vars()};${bgx}">${texHTML()}${top}
     <div class="grid ${t.cardStyle}${solo?' solo':''}" data-cols="${cols}" data-rows="${rows}" style="grid-template-columns:repeat(${cols},minmax(0,1fr));grid-template-rows:repeat(${rows},minmax(0,1fr));padding:${L.pad}px">${items.map(it=>cardHTML({o:it.o,n:it.n,sp:1,rs:1},ed,opt)).join('')}${emptyCells(cols*rows-items.length,ed)}</div>${bot}</div>`;
 }
 /* lista de peças para o modo atual */
@@ -595,7 +612,7 @@ function buildNodes(ed){
   const out=[];
   if(UI.mode==='tab'){
     const {pages}=paginate();
-    pages.forEach((pg,i)=>out.push({html:pageA3(i,pg,ed),fmt:'a3',name:`lamina-${i+1}`,label:`Lâmina ${i+1}${i===0?' · Capa':''}`,info:`${pg.items.length} ofertas · ${pg.used}/${pg.cap} espaços`}));
+    pages.forEach((pg,i)=>out.push({html:pageA3(i,pg,ed),fmt:'a3',name:`lamina-${i+1}`,label:`Lâmina ${i+1}${i===0?' · Capa':''} · ${FMT.a3.name}`,info:`${pg.items.length} ofertas · ${pg.used}/${pg.cap} espaços`}));
   }else if(UI.mode==='soc'){
     const fk=S.soc.fmt,[cols,rows]=SOCGRID[S.soc.per]||[2,2],per=cols*rows;
     const sel=S.soc.sel.trim()?parseSel(S.soc.sel,S.offers.length):S.offers.map((_,i)=>i+1);
@@ -716,16 +733,19 @@ function seloEditor(o){const s=o.selo;
   return h+'</div>';
 }
 function panelEstrutura(){
-  const bh=Math.round(420*S.capa.bannerH/100);
+  const TF=tabFmt(),bh=Math.round(TF.mm[1]*S.capa.bannerH/100),fo=S.formato||{tipo:'a3'};
   const pageFields=S.pages.slice(1,S.lam).map((p,j)=>`<div class="row">${T_(`pages.${j+1}.title`,`Lâmina ${j+2} · título`)}${T_(`pages.${j+1}.sub`,'Texto à direita')}</div>`).join('');
   return `<div class="sec"><h3>Formato do tabloide</h3>
-    ${S_('lam','Lâminas (A3)',[[1,'1 lâmina · só frente'],[2,'2 lâminas · 1 folha frente e verso'],[4,'4 lâminas · 2 folhas'],[6,'6 lâminas · 3 folhas']])}
+    <div class="row">${S_('formato.tipo','Papel',Object.entries(PAPEIS).map(([k,v])=>[k,k==='custom'?'Personalizado…':`${v[0]} · ${v[1]}×${v[2]} mm`]))}${fo.tipo==='custom'?'<span></span>':`<div class="f"><span>&nbsp;</span>${B_('formato.deitado','Deitado (paisagem)')}</div>`}</div>
+    ${fo.tipo==='custom'?`<div class="row">${N_('formato.w','Largura (mm)',20,1200)}${N_('formato.h','Altura (mm)',20,1200)}</div>`:''}
+    <p class="hint">Tamanho final: <b>${TF.mm[0]} × ${TF.mm[1]} mm</b>. O layout acompanha a proporção do papel; confira colunas e linhas abaixo para o formato menor não ficar apertado.</p>
+    ${S_('lam','Lâminas (páginas)',[[1,'1 lâmina · só frente'],[2,'2 lâminas · 1 folha frente e verso'],[4,'4 lâminas · 2 folhas'],[6,'6 lâminas · 3 folhas']])}
     <div class="row">${N_('grid.capa.cols','Capa · colunas',1,6)}${N_('grid.capa.rows','Capa · linhas',1,8)}</div>
     <div class="row">${N_('grid.interna.cols','Internas · colunas',1,6)}${N_('grid.interna.rows','Internas · linhas',1,8)}</div>
     <p class="hint">Capa com ${capOf(0)} espaços e internas com ${capOf(1)}. Uma oferta com "ocupar 2 espaços" usa duas vagas.</p></div>
    <div class="sec"><h3>Banner da capa</h3>
     ${N_('capa.bannerH','Altura do banner (% da página)',15,60)}
-    ${I_('capa.bannerImg','Imagem do banner',3600,`Medida ideal: <b>${mm2px(297)} × ${mm2px(bh)} px</b><br>${297} × ${bh} mm a 300 dpi, sem sangria`)}
+    ${I_('capa.bannerImg','Imagem do banner',3600,`Medida ideal: <b>${mm2px(TF.mm[0])} × ${mm2px(bh)} px</b><br>${TF.mm[0]} × ${bh} mm a 300 dpi, sem sangria`)}
     ${S.capa.bannerImg?B_('capa.textOnImg','Escrever os textos por cima da imagem'):''}
     ${T_('capa.kick','Chamada pequena')}${T_('capa.title','Título em destaque')}${T_('capa.sub','Subtítulo')}
     <div class="row">${T_('capa.selo','Texto do selo')}<div class="f"><span>&nbsp;</span>${B_('capa.showSelo','Mostrar selo')}</div></div></div>
@@ -733,7 +753,7 @@ function panelEstrutura(){
    <div class="sec"><h3>Chamada de ação</h3>
     ${T_('cta.t1','Texto principal')}${T_('cta.t2','Texto à direita (site, @)')}
     ${S_('cta.where','Onde aparece',[['capa','Só na capa'],['ultima','Só na última'],['todas','Em todas'],['nenhuma','Não mostrar']])}
-    ${I_('cta.img','Ou use uma arte pronta',3600,`Medida ideal: <b>${mm2px(297)} × ${mm2px(17)} px</b> (297 × 17 mm a 300 dpi)`)}</div>`;
+    ${I_('cta.img','Ou use uma arte pronta',3600,`Medida ideal: <b>${mm2px(TF.mm[0])} × ${mm2px(Math.round(TF.mm[0]*64/1123))} px</b> (300 dpi)`)}</div>`;
 }
 function panelVisual(){
   const fo=allFonts().map(f=>[f,f]);
@@ -755,19 +775,28 @@ function panelVisual(){
     ${S_('theme.bgMode','Fundo da página',[['cor','Cor sólida'],['degrade','Degradê'],['imagem','Imagem']])}
     <div class="row">${C_('theme.pageBg','Cor do fundo')}${S.theme.bgMode==='degrade'?C_('theme.pageBg2','Segunda cor'):C_('theme.cardBg','Fundo dos cards')}</div>
     ${S.theme.bgMode==='degrade'?`<div class="row">${C_('theme.cardBg','Fundo dos cards')}${C_('theme.line','Linhas divisórias')}</div>`:`<div class="row">${C_('theme.line','Linhas divisórias')}<span></span></div>`}
-    ${S.theme.bgMode==='imagem'?I_('theme.bgImg','Imagem de fundo',3600,`Medida ideal A3: <b>${mm2px(297)} × ${mm2px(420)} px</b>`):''}
+    ${S.theme.bgMode==='imagem'?I_('theme.bgImg','Imagem de fundo',3600,`Medida ideal: <b>${mm2px(FMT.a3.mm[0])} × ${mm2px(FMT.a3.mm[1])} px</b>`):''}
     ${S_('theme.cardStyle','Estilo dos cards',[['linhas','Grade com linhas'],['caixas','Caixas separadas'],['sombra','Caixas com sombra']])}
     ${S.theme.cardStyle!=='linhas'?N_('theme.radius','Arredondamento (px)',0,30):''}
-    <p class="hint">Para deixar os cards transparentes sobre um fundo com imagem, use a mesma cor do fundo nos cards.</p></div>`;
+    <p class="hint">Para deixar os cards transparentes sobre um fundo com imagem, use a mesma cor do fundo nos cards.</p></div>
+   <div class="sec"><h3>Textura</h3>
+    ${I_('theme.texImg','Imagem de textura (papel, concreto, granulado…)',2400,'PNG ou JPG. Texturas claras funcionam melhor.')}
+    ${S.theme.texImg?`<div class="row">${N_('theme.texOp','Intensidade (%)',3,100)}${S_('theme.texOnde','Onde aplicar',[['fundo','Só no fundo'],['tudo','Por cima de tudo (efeito impresso)']])}</div>
+    <div class="row">${S_('theme.texModo','Encaixe',[['cobrir','Esticar na página'],['repetir','Repetir (ladrilho)']])}${S.theme.texModo==='repetir'?N_('theme.texEsc','Tamanho do ladrilho (px)',40,1200,10):'<span></span>'}</div>`:''}</div>
+   <div class="sec"><h3>Preço</h3>${N_('theme.unGap','Distância da unidade (M2, UN) até o preço',0,120,5)}<p class="hint">Aumente se a unidade estiver colada nos centavos.</p></div>`;
 }
 function panelRodape(){
   const f=S.footer;
   return `<div class="sec"><h3>Marca</h3>${I_('footer.logo','Logo (PNG sem fundo, versão para fundo escuro)',1600,'Medida ideal: <b>1600 × 450 px</b>')}
+    <div class="row">${N_('footer.logoSize','Tamanho da logo no rodapé',20,160,2)}${N_('footer.capaLogo','Tamanho da logo na capa',20,200,2)}</div>
+    ${S_('footer.logoPos','Posição da logo no rodapé',[['esq','À esquerda das lojas'],['dir','À direita das lojas'],['topo','Centralizada, acima das lojas'],['nenhum','Sem logo no rodapé']])}
     ${f.logo?'':`<div class="row">${T_('footer.brand','Nome (quando não há logo)')}${T_('footer.tagline','Linha de apoio')}</div>`}</div>
    <div class="sec"><h3>Lojas</h3>${f.stores.map((s,i)=>`<div class="oe" style="border:1px solid var(--ui-line);border-radius:8px"><div class="row">${T_(`footer.stores.${i}.city`,'Cidade')}${T_(`footer.stores.${i}.name`,'Nome da loja')}</div><div class="row">${T_(`footer.stores.${i}.addr`,'Endereço')}${T_(`footer.stores.${i}.phone`,'Telefone')}</div><div class="oacts"><button class="btn sm danger" data-act="rmStore" data-i="${i}">Remover loja</button></div></div>`).join('')}
     <div class="toolbar"><button class="btn sm" data-act="addStore">+ Loja</button></div>
-    ${N_('footer.cols','Colunas de lojas no rodapé',1,6)}</div>
-   <div class="sec"><h3>Textos</h3>${T_('footer.pay','Formas de pagamento (separe por vírgula)')}${A_('footer.validade','Validade das ofertas')}${A_('footer.legal','Texto legal')}
+    <div class="row">${N_('footer.cols','Colunas de lojas no rodapé',1,6)}${N_('footer.storeFs','Tamanho do texto das lojas',7,24,.5)}</div>
+    <div class="row">${N_('footer.padV','Altura do rodapé (respiro)',6,80,2)}${N_('footer.gap','Espaço entre logo e lojas',0,120,2)}</div></div>
+   <div class="sec"><h3>Textos</h3>${B_('footer.showPay','Mostrar formas de pagamento')}${T_('footer.pay','Formas de pagamento (separe por vírgula)')}
+    <div class="row">${N_('footer.payFs','Tamanho · pagamento',7,24,.5)}${N_('footer.legalFs','Tamanho · texto legal',6,18,.5)}</div>${A_('footer.validade','Validade das ofertas')}${A_('footer.legal','Texto legal')}
     ${S_('footer.where','Rodapé completo aparece',[['ultima','Só na última lâmina'],['capa','Só na capa'],['todas','Em todas as lâminas'],['nenhuma','Não mostrar']])}</div>`;
 }
 function panelPecas(){
@@ -972,20 +1001,43 @@ function modelSheet(){
 /* ================= exportação ================= */
 function exportDlg(){
   const nodes=buildNodes(false);const print=UI.mode==='tab'||(UI.mode==='pc'&&S.pc.type==='a4');
-  const what={tab:`${nodes.length} lâmina${nodes.length>1?'s':''} A3`,soc:`${nodes.length} arte${nodes.length>1?'s':''} de ${FMT[S.soc.fmt].name}`,pc:`${nodes.length} peça${nodes.length>1?'s':''} ${S.pc.type==='a4'?'A4':FMT[S.pc.type].name}`}[UI.mode];
+  const what={tab:`${nodes.length} lâmina${nodes.length>1?'s':''} ${FMT.a3.name}`,soc:`${nodes.length} arte${nodes.length>1?'s':''} de ${FMT[S.soc.fmt].name}`,pc:`${nodes.length} peça${nodes.length>1?'s':''} ${S.pc.type==='a4'?'A4':FMT[S.pc.type].name}`}[UI.mode];
+  const tam=UI.mode==='tab'?`${FMT.a3.mm[0]} × ${FMT.a3.mm[1]} mm`:'210 × 297 mm';
+  const pp=S.printPrefs||(S.printPrefs={bleed:3,marks:true,dpi:300});
   const m=modal(`<h2>Exportar ${what}</h2>
-   ${print?`<label class="f" style="max-width:260px"><span>Resolução</span><select id="dpi"><option value="300">300 dpi · gráfica</option><option value="150">150 dpi · prova rápida</option></select></label>`:''}
    <div class="xopt">
-    ${print?`<div class="xcard"><b>PDF para impressão</b><p>Um arquivo com todas as páginas no tamanho real (${UI.mode==='tab'?'297 × 420 mm':'210 × 297 mm'}).</p><button class="btn pri" id="xPdf">Gerar PDF</button></div>`:''}
+    ${print?`<div class="xcard"><b>PDF para gráfica</b><p>Tamanho final ${tam}, com sangria e marcas de corte para a gráfica refilar. Imagens em alta.</p>
+      <div class="row"><label class="f"><span>Sangria</span><select id="xBleed">${[0,2,3,5].map(v=>`<option value="${v}"${pp.bleed===v?' selected':''}>${v?v+' mm':'sem sangria'}</option>`).join('')}</select></label>
+      <label class="f"><span>Resolução</span><select id="dpi"><option value="300"${pp.dpi===300?' selected':''}>300 dpi</option><option value="200"${pp.dpi===200?' selected':''}>200 dpi (arquivo menor)</option></select></label></div>
+      <label class="chk"><input type="checkbox" id="xMarks"${pp.marks?' checked':''}> Marcas de corte e informações da página</label>
+      <button class="btn pri" id="xPdf">Gerar PDF para gráfica</button></div>
+     <div class="xcard"><b>PDF digital</b><p>Para mandar no WhatsApp, email ou site. Sem sangria nem marcas, arquivo leve.</p><button class="btn" id="xWeb">Gerar PDF digital</button></div>`:''}
     <div class="xcard"><b>PNG</b><p>${nodes.length>1?'Um .zip com uma imagem por página.':'Uma imagem pronta para postar ou imprimir.'}</p><button class="btn${print?'':' pri'}" id="xPng">Gerar PNG</button></div>
     <div class="xcard"><b>Projeto</b><p>Arquivo .json com ofertas, imagens e visual, para reabrir depois.</p><button class="btn" id="xJson">Salvar projeto</button></div>
    </div>
-   ${print?`<p class="hint">Ao exportar, o layout de cada código fica salvo para as próximas campanhas. O PDF sai em RGB. Para a gráfica em CMYK, me mande o PDF aqui na conversa que eu converto no perfil que a gráfica pedir (ex.: FOGRA39 ou Coated GRACoL).</p>`:''}
+   ${print?`<p class="hint">Sangria: o fundo das bordas (banner, faixas e rodapé) é estendido além do corte, então não fica filete branco se a faca desviar. Mantenha textos e preços a pelo menos 5 mm da borda. O PDF sai em RGB; se a gráfica exigir CMYK, me mande o PDF na conversa que eu converto no perfil que ela pedir (ex.: FOGRA39 ou Coated GRACoL).</p>`:''}
    <div class="acts"><button class="btn" data-close>Fechar</button></div>`);
-  const dpi=()=>+($('#dpi',m)?.value||300);
-  $('#xPdf',m)&&($('#xPdf',m).onclick=()=>{m.remove();doExport('pdf',dpi())});
-  $('#xPng',m).onclick=()=>{m.remove();doExport('png',dpi())};
+  const prefs=()=>{S.printPrefs={bleed:+($('#xBleed',m)?.value||0),marks:!!$('#xMarks',m)?.checked,dpi:+($('#dpi',m)?.value||300)};persist();return S.printPrefs};
+  $('#xPdf',m)&&($('#xPdf',m).onclick=()=>{const p=prefs();m.remove();doExport('pdf',p.dpi,p)});
+  $('#xWeb',m)&&($('#xWeb',m).onclick=()=>{m.remove();doExport('pdf',110,{bleed:0,marks:false,web:true})});
+  $('#xPng',m).onclick=()=>{m.remove();doExport('png',print?+($('#dpi',m)?.value||300):300)};
   $('#xJson',m).onclick=()=>{m.remove();syncMem();saveFile(slug(S.name)+'.json',new Blob([JSON.stringify({...S,bank:BANK})],{type:'application/json'}))};
+}
+/* sangria: estende a borda da arte para fora do corte (repete a última faixa de pixels) */
+function bleedCanvas(src,bpx){
+  if(!bpx)return src;const w=src.width,h=src.height,c=document.createElement('canvas');c.width=w+2*bpx;c.height=h+2*bpx;const g=c.getContext('2d');
+  g.imageSmoothingEnabled=false;g.drawImage(src,bpx,bpx);
+  g.drawImage(src,0,0,w,1,bpx,0,w,bpx);g.drawImage(src,0,h-1,w,1,bpx,h+bpx,w,bpx);
+  g.drawImage(src,0,0,1,h,0,bpx,bpx,h);g.drawImage(src,w-1,0,1,h,w+bpx,bpx,bpx,h);
+  g.drawImage(src,0,0,1,1,0,0,bpx,bpx);g.drawImage(src,w-1,0,1,1,w+bpx,0,bpx,bpx);g.drawImage(src,0,h-1,1,1,0,h+bpx,bpx,bpx);g.drawImage(src,w-1,h-1,1,1,w+bpx,h+bpx,bpx,bpx);
+  return c;
+}
+/* marcas de corte nos quatro cantos, fora da área de sangria */
+function cropMarks(pdf,x0,y0,w,h,bleed,info){
+  const off=bleed+1.5,len=5;pdf.setDrawColor(0,0,0);pdf.setLineWidth(.25);
+  [[x0,y0],[x0+w,y0],[x0,y0+h],[x0+w,y0+h]].forEach(([x,y],i)=>{const sx=i%2?1:-1,sy=i>1?1:-1;
+    pdf.line(x+sx*off,y,x+sx*(off+len),y);pdf.line(x,y+sy*off,x,y+sy*(off+len))});
+  if(info){pdf.setFontSize(6);pdf.setTextColor(60,60,60);pdf.text(info,x0,y0+h+bleed+6)}
 }
 async function renderCanvas(n,dpi){
   const F=FMT[n.fmt];const t=S.theme;await Promise.all([t.fontDisplay,t.fontBody].flatMap(f=>[900,700,400].map(w=>document.fonts.load(`${w} 40px "${f}"`).catch(()=>{}))));await document.fonts.ready;
@@ -994,16 +1046,19 @@ async function renderCanvas(n,dpi){
   const c=await html2canvas(el,{scale,backgroundColor:'#ffffff',useCORS:true,logging:false,width:F.w,height:F.h,windowWidth:F.w,windowHeight:F.h});
   stage.innerHTML='';return c;
 }
-async function doExport(kind,dpi){syncMem();
+async function doExport(kind,dpi,opt){syncMem();
   const nodes=buildNodes(false);if(!nodes.length){toast('Nada para exportar.');return}
   const busy=document.createElement('div');busy.className='busy';document.body.append(busy);
   try{
-    if(kind==='pdf'){const {jsPDF}=window.jspdf;let pdf=null;
+    if(kind==='pdf'){const {jsPDF}=window.jspdf;let pdf=null;const o=opt||{bleed:0,marks:false},bl=o.bleed||0,slugMm=o.marks?10:0,q=o.web?.8:.95;
       for(let i=0;i<nodes.length;i++){busy.textContent=`Gerando página ${i+1} de ${nodes.length}…`;const n=nodes[i],F=FMT[n.fmt];
-        const c=await renderCanvas(n,dpi);const img=c.toDataURL('image/jpeg',.94);
-        if(!pdf)pdf=new jsPDF({unit:'mm',format:F.mm,orientation:'portrait',compress:true});else pdf.addPage(F.mm,'portrait');
-        pdf.addImage(img,'JPEG',0,0,F.mm[0],F.mm[1],undefined,'FAST')}
-      busy.textContent='Preparando o arquivo…';await saveFile(slug(S.name)+'.pdf',pdf.output('blob'));
+        let c=await renderCanvas(n,dpi);const bpx=Math.round(bl/F.mm[0]*c.width);c=bleedCanvas(c,bpx);const img=c.toDataURL('image/jpeg',q);
+        const pw=F.mm[0]+2*(bl+slugMm),ph=F.mm[1]+2*(bl+slugMm),ox=slugMm,oy=slugMm;
+        const ori=pw>ph?'landscape':'portrait';
+        if(!pdf)pdf=new jsPDF({unit:'mm',format:[pw,ph],orientation:ori,compress:true});else pdf.addPage([pw,ph],ori);
+        pdf.addImage(img,'JPEG',ox,oy,F.mm[0]+2*bl,F.mm[1]+2*bl,undefined,o.web?'MEDIUM':'FAST');
+        if(o.marks){const hoje=new Date().toLocaleDateString('pt-BR');cropMarks(pdf,ox+bl,oy+bl,F.mm[0],F.mm[1],bl,`${S.name} · ${n.label} · ${F.mm[0]}×${F.mm[1]} mm · sangria ${bl} mm · ${dpi} dpi · ${hoje}`)}}
+      busy.textContent='Preparando o arquivo…';await saveFile(slug(S.name)+(o.web?'-digital':bl?'-grafica':'')+'.pdf',pdf.output('blob'));
     }else{
       const blobs=[];for(let i=0;i<nodes.length;i++){busy.textContent=`Gerando imagem ${i+1} de ${nodes.length}…`;const c=await renderCanvas(nodes[i],dpi);blobs.push(await new Promise(r=>c.toBlob(r,'image/png')))}
       if(blobs.length===1)await saveFile(`${slug(S.name)}-${nodes[0].name}.png`,blobs[0]);
