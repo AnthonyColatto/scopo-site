@@ -187,8 +187,8 @@
       },
       removeFile: function (a) { return client.storage.from(BUCKET).remove([String(a.ref).replace("sb:", "")]).catch(function () {}); },
       perfis: {
-        list: function () { return client.from(PERFIS).select("email,nome,papel").order("nome").then(check).then(function (r) { return r.data || []; }); },
-        save: function (p) { return client.from(PERFIS).upsert({ email: String(p.email).trim().toLowerCase(), nome: p.nome, papel: p.papel }).select("email").then(denied); },
+        list: function () { return client.from(PERFIS).select("*").order("nome").then(check).then(function (r) { return r.data || []; }); },
+        save: function (p) { var row = { email: String(p.email).trim().toLowerCase(), nome: p.nome, papel: p.papel }; if (p.permissoes) row.permissoes = p.permissoes; return client.from(PERFIS).upsert(row).select("email").then(denied); },
         remove: function (email) { return client.from(PERFIS).delete().eq("email", email).select("email").then(denied); }
       },
       logout: function () { return client.auth.signOut().then(function () { location.reload(); }); }
@@ -268,7 +268,7 @@
   function loadPerfil(client) {
     return client.auth.getUser().then(function (u) {
       var email = u.data && u.data.user ? String(u.data.user.email || "").toLowerCase() : "";
-      return client.from(PERFIS).select("email,nome,papel").eq("email", email).maybeSingle().then(function (r) {
+      return client.from(PERFIS).select("*").eq("email", email).maybeSingle().then(function (r) {
         if (r.data) return r.data;
         var w = screen('<h2>Acesso ainda não liberado</h2><p class="muted">O email <b>' + email.replace(/</g, "") + '</b> entrou, mas ainda não foi ligado a uma pessoa do time. Peça ao Tony ou à Ellyn para liberar em Admin &gt; Acessos.</p><button class="btn ghost" id="lgOut">Sair</button>');
         w.querySelector("#lgOut").onclick = function () { client.auth.signOut().then(function () { location.reload(); }); };

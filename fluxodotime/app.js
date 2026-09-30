@@ -105,6 +105,23 @@
     if (Store.mode === "supabase") return !!(Store.perfil && Store.perfil.papel === "admin");
     return acessosLista().some(function (a) { return a.nome === me && a.papel === "admin"; });
   }
+  /* ---------- permissões por área (Admin > Usuários > Permissões) ---------- */
+  var AREAS = [
+    ["pauta", "Pauta viva", ["pauta"]], ["quadros", "Quadros", ["quadros", "cartoes"]], ["calendario", "Calendário", ["eventos"]], ["mapa", "Mapa mental", ["mapas"]],
+    ["tabloide", "Tabloide", []], ["verba", "Verba e NFs", ["nfs", "contratos", "orcamento", "cooperada"]], ["midia", "Mídia", ["midias"]], ["fornecedores", "Fornecedores", ["fornecedores"]],
+    ["visitas", "Visitas", ["visitas"]], ["reunioes", "Reuniões e documentos", ["reunioes_dir", "documentos"]], ["campanhas", "Campanhas", ["campanhas"]], ["eventosorg", "Eventos", ["eventos_org"]],
+    ["indicadores", "Indicadores", ["indicadores"]], ["semana", "Minha semana", []], ["ciclo", "Ciclo do mês", ["ciclo"]], ["time", "Time / Meu fluxo", ["pessoas"]], ["modelos", "Modelos", ["modelos"]]
+  ];
+  var AREAS_ADMIN = ["verba", "midia", "fornecedores", "reunioes", "campanhas", "eventosorg", "indicadores"]; // no padrão, só admin vê
+  var COL_AREA = {}; AREAS.forEach(function (a) { a[2].forEach(function (c) { COL_AREA[c] = a[0]; }); });
+  function minhasPerms() {
+    if (!Store) return {};
+    if (Store.mode === "supabase") return (Store.perfil && Store.perfil.permissoes) || {};
+    var a = acessosLista().find(function (x) { return x.nome === me; }); return (a && a.permissoes) || {};
+  }
+  // "editar", "ver", "nenhum" ou "padrao" (regra normal: cada um mexe no que é seu)
+  function perm(area) { if (isAdmin()) return "editar"; return minhasPerms()[area] || "padrao"; }
+  function podeVerArea(area) { if (isAdmin()) return true; var p = perm(area); if (p === "nenhum") return false; if (p === "ver" || p === "editar") return true; return AREAS_ADMIN.indexOf(area) < 0; }
   function meu(col, d) {
     d = d || {};
     if (col === "pauta") return d.resp === me || d.criadoPor === me || (d.acompanha || []).indexOf(me) >= 0;
@@ -116,6 +133,9 @@
   }
   function canWrite(col, cur, next, op) {
     if (isAdmin()) return true;
+    var pa = COL_AREA[col] ? perm(COL_AREA[col]) : "padrao";
+    if (pa === "editar") return true;
+    if (pa === "nenhum") return false;
     if (FIN.indexOf(col) >= 0) return false;
     if (op === "add") return ["pauta", "cartoes", "eventos", "visitas"].indexOf(col) >= 0 && meu(col, next);
     if (op === "del") { if (col === "cartoes") return !!cur && cur.criadoPor === me; return (col === "pauta" || col === "eventos" || col === "visitas") && meu(col, cur); }
@@ -125,6 +145,9 @@
   // o que cada um enxerga (mesma regra do banco: fluxo_pode_ler)
   function canRead(col, d) {
     if (isAdmin()) return true;
+    var pa = COL_AREA[col] ? perm(COL_AREA[col]) : "padrao";
+    if (pa === "ver" || pa === "editar") return true;
+    if (pa === "nenhum") return false;
     d = d || {};
     if (["pauta", "cartoes", "eventos", "pessoas", "visitas"].indexOf(col) >= 0) return meu(col, d);
     if (col === "ciclo") return (d.quem || []).indexOf(me) >= 0;
@@ -244,8 +267,12 @@
     if (fs) {
       fs.innerHTML = '<button type="button" data-f="meu" aria-pressed="' + focoMeu() + '" title="Mostra só o que é seu">Só meu</button><button type="button" data-f="geral" aria-pressed="' + !focoMeu() + '" title="' + (adm ? "Visão de gestão: tudo do time" : "Tudo que foi liberado para você") + '">' + (adm ? "Geral" : "Tudo") + "</button>";
     }
-    if (!adm && (view === "verba" || view === "admin" || view === "eventosorg" || view === "campanhas" || view === "reunioes" || view === "indicadores" || view === "midia" || view === "fornecedores")) { view = "pauta"; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
+    $$("#tabs button[data-tab]").forEach(function (b) { var a = b.dataset.tab; if (!AREAS.some(function (x) { return x[0] === a; })) return; var ok = podeVerArea(a); b.classList.toggle("perm-off", !ok); b.classList.toggle("perm-on", ok && !adm && AREAS_ADMIN.indexOf(a) >= 0); });
+    if (tv && !adm && perm("visitas") !== "padrao") tv.hidden = !podeVerArea("visitas");
+    if (!adm && (view === "admin" || (AREAS.some(function (x) { return x[0] === view; }) && !podeVerArea(view)))) { view = (AREAS.find(function (x) { return podeVerArea(x[0]); }) || ["semana"])[0]; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
     backupLembrete(); tabsScrollUpd();
+    var pb = $("#permBanner"); if (!pb) { pb = document.createElement("div"); pb.id = "permBanner"; var bb = $("#bootBanner"); if (bb) bb.parentNode.insertBefore(pb, bb.nextSibling); }
+    if (pb) pb.innerHTML = !adm && perm(view) === "ver" ? '<div class="banner" style="margin-bottom:12px">Você pode ver esta área, mas não alterar.</div>' : "";
     var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
@@ -1683,7 +1710,7 @@
 
   function renderVerba() {
     var el = $("#v-verba");
-    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    if (!podeVerArea("verba")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
     var t0 = today(), in7 = new Date(t0); in7.setDate(in7.getDate() + 7);
     var orc = orcTotal(vMes, vConta), real = realizado(vMes, vConta), teto = tetoOf(vMes, vConta), base = teto || orc, saldo = base - real;
     var aguard = S.nfs.filter(function (n) { return n.competencia === vMes && n.status === "aguardando" && share(n.conta, vConta); }).length;
@@ -2090,6 +2117,29 @@
       $$("[data-cor]", box).forEach(function (c) { c.onchange = function () { var l = get(); l[+c.dataset.cor] = { nome: l[+c.dataset.cor].nome, cor: c.value }; saveListas({ etiquetas: l }); }; });
     });
   }
+  function abrirPermissoes(p, onSave) {
+    var pm = Object.assign({}, p.permissoes || {});
+    var OP = [["padrao", "Padrão"], ["nenhum", "Não vê"], ["ver", "Só vê"], ["editar", "Vê e edita"]];
+    var padraoTxt = function (a) { return AREAS_ADMIN.indexOf(a) >= 0 ? "padrão: não vê" : a === "semana" || a === "tabloide" || a === "mapa" ? "padrão: vê" : "padrão: vê e mexe só no que é dele"; };
+    var m = openModal('<header><div><div class="eyebrow">Permissões</div><h3>' + esc(p.nome) + '</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
+      '<p class="muted">Escolha área por área. <b>Padrão</b> segue a regra normal do sistema. <b>Só vê</b> mostra tudo da área sem deixar alterar. <b>Vê e edita</b> libera tudo da área, inclusive o que é dos outros.</p>' +
+      '<div class="row"><span class="hint">Aplicar em todas:</span>' + OP.map(function (o) { return '<button type="button" class="btn ghost small" data-all="' + o[0] + '">' + o[1] + "</button>"; }).join("") + "</div>" +
+      '<div class="tbl-wrap"><table class="tbl perm-tbl"><tbody>' + AREAS.map(function (a) {
+        var v = pm[a[0]] || "padrao";
+        return '<tr data-ar="' + a[0] + '"><td><b>' + esc(a[1]) + '</b><div class="perm-sum">' + padraoTxt(a[0]) + '</div></td><td class="r"><div class="seg">' + OP.map(function (o) { return '<button type="button" data-v="' + o[0] + '" aria-pressed="' + (v === o[0]) + '">' + o[1] + "</button>"; }).join("") + "</div></td></tr>";
+      }).join("") + "</tbody></table></div>" +
+      '<p class="hint">Acessos (senhas e chaves) continuam liberados item por item, na própria aba. Admin continua exclusivo de administradores. A pessoa vê a mudança na próxima vez que abrir o Fluxo.</p></div>' +
+      '<footer><span></span><button class="btn" id="pmSave">Salvar permissões <span class="arrow">→</span></button></footer>');
+    $("[data-close]", m).onclick = closeModal;
+    m.addEventListener("click", function (e) {
+      var b = e.target.closest("[data-v]"); if (b) { var tr = b.closest("[data-ar]"); $$("[data-v]", tr).forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); }); return; }
+      var all = e.target.closest("[data-all]"); if (all) $$("[data-ar]", m).forEach(function (tr) { $$("[data-v]", tr).forEach(function (x) { x.setAttribute("aria-pressed", String(x.dataset.v === all.dataset.all)); }); });
+    });
+    $("#pmSave").onclick = function () {
+      var out = {}; $$("[data-ar]", m).forEach(function (tr) { var sel = $('[data-v][aria-pressed="true"]', tr); if (sel && sel.dataset.v !== "padrao") out[tr.dataset.ar] = sel.dataset.v; });
+      onSave(out); closeModal();
+    };
+  }
   function drawPerfis() {
     var box = $("#admPerfis"); if (!box) return;
     var sb = Store.mode === "supabase";
@@ -2098,7 +2148,7 @@
         (list.length ? list.map(function (p, i) {
           return "<tr>" + (sb ? "<td>" + esc(p.email) + '</td><td><select data-pn="' + i + '">' + opt(nomes(), p.nome) + "</select></td>" : "<td><b>" + esc(p.nome) + "</b>" + (p.email ? ' <span class="hint">' + esc(p.email) + "</span>" : "") + "</td>") +
             '<td><select data-pp="' + i + '"><option value="membro"' + (p.papel === "membro" ? " selected" : "") + '>membro</option><option value="admin"' + (p.papel === "admin" ? " selected" : "") + ">admin</option></select></td>" +
-            '<td class="row" style="gap:4px;flex-wrap:nowrap">' + (sb ? '<button class="icon-btn" data-inv="' + i + '" title="Copiar mensagem de convite">Convite</button>' : "") + '<button class="x" data-prm="' + i + '" aria-label="Remover acesso">✕</button></td></tr>';
+            '<td class="row" style="gap:4px;flex-wrap:nowrap">' + (p.papel !== "admin" ? '<button class="icon-btn" data-perm="' + i + '" title="O que esta pessoa pode ver e editar">Permissões' + (Object.keys(p.permissoes || {}).length ? " · " + Object.keys(p.permissoes).length : "") + "</button>" : "") + (sb ? '<button class="icon-btn" data-inv="' + i + '" title="Copiar mensagem de convite">Convite</button>' : "") + '<button class="x" data-prm="' + i + '" aria-label="Remover acesso">✕</button></td></tr>';
         }).join("") : '<tr><td colspan="4" class="hint">Ninguém liberado ainda.</td></tr>') + "</tbody></table></div>" +
         (sb ? "" : '<p class="hint">Quem não está na lista entra como membro.</p>');
       var save = function (i, patch) {
@@ -2111,6 +2161,7 @@
         copy("Oi, " + p.nome + "! Liberei seu acesso ao Fluxo do Time.\n\n1. Abra " + link + "\n2. Clique em *Primeiro acesso*\n3. Use o email " + p.email + " e crie sua senha\n\nDepois é só entrar por lá sempre que precisar.");
       }; });
       $$("[data-pn]", box).forEach(function (s) { s.onchange = function () { save(+s.dataset.pn, { nome: s.value }); }; });
+      $$("[data-perm]", box).forEach(function (b) { b.onclick = function () { var i = +b.dataset.perm; abrirPermissoes(list[i], function (pm) { save(i, { permissoes: pm }); }); }; });
       $$("[data-pp]", box).forEach(function (s) { s.onchange = function () {
         var i = +s.dataset.pp;
         if (sb && list[i].email === Store.perfil.email && s.value !== "admin") { toast("Você não pode tirar o seu próprio admin."); s.value = "admin"; return; }
@@ -2609,7 +2660,7 @@
   }
   function renderEventosOrg() {
     var el = $("#v-eventosorg"), L = listas();
-    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    if (!podeVerArea("eventosorg")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
     var anos = {}; anos[new Date().getFullYear()] = 1; S.eventos_org.forEach(function (e) { if (e.data) anos[e.data.slice(0, 4)] = 1; });
     var list = S.eventos_org.filter(function (e) { return (!evoF.ano || (e.data || "").slice(0, 4) === String(evoF.ano)) && (!evoF.status || e.status === evoF.status) && (!evoF.tipo || e.tipo === evoF.tipo); })
       .sort(function (a, b) { return (a.data || "9999").localeCompare(b.data || "9999"); });
@@ -2763,7 +2814,7 @@
   }
   function renderCampanhas() {
     var el = $("#v-campanhas"), L = listas();
-    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    if (!podeVerArea("campanhas")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
     var list = campanhasAno(caF.ano);
     var cnt = function (st) { return list.filter(function (c) { return c.status === st; }).length; };
     var prev = list.reduce(function (t, c) { return t + (Number(c.verbaPrevista) || 0); }, 0), real = list.reduce(function (t, c) { return t + (Number(c.verbaReal) || 0); }, 0);
@@ -2911,7 +2962,7 @@
   function anteriorDe(tipo, antesDe, exceto) { return reunioesOrd().find(function (r) { return r.tipo === tipo && r.id !== exceto && (!antesDe || (r.data || "") <= antesDe); }); }
   function renderReunioes() {
     var el = $("#v-reunioes");
-    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    if (!podeVerArea("reunioes")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
     var head = '<div class="view-head"><div><div class="eyebrow">Reuniões</div><h2>Diretoria, estratégico e documentos</h2><p class="muted">Abra a reunião anterior, veja o que foi feito e o que ficou, e monte a próxima pauta. Os documentos que o estratégico manda ficam guardados aqui.</p></div>' +
       '<div class="row">' + (reF.sub === "reunioes" ? '<button class="btn" id="reNew">+ Nova reunião <span class="arrow">→</span></button>' : '<button class="btn" id="docNew">+ Documento <span class="arrow">→</span></button>') + "</div></div>" +
       '<div class="seg"><button data-resub="reunioes" aria-pressed="' + (reF.sub === "reunioes") + '">Reuniões</button><button data-resub="documentos" aria-pressed="' + (reF.sub === "documentos") + '">Documentos</button></div>';
@@ -3164,7 +3215,7 @@
 
   function renderFornecedores() {
     var el = $("#v-fornecedores"), L = listas();
-    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    if (!podeVerArea("fornecedores")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
     var q = fnF.q.trim().toLowerCase();
     var list = fornCad().filter(function (f) { return (!fnF.cat || f.categoria === fnF.cat) && (!q || [f.nome, f.razao, f.cnpj, f.contato, f.cidade, f.categoria].join(" ").toLowerCase().indexOf(q) >= 0); });
     var cad = {}; S.fornecedores.forEach(function (f) { cad[(f.nome || "").trim().toLowerCase()] = 1; });
@@ -3318,7 +3369,7 @@
   /* ---------- lista ---------- */
   function renderMidia() {
     var el = $("#v-midia"), L = listas();
-    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    if (!podeVerArea("midia")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
     var ym = midF.mes;
     var list = S.midias.filter(function (m) { return midNoMes(m, ym); }).filter(function (m) { return (!midF.tipo || m.tipo === midF.tipo) && (!midF.conta || m.conta === midF.conta || m.conta === "Ambas") && (!midF.status || m.status === midF.status); })
       .sort(function (a, b) { return (a.inicio || "9999").localeCompare(b.inicio || "9999"); });
@@ -3975,7 +4026,7 @@
 
   function renderIndicadores() {
     var el = $("#v-indicadores");
-    if (!isAdmin()) { el.innerHTML = '<div class="empty">Esta área é só para administradores.</div>'; return; }
+    if (!podeVerArea("indicadores")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
     var sk = indF.sec, sec = indSec(), ym = indF.mes, prev = addMes(ym, -1), linhas = indLinhas(sk);
     var mk = indF.metric[sk] || sec.metrics[0].k, m = sec.metrics.find(function (x) { return x.k === mk; }) || sec.metrics[0];
     var tem = indTemDados(sk, ym);
