@@ -108,7 +108,7 @@
   /* ---------- permissões por área (Admin > Usuários > Permissões) ---------- */
   var AREAS = [
     ["pauta", "Pauta viva", ["pauta"]], ["quadros", "Quadros", ["quadros", "cartoes"]], ["calendario", "Calendário", ["eventos"]], ["mapa", "Mapa mental", ["mapas"]],
-    ["tabloide", "Tabloide", []], ["verba", "Verba e NFs", ["nfs", "contratos", "orcamento", "cooperada"]], ["midia", "Mídia", ["midias"]], ["fornecedores", "Fornecedores", ["fornecedores"]],
+    ["tabloide", "Tabloide", []], ["golden", "Materiais Golden", []], ["verba", "Verba e NFs", ["nfs", "contratos", "orcamento", "cooperada"]], ["midia", "Mídia", ["midias"]], ["fornecedores", "Fornecedores", ["fornecedores"]],
     ["visitas", "Visitas", ["visitas"]], ["reunioes", "Reuniões e documentos", ["reunioes_dir", "documentos"]], ["campanhas", "Campanhas", ["campanhas"]], ["eventosorg", "Eventos", ["eventos_org"]],
     ["indicadores", "Indicadores", ["indicadores"]], ["semana", "Minha semana", []], ["ciclo", "Ciclo do mês", ["ciclo"]], ["time", "Time / Meu fluxo", ["pessoas"]], ["modelos", "Modelos", ["modelos"]]
   ];
@@ -273,7 +273,7 @@
     backupLembrete(); tabsScrollUpd();
     var pb = $("#permBanner"); if (!pb) { pb = document.createElement("div"); pb.id = "permBanner"; var bb = $("#bootBanner"); if (bb) bb.parentNode.insertBefore(pb, bb.nextSibling); }
     if (pb) pb.innerHTML = !adm && perm(view) === "ver" ? '<div class="banner" style="margin-bottom:12px">Você pode ver esta área, mas não alterar.</div>' : "";
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, golden: renderGolden, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -2120,7 +2120,7 @@
   function abrirPermissoes(p, onSave) {
     var pm = Object.assign({}, p.permissoes || {});
     var OP = [["padrao", "Padrão"], ["nenhum", "Não vê"], ["ver", "Só vê"], ["editar", "Vê e edita"]];
-    var padraoTxt = function (a) { return AREAS_ADMIN.indexOf(a) >= 0 ? "padrão: não vê" : a === "semana" || a === "tabloide" || a === "mapa" ? "padrão: vê" : "padrão: vê e mexe só no que é dele"; };
+    var padraoTxt = function (a) { return AREAS_ADMIN.indexOf(a) >= 0 ? "padrão: não vê" : a === "semana" || a === "tabloide" || a === "golden" || a === "mapa" ? "padrão: vê" : "padrão: vê e mexe só no que é dele"; };
     var m = openModal('<header><div><div class="eyebrow">Permissões</div><h3>' + esc(p.nome) + '</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
       '<p class="muted">Escolha área por área. <b>Padrão</b> segue a regra normal do sistema. <b>Só vê</b> mostra tudo da área sem deixar alterar. <b>Vê e edita</b> libera tudo da área, inclusive o que é dos outros.</p>' +
       '<div class="row"><span class="hint">Aplicar em todas:</span>' + OP.map(function (o) { return '<button type="button" class="btn ghost small" data-all="' + o[0] + '">' + o[1] + "</button>"; }).join("") + "</div>" +
@@ -3154,6 +3154,17 @@
     el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">Tabloide</div><b>Estúdio de tabloide</b><span class="hint"> · monte o A3, as artes de redes e as peças. Use <b>Salvar no Fluxo</b> para o time abrir de qualquer computador.</span></div>' +
       '<a class="btn ghost small" href="tabloide/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
       '<iframe id="tbFrame" class="tb-frame" src="tabloide/" title="Estúdio de tabloide"></iframe>';
+  }
+
+  /* ================================================================
+     MATERIAIS GOLDEN · feed, story, aniversariante e impressos da Alvorada Golden (pasta golden/)
+     ================================================================ */
+  function renderGolden() {
+    var el = $("#v-golden");
+    if ($("#gdFrame", el)) return;
+    el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">Alvorada Golden</div><b>Materiais Golden</b><span class="hint"> · cards de feed e story, cartão de aniversariante e peças para gráfica. Use <b>Salvar no Fluxo</b> para o time abrir de qualquer computador.</span></div>' +
+      '<a class="btn ghost small" href="golden/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
+      '<iframe id="gdFrame" class="tb-frame" src="golden/" title="Materiais Golden"></iframe>';
   }
 
   /* ================================================================
@@ -4466,7 +4477,7 @@
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
   initTabsScroll();
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; if (view === "golden" && $("#gdFrame")) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;

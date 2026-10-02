@@ -823,7 +823,7 @@ li.done .vi-a-t{text-decoration:line-through;color:var(--ink-3)}
 .forn-card h3{font-size:17px}
 
 /* ================= Tabloide (estúdio embutido) ================= */
-#v-tabloide{gap:10px}
+#v-tabloide,#v-golden{gap:10px}
 .tb-head{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
 .tb-head b{font-family:var(--head);font-size:16px}
 .tb-frame{width:100%;height:calc(100vh - 210px);min-height:560px;border:1px solid var(--line-2);border-radius:var(--r);background:#eceef1;display:block}
