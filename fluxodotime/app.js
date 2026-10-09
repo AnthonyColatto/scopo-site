@@ -108,7 +108,7 @@
   /* ---------- permissões por área (Admin > Usuários > Permissões) ---------- */
   var AREAS = [
     ["pauta", "Pauta viva", ["pauta"]], ["quadros", "Quadros", ["quadros", "cartoes"]], ["calendario", "Calendário", ["eventos"]], ["mapa", "Mapa mental", ["mapas"]],
-    ["tabloide", "Tabloide", []], ["golden", "Materiais Golden", []], ["verba", "Verba e NFs", ["nfs", "contratos", "orcamento", "cooperada"]], ["midia", "Mídia", ["midias"]], ["fornecedores", "Fornecedores", ["fornecedores"]],
+    ["tabloide", "Tabloide", []], ["golden", "Materiais Golden", []], ["endomarketing", "Endomarketing", []], ["verba", "Verba e NFs", ["nfs", "contratos", "orcamento", "cooperada"]], ["midia", "Mídia", ["midias"]], ["fornecedores", "Fornecedores", ["fornecedores"]],
     ["visitas", "Visitas", ["visitas"]], ["reunioes", "Reuniões e documentos", ["reunioes_dir", "documentos"]], ["campanhas", "Campanhas", ["campanhas"]], ["eventosorg", "Eventos", ["eventos_org"]],
     ["indicadores", "Indicadores", ["indicadores"]], ["semana", "Minha semana", []], ["ciclo", "Ciclo do mês", ["ciclo"]], ["time", "Time / Meu fluxo", ["pessoas"]], ["modelos", "Modelos", ["modelos"]]
   ];
@@ -175,6 +175,7 @@
     var raw = { add: Store.add, set: Store.set, upd: Store.upd, del: Store.del };
     var find = function (col, id) { return (S[col] || []).find(function (x) { return x.id === id; }); };
     var deny = function () { denyToast(); return Promise.reject({ code: "denied" }); };
+    ["set", "upd", "del"].forEach(function (k) { var f = raw[k]; raw[k] = function (col, id) { meusWrites[id] = Date.now(); return f.apply(null, arguments); }; });
     Store.add = function (col, d) { return canWrite(col, null, d, "add") ? raw.add(col, d) : deny(); };
     Store.set = function (col, id, d) { var cur = find(col, id); return canWrite(col, cur, d, cur ? "upd" : "add") ? raw.set(col, id, d) : deny(); };
     Store.upd = function (col, id, p) { var cur = find(col, id) || {}; return canWrite(col, cur, Object.assign({}, cur, p), "upd") ? raw.upd(col, id, p) : deny(); };
@@ -273,7 +274,7 @@
     backupLembrete(); tabsScrollUpd();
     var pb = $("#permBanner"); if (!pb) { pb = document.createElement("div"); pb.id = "permBanner"; var bb = $("#bootBanner"); if (bb) bb.parentNode.insertBefore(pb, bb.nextSibling); }
     if (pb) pb.innerHTML = !adm && perm(view) === "ver" ? '<div class="banner" style="margin-bottom:12px">Você pode ver esta área, mas não alterar.</div>' : "";
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, golden: renderGolden, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, golden: renderGolden, endomarketing: renderEndo, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -1076,16 +1077,20 @@
   function renderModelos() {
     var el = $("#v-modelos"); var ms = S.modelos.slice().sort(byOrder);
     el.innerHTML =
-      '<div class="view-head"><div><div class="eyebrow">Modelos</div><h2>Briefings e mensagens prontas</h2><p class="muted">Copie e cole no Whats, ou use direto dentro de um cartão. Edite à vontade: o modelo é seu.</p></div><button class="btn admin-only" id="tNew">Novo modelo <span class="arrow">→</span></button></div>' +
+      '<div class="view-head"><div><div class="eyebrow">Modelos</div><h2>Briefings e mensagens prontas</h2><p class="muted">Copie e cole no Whats, ou use direto dentro de um cartão. Anexe arquivos que vocês mandam sempre (contrato, ficha, planilha, arte) e baixe direto daqui.</p></div><button class="btn admin-only" id="tNew">Novo modelo <span class="arrow">→</span></button></div>' +
       (ms.length ? '<div class="tpls">' + ms.map(function (t) {
-        if (editingTpl === t.id) return '<article class="card tpl"><input type="text" id="teT" value="' + esc(t.titulo) + '"><textarea id="teB">' + esc(t.corpo) + '</textarea><div class="row" style="justify-content:space-between"><span id="teDelW"><button class="btn ghost small" id="teDel">Excluir</button></span><span class="row"><button class="btn ghost small" id="teCancel">Cancelar</button><button class="btn small" id="teSave">Salvar</button></span></div></article>';
-        return '<article class="card tpl"><div class="head"><h3>' + esc(t.titulo) + '</h3><span class="row"><button class="icon-btn admin-only" data-tedit="' + esc(t.id) + '">Editar</button><button class="btn small" data-tcopy="' + esc(t.id) + '">Copiar</button></span></div><pre>' + esc(t.corpo) + "</pre></article>";
+        if (editingTpl === t.id) return '<article class="card tpl"><input type="text" id="teT" value="' + esc(t.titulo) + '"><textarea id="teB">' + esc(t.corpo) + '</textarea><div id="teAtt" class="tpl-att"></div><div class="row" style="justify-content:space-between"><span id="teDelW"><button class="btn ghost small" id="teDel">Excluir</button></span><span class="row"><button class="btn ghost small" id="teCancel">Cancelar</button><button class="btn small" id="teSave">Salvar</button></span></div></article>';
+        return '<article class="card tpl"><div class="head"><h3>' + esc(t.titulo) + '</h3><span class="row"><button class="icon-btn admin-only" data-tedit="' + esc(t.id) + '">Editar</button><button class="btn small" data-tcopy="' + esc(t.id) + '">Copiar</button></span></div><pre>' + esc(t.corpo) + "</pre>" + ((t.anexos || []).length ? '<div class="tpl-att" data-tatt="' + esc(t.id) + '"></div>' : "") + "</article>";
       }).join("") + "</div>" : '<div class="empty">' + (loaded.modelos ? "Nenhum modelo ainda." : "Carregando…") + "</div>");
     $("#tNew").onclick = function () {
       Store.add("modelos", { titulo: "Novo modelo", corpo: "", ordem: ms.length + 1 }).then(function (id) { editingTpl = id; renderModelos(); }, fail);
     };
     $$("[data-tcopy]", el).forEach(function (b) { b.onclick = function () { var t = S.modelos.find(function (x) { return x.id === b.dataset.tcopy; }); if (t) copy(t.corpo); }; });
     $$("[data-tedit]", el).forEach(function (b) { b.onclick = function () { editingTpl = b.dataset.tedit; renderModelos(); }; });
+    $$("[data-tatt]", el).forEach(function (box) { var t = S.modelos.find(function (x) { return x.id === box.dataset.tatt; }); if (t) attachBlock(box, { titulo: "Arquivos do modelo", lista: t.anexos || [], podeEditar: false }); });
+    if (editingTpl && $("#teAtt")) { var tid = editingTpl, tt = S.modelos.find(function (x) { return x.id === tid; }) || {};
+      attachBlock($("#teAtt"), { titulo: "Arquivos do modelo (contrato, planilha, arte, PDF…)", lista: tt.anexos || [], pasta: "modelos/" + tid, accept: "", podeEditar: true,
+        onChange: function (lista) { var p = { anexos: lista }; if ($("#teT")) { p.titulo = $("#teT").value.trim() || "Modelo"; p.corpo = $("#teB").value; } Store.upd("modelos", tid, p).catch(fail); } }); }
     if (editingTpl && $("#teSave")) {
       $("#teSave").onclick = function () { var id = editingTpl; editingTpl = null; Store.upd("modelos", id, { titulo: $("#teT").value.trim() || "Modelo", corpo: $("#teB").value }).then(function () { toast("Salvo"); }, fail); renderModelos(); };
       $("#teCancel").onclick = function () { editingTpl = null; renderModelos(); };
@@ -1251,7 +1256,7 @@
   function mmSave() {
     mmDirty = true; clearTimeout(mmSaveT);
     mmSaveT = setTimeout(function () {
-      var doc = { titulo: mm.titulo, ordem: mm.ordem || 1, nos: mm.nos, compartilhado: !!mm.compartilhado };
+      var doc = mm.tipo === "livre" ? { titulo: mm.titulo, ordem: mm.ordem || 1, tipo: "livre", els: mm.els || [], compartilhado: !!mm.compartilhado } : { titulo: mm.titulo, ordem: mm.ordem || 1, nos: mm.nos, compartilhado: !!mm.compartilhado };
       Store.set("mapas", mm.id, doc).then(function () { mmDirty = false; }, fail);
     }, 450);
   }
@@ -1286,8 +1291,9 @@
     var ms = S.mapas.slice().sort(byOrder);
     var src = ms.find(function (x) { return x.id === mmId; }) || ms[0];
     if (src) mmId = src.id;
-    if (src && (!mm || mm.id !== src.id || (!mmDirty && !mmEditing))) mm = JSON.parse(JSON.stringify(src));
+    if (src && (!mm || mm.id !== src.id || (!mmDirty && !mmEditing && !(qlCtrl && qlCtrl.ocupado())))) mm = JSON.parse(JSON.stringify(src));
     if (!src) mm = null;
+    if (mm && mm.tipo === "livre") { renderQuadroLivre(el, ms, src); return; }
     if (mm && !mm.nos) mm.nos = [];
     if (mm && !rootNode()) { mm.nos.push({ id: Store.uid(), pai: null, texto: mm.titulo || "Ideia central", cor: "" }); }
     if (mmEditing && $("#mmWorld")) return; // não atrapalha quem está digitando
@@ -1313,6 +1319,30 @@
     if (mm) drawMap(true);
   }
 
+  /* quadro livre (estilo Figma) dentro da aba Mapa */
+  var qlCtrl = null, qlSaveT = null;
+  function renderQuadroLivre(el, ms, src) {
+    var sig = ms.map(function (x) { return x.id + ":" + x.titulo; }).join("|") + "#" + mm.id + "#livre";
+    if ($("#qlWrap") && el.dataset.sig === sig && qlCtrl) { qlCtrl.atualizar(src); return; }
+    el.dataset.sig = sig;
+    el.innerHTML =
+      '<div class="view-head"><div><div class="eyebrow">Quadro livre</div><h2>' + esc(mm.titulo) + '</h2><p class="muted">Formas, textos, notas e setas. As setas grudam nas formas e acompanham quando você move.</p></div></div>' +
+      '<div class="boardbar"><div class="boards">' + ms.map(function (x) { return '<button data-map="' + esc(x.id) + '" aria-selected="' + (x.id === mm.id) + '">' + (x.tipo === "livre" ? "▱ " : "") + esc(x.titulo) + "</button>"; }).join("") + '<button data-newmap class="admin-only">+ Novo</button></div>' +
+      '<div class="row admin-only"><label class="ct"><input type="checkbox" id="mmShare"' + (mm.compartilhado ? " checked" : "") + '> mostrar para o time</label><input type="text" id="mmTitle" value="' + esc(mm.titulo) + '" aria-label="Nome do quadro" style="width:200px"><span id="mmDelW"><button class="btn ghost small" id="mmDel">Excluir</button></span></div></div>' +
+      '<div class="qlwrap" id="qlWrap"></div>';
+    bindMapaBar();
+    var id = mm.id;
+    qlCtrl = window.QuadroLivre.montar($("#qlWrap"), mm, {
+      podeEditar: isAdmin() || perm("mapa") === "editar",
+      toast: toast,
+      upload: function (f) { return comprimirImagem ? comprimirImagem(f).then(function (ff) { return Store.upload(ff, "mapas/" + id); }) : Store.upload(f, "mapas/" + id); },
+      url: function (meta) { return Store.fileUrl(meta); },
+      onChange: function (lista) {
+        if (!mm || mm.id !== id) return; mm.els = lista; mmDirty = true; clearTimeout(qlSaveT);
+        qlSaveT = setTimeout(function () { Store.set("mapas", id, { titulo: mm.titulo, ordem: mm.ordem || 1, tipo: "livre", els: mm.els, compartilhado: !!mm.compartilhado }).then(function () { mmDirty = false; }, fail); }, 500);
+      }
+    });
+  }
   function drawMap(fitIfNew) {
     var world = $("#mmWorld"); if (!world) return;
     var vis = visibleSet();
@@ -1465,6 +1495,16 @@
     el.addEventListener("click", function (e) {
       var t = e.target, b;
       if ((b = t.closest("[data-map]"))) { mmId = b.dataset.map; LS.set("mapa", mmId); mm = null; mmSel = null; renderMapa(); return; }
+      if ((b = t.closest("[data-newmap]")) && b.dataset.newmap !== "mente") {
+        var ord0 = S.mapas.reduce(function (m, x) { return Math.max(m, x.ordem || 0); }, 0) + 1;
+        if (b.dataset.newmap === "livre") { Store.add("mapas", { titulo: "Novo quadro", ordem: ord0, tipo: "livre", els: [] }).then(function (id) { mmId = id; LS.set("mapa", id); mm = null; renderMapa(); }, fail); return; }
+        var mq = openModal('<header><h3>Novo mapa</h3><button class="x" data-close>✕</button></header><div class="body"><div class="ql-escolha">' +
+          '<button class="card pad" data-newmap="livre"><b>Quadro livre</b><span class="muted">Estilo Figma: formas, textos, notas, setas que ligam as formas, lápis e imagens. Para fluxos, processos, campanhas e brainstorm.</span></button>' +
+          '<button class="card pad" data-newmap="mente"><b>Mapa mental</b><span class="muted">Ideia central com ramos e sub-ramos organizados sozinhos. Tem modo apresentação.</span></button></div></div>');
+        $$("[data-close]", mq).forEach(function (x) { x.onclick = closeModal; });
+        $$("[data-newmap]", mq).forEach(function (x) { x.onclick = function () { closeModal(); if (x.dataset.newmap === "livre") Store.add("mapas", { titulo: "Novo quadro", ordem: ord0, tipo: "livre", els: [] }).then(function (id) { mmId = id; LS.set("mapa", id); mm = null; renderMapa(); }, fail); else { var rid0 = Store.uid(); Store.add("mapas", { titulo: "Novo mapa", ordem: ord0, nos: [{ id: rid0, pai: null, texto: "Ideia central", cor: "" }] }).then(function (id) { mmId = id; LS.set("mapa", id); mm = null; mmSel = rid0; renderMapa(); }, fail); } }; });
+        return;
+      }
       if (t.closest("[data-newmap]")) {
         var ord = S.mapas.reduce(function (m, x) { return Math.max(m, x.ordem || 0); }, 0) + 1;
         var rid = Store.uid();
@@ -2059,7 +2099,7 @@
     el.innerHTML =
       '<div class="view-head"><div><div class="eyebrow">Admin</div><h2>Acessos, listas e categorias</h2><p class="muted">Só Ellyn e Tony (administradores) veem esta aba.</p></div></div>' +
       '<div class="admin-grid">' +
-      '<section class="card pad adm"><h3>Usuários do sistema</h3>' +
+      '<section class="card pad adm adm-wide"><h3>Usuários do sistema</h3>' +
         '<p class="muted">' + (sb ? "Libere o email de cada pessoa e ligue ao nome dela no time. Depois ela entra em scopomkt.com.br/fluxodotime/, clica em <b>Primeiro acesso</b> e cria a própria senha." : "Na prévia não há login. Use <b>Você é</b> no topo para ver o sistema como cada pessoa. Os papéis abaixo valem para essa simulação.") + "</p>" +
         '<div id="admPerfis"><p class="hint">Carregando…</p></div>' +
         '<form class="adm-add" id="admAdd"><input type="' + (sb ? "email" : "text") + '" id="aEmail" placeholder="' + (sb ? "email da pessoa" : "email (opcional na prévia)") + '"' + (sb ? " required" : "") + '><select id="aNome">' + opt(nomes(), "") + '</select><select id="aPapel"><option value="membro">membro</option><option value="admin">admin</option></select><button class="btn small" type="submit">Liberar</button></form>' +
@@ -2073,7 +2113,7 @@
         '<div class="chipedit" data-list="etiquetas"><div class="lbl">Etiquetas dos quadros</div><div class="ce-items">' + L.etiquetas.map(function (e, i) { return '<span class="ce"><input type="color" value="' + esc(e.cor) + '" data-cor="' + i + '" aria-label="Cor"><button class="ce-name" data-ren="' + i + '">' + esc(e.nome) + '</button><button class="ce-x" data-del="' + i + '" aria-label="Remover">✕</button></span>'; }).join("") + '</div><input type="text" class="ce-add" placeholder="+ nova etiqueta e Enter"></div>' +
       "</section>" +
       backupSectionHTML() +
-      '<section class="card pad adm"><h3>Conteúdo padrão</h3><p class="muted">Recarrega pessoas, ciclo do mês, modelos, quadros, o mapa padrão e as listas. Pauta, cartões, eventos e toda a parte de verba ficam como estão.</p><span id="admSeedW"><button class="btn ghost small" id="admSeed">Carregar conteúdo padrão</button></span></section>' +
+      '<section class="card pad adm"><h3>Conteúdo padrão</h3><p class="muted">Serve para <b>começar um sistema vazio</b>. Ele <b>não apaga</b> pauta, cartões, eventos, verba, mídia, indicadores nem anexos. Mas <b>substitui pelo modelo inicial</b>: pessoas da aba Time, ciclo do mês, modelos, quadros, o mapa padrão e as listas. O que vocês personalizaram nessas partes volta ao original. Com o sistema em uso, não use.</p><span id="admSeedW"><button class="btn ghost small" id="admSeed">Carregar conteúdo padrão…</button></span></section>' +
       "</div>";
     drawPerfis();
     bindBackup(el);
@@ -2084,7 +2124,15 @@
       if (sb) Store.perfis.save(p).then(function () { toast("Liberado. Clique em Convite para copiar a mensagem."); perfisCache = null; drawPerfis(); $("#aEmail").value = ""; }, fail);
       else { var l = acessosLista().filter(function (a) { return a.nome !== p.nome; }).concat([p]); Store.set("config", "acessos", { lista: l }).then(function () { toast("Salvo"); }, fail); }
     };
-    $("#admSeed").onclick = function () { delConfirm("#admSeedW", "Sobrescrever com o padrão?", function () { Store.seed(window.GESTAO_DEFAULTS).then(function () { toast("Padrão carregado"); }, fail); renderAdmin(); }); };
+    $("#admSeed").onclick = function () {
+      var w = $("#admSeedW");
+      w.innerHTML = '<span class="seed-conf"><span class="hint">Faça um backup antes. Para confirmar, digite <b>PADRAO</b>:</span><input type="text" id="admSeedTx" autocomplete="off" style="max-width:140px"><button class="btn small danger" id="admSeedOk">Substituir pelo padrão</button><button class="btn ghost small" id="admSeedNo">Cancelar</button></span>';
+      $("#admSeedNo").onclick = function () { renderAdmin(); };
+      $("#admSeedOk").onclick = function () {
+        if ($("#admSeedTx").value.trim().toUpperCase() !== "PADRAO") { toast("Digite PADRAO para confirmar."); return; }
+        Store.seed(window.GESTAO_DEFAULTS).then(function () { toast("Padrão carregado"); }, fail); renderAdmin();
+      };
+    };
     // listas
     $$(".chipedit", el).forEach(function (box) {
       var key = box.dataset.list;
@@ -2120,7 +2168,7 @@
   function abrirPermissoes(p, onSave) {
     var pm = Object.assign({}, p.permissoes || {});
     var OP = [["padrao", "Padrão"], ["nenhum", "Não vê"], ["ver", "Só vê"], ["editar", "Vê e edita"]];
-    var padraoTxt = function (a) { return AREAS_ADMIN.indexOf(a) >= 0 ? "padrão: não vê" : a === "semana" || a === "tabloide" || a === "golden" || a === "mapa" ? "padrão: vê" : "padrão: vê e mexe só no que é dele"; };
+    var padraoTxt = function (a) { return AREAS_ADMIN.indexOf(a) >= 0 ? "padrão: não vê" : a === "semana" || a === "tabloide" || a === "golden" || a === "endomarketing" || a === "mapa" ? "padrão: vê" : "padrão: vê e mexe só no que é dele"; };
     var m = openModal('<header><div><div class="eyebrow">Permissões</div><h3>' + esc(p.nome) + '</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
       '<p class="muted">Escolha área por área. <b>Padrão</b> segue a regra normal do sistema. <b>Só vê</b> mostra tudo da área sem deixar alterar. <b>Vê e edita</b> libera tudo da área, inclusive o que é dos outros.</p>' +
       '<div class="row"><span class="hint">Aplicar em todas:</span>' + OP.map(function (o) { return '<button type="button" class="btn ghost small" data-all="' + o[0] + '">' + o[1] + "</button>"; }).join("") + "</div>" +
@@ -3165,6 +3213,14 @@
     el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">Alvorada Golden</div><b>Materiais Golden</b><span class="hint"> · cards de feed e story, cartão de aniversariante e peças para gráfica. Use <b>Salvar no Fluxo</b> para o time abrir de qualquer computador.</span></div>' +
       '<a class="btn ghost small" href="golden/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
       '<iframe id="gdFrame" class="tb-frame" src="golden/" title="Materiais Golden"></iframe>';
+  }
+
+  function renderEndo() {
+    var el = $("#v-endomarketing");
+    if ($("#emFrame", el)) return;
+    el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">RH · Alvorada</div><b>Endomarketing</b><span class="hint"> · aniversariantes, certificados, cheques, vouchers, plaquinhas e assinaturas de e-mail. Gere vários de uma vez com planilha.</span></div>' +
+      '<a class="btn ghost small" href="endomarketing/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
+      '<iframe id="emFrame" class="tb-frame" src="endomarketing/" title="Endomarketing"></iframe>';
   }
 
   /* ================================================================
@@ -4464,11 +4520,67 @@
       '<p><b>' + esc(me) + '</b> · <span class="tag ' + (isAdmin() ? "solid" : "") + '">' + (isAdmin() ? "admin" : "membro") + "</span>" + (Store && Store.perfil ? ' <span class="hint">' + esc(Store.perfil.email) + "</span>" : "") + "</p>" +
       '<p class="hint">' + esc(modo) + "</p>" +
       (isAdmin() ? '<p class="muted">Listas, categorias, etiquetas e acessos ficam na aba <b>Admin</b>.</p>' : "") +
+      '<div class="notif-box"><b>Notificações</b><p class="hint">Avisa quando te passam uma pendência ou cartão, quando comentam nos seus cartões e quando concluem algo que você acompanha. Funciona com o Fluxo aberto numa aba ou instalado no celular (menu do navegador › Adicionar à tela de início).</p>' +
+        '<span class="row"><button class="btn small" id="stNotif">' + (notifLigada() ? "Desligar notificações" : "Ligar notificações") + '</button>' + (notifLigada() ? '<button class="btn ghost small" id="stNotifT">Testar</button>' : "") + "</span></div>" +
       '</div><footer><span>' + (Store && Store.logout ? '<button class="btn ghost small" id="stOut">Sair</button>' : "") + "</span>" + (isAdmin() ? '<button class="btn" id="stAdm">Abrir Admin <span class="arrow">→</span></button>' : '<button class="btn" data-close>Fechar</button>') + "</footer>");
     $$("[data-close]").forEach(function (b) { b.onclick = closeModal; });
     if ($("#stOut")) $("#stOut").onclick = function () { Store.logout(); };
+    $("#stNotif").onclick = function () { if (notifLigada()) { LS.set("notif", "0"); toast("Notificações desligadas"); closeModal(); } else ativarNotif().then(function () { closeModal(); }); };
+    if ($("#stNotifT")) $("#stNotifT").onclick = function () { notificar("Teste do Fluxo", "Se você está vendo isto, as notificações funcionam.", { view: "pauta", id: "teste" }); };
     if ($("#stAdm")) $("#stAdm").onclick = function () { closeModal(); showView("admin"); };
   };
+
+  /* ================================================================
+     NOTIFICAÇÕES no navegador/celular (com o Fluxo aberto ou instalado)
+     ================================================================ */
+  var meusWrites = {}, notifNaoVistas = 0, tituloBase = document.title, swReg = null;
+  function notifLigada() { return LS.get("notif", "0") === "1" && "Notification" in window && Notification.permission === "granted"; }
+  function registrarSW() { if (!("serviceWorker" in navigator) || swReg) return Promise.resolve(swReg); return navigator.serviceWorker.register("sw.js").then(function (r) { swReg = r; return r; }).catch(function () { return null; }); }
+  function ativarNotif() {
+    if (!("Notification" in window)) { toast("Este navegador não mostra notificações. No iPhone, adicione o Fluxo à tela de início antes."); return Promise.resolve(false); }
+    return Notification.requestPermission().then(function (p) {
+      if (p !== "granted") { toast("Notificações bloqueadas. Libere no cadeado ao lado do endereço do site."); return false; }
+      LS.set("notif", "1"); return registrarSW().then(function () { notificar("Notificações ligadas", "Você vai ser avisado quando te passarem pendências, cartões e comentários.", {}); return true; });
+    });
+  }
+  function notificar(titulo, corpo, alvo) {
+    if (document.visibilityState === "visible") toast(titulo + (corpo ? ": " + corpo : ""));
+    else { notifNaoVistas++; document.title = "(" + notifNaoVistas + ") " + tituloBase; }
+    if (!notifLigada()) return;
+    var op = { body: corpo || "", icon: "icon.png", badge: "icon.png", tag: (alvo && alvo.id) || undefined, data: alvo || {} };
+    registrarSW().then(function (r) {
+      if (r && r.showNotification) return r.showNotification(titulo, op);
+      try { var n = new Notification(titulo, op); n.onclick = function () { window.focus(); abrirAlvo(alvo); n.close(); }; } catch (e) {}
+    });
+  }
+  function abrirAlvo(a) { if (!a || !a.view) return; showView(a.view); if (a.card) setTimeout(function () { openCard(a.card); }, 300); }
+  document.addEventListener("visibilitychange", function () { if (document.visibilityState === "visible") { notifNaoVistas = 0; document.title = tituloBase; } });
+  if ("serviceWorker" in navigator) navigator.serviceWorker.addEventListener("message", function (e) { if (e.data && e.data.abrir) abrirAlvo(e.data.abrir); });
+  if (LS.get("notif", "0") === "1") registrarSW();
+  function temEu(l) { return (Array.isArray(l) ? l : l ? [l] : []).indexOf(me) >= 0; }
+  function notifDiff(col, novo) {
+    if (!loaded[col] || ["pauta", "cartoes", "eventos"].indexOf(col) < 0) return;
+    var antes = {}; (R[col] || []).forEach(function (d) { antes[d.id] = d; });
+    var agora = Date.now();
+    novo.forEach(function (d) {
+      if (meusWrites[d.id] && agora - meusWrites[d.id] < 6000) return;
+      var a = antes[d.id], t = d.titulo || "(sem título)";
+      if (col === "pauta") {
+        if (!a) { if (d.resp === me && d.criadoPor !== me) notificar("Nova pendência para você", t + (d.criadoPor ? " · de " + d.criadoPor : ""), { view: "pauta", id: "p" + d.id }); else if (temEu(d.acompanha) && d.criadoPor !== me) notificar("Você acompanha uma pendência", t + " · " + (d.resp || ""), { view: "pauta", id: "p" + d.id }); return; }
+        if (d.resp === me && a.resp !== me) notificar("Pendência passou para você", t, { view: "pauta", id: "p" + d.id });
+        else if (temEu(d.acompanha) && !temEu(a.acompanha)) notificar("Você acompanha uma pendência", t + " · " + (d.resp || ""), { view: "pauta", id: "p" + d.id });
+        if (d.status === "feito" && a.status !== "feito" && d.resp !== me && (d.criadoPor === me || temEu(d.acompanha))) notificar((d.resp || "Alguém") + " concluiu", t, { view: "pauta", id: "p" + d.id });
+      } else if (col === "cartoes") {
+        var alvo = { view: "quadros", card: d.id, id: "c" + d.id };
+        if (!a) { if (temEu(d.resp) && d.criadoPor !== me) notificar("Novo cartão para você", t + (d.criadoPor ? " · de " + d.criadoPor : ""), alvo); return; }
+        if (temEu(d.resp) && !temEu(a.resp)) notificar("Você foi colocado num cartão", t, alvo);
+        var cn = d.comentarios || [], ca = a.comentarios || [];
+        if (cn.length > ca.length) { var u = cn[cn.length - 1]; if (u && u.autor !== me && (temEu(d.resp) || d.criadoPor === me || temEu(d.acompanha))) notificar(u.autor + " comentou em " + t, String(u.texto || "").slice(0, 120), alvo); }
+      } else if (col === "eventos") {
+        if (temEu(d.quem) && (!a || !temEu(a.quem)) && d.criadoPor !== me) notificar("Novo compromisso na sua agenda", t + (d.data ? " · " + fmt(parse(d.data)) : ""), { view: "calendario", id: "e" + d.id });
+      }
+    });
+  }
 
   /* ================================================================
      boot
@@ -4477,7 +4589,7 @@
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
   initTabsScroll();
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; if (view === "golden" && $("#gdFrame")) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; if (view === "golden" && $("#gdFrame")) return; if (view === "endomarketing" && $("#emFrame")) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;
@@ -4486,6 +4598,7 @@
     render();
     Object.keys(S).forEach(function (col) {
       Store.sub(col, function (list) {
+        try { notifDiff(col, list); } catch (e) { console.warn(e); }
         R[col] = list; S[col] = isAdmin() ? list : list.filter(function (d) { return canRead(col, d); }); loaded[col] = true;
         if (col === "config" && Store.mode !== "supabase") refilter(); // na prévia, papéis vêm da config
         if (col === "pessoas" || col === "config") syncEquipe();

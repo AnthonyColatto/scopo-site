@@ -9,6 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
 <div class="texture" aria-hidden="true"></div>
@@ -23,6 +26,7 @@
       <button role="tab" data-tab="mapa" aria-selected="false">Mapa mental</button>
       <button role="tab" data-tab="tabloide" aria-selected="false">Tabloide</button>
       <button role="tab" data-tab="golden" aria-selected="false">Materiais Golden</button>
+      <button role="tab" data-tab="endomarketing" aria-selected="false">Endomarketing</button>
       <button role="tab" data-tab="verba" aria-selected="false" class="admin-only">Verba e NFs</button>
       <button role="tab" data-tab="midia" aria-selected="false" class="admin-only">Mídia</button>
       <button role="tab" data-tab="fornecedores" aria-selected="false" class="admin-only">Fornecedores</button>
@@ -56,6 +60,7 @@
   <section class="view" id="v-midia" hidden></section>
   <section class="view" id="v-tabloide" hidden></section>
   <section class="view" id="v-golden" hidden></section>
+  <section class="view" id="v-endomarketing" hidden></section>
   <section class="view" id="v-fornecedores" hidden></section>
   <section class="view" id="v-campanhas" hidden></section>
   <section class="view" id="v-eventosorg" hidden></section>
@@ -72,6 +77,7 @@
 <script src="config.js"></script>
 <script src="defaults.js"></script>
 <script src="store.js"></script>
+<script src="quadro.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
