@@ -205,6 +205,11 @@ button,input,select,textarea{font:inherit;color:inherit}
 .sl-circulo{aspect-ratio:1;border-radius:50%;padding:6%}
 .sl-etiqueta{border-radius:.25em}
 .sl-etiqueta span{white-space:nowrap;padding:.28em .35em .32em}
+.im2{position:absolute;transform:translate(-50%,-50%);z-index:2}
+.im2i{position:absolute;inset:0;background:center/contain no-repeat;pointer-events:none}
+.im2.ed{cursor:move}.im2.ed:hover{outline:2px dashed #2a55e5;outline-offset:2px}
+.i2-h{position:absolute;right:calc(var(--hs,14px) / -2);bottom:calc(var(--hs,14px) / -2);width:var(--hs,14px);height:var(--hs,14px);background:#2a55e5;border:2px solid #fff;border-radius:50%;cursor:nwse-resize;display:none}
+.im2.ed:hover .i2-h{display:block}
 .sl.ed{cursor:move}
 .sl.ed:hover{outline:2px dashed #2a55e5;outline-offset:2px}
 .sl-h{position:absolute;right:calc(var(--hs,14px) / -2);bottom:calc(var(--hs,14px) / -2);width:var(--hs,14px);height:var(--hs,14px);background:#2a55e5;border:2px solid #fff;border-radius:50%;cursor:nwse-resize;display:none}
@@ -350,7 +355,7 @@ const PRESETS={
 };
 
 /* ================= estado inicial (exemplo baseado no tabloide de referência) ================= */
-const VDEF=()=>({is:100,ps:100,ds:100,os:100,align:'',lay:'',ix:0,iy:0,dx:0,dy:0,px:0,py:0,ox:0,oy:0,sx:80,sy:22,ss:36,srot:-10});
+const VDEF=()=>({is:100,ps:100,ds:100,os:100,align:'',lay:'',ix:0,iy:0,dx:0,dy:0,px:0,py:0,ox:0,oy:0,sx:80,sy:22,ss:36,srot:-10,i2x:71,i2y:71,i2w:58,i2h:58});
 const CTXN={tab:'Tabloide A3',soc:'Redes',pc:'Peças individuais'};
 function O(cod,desc,marca,de,por,un='M2',extra={}){return {id:uid(),cod,desc,marca,tag:'',obs:'',un,de,por,modo:'depor',parc:10,img:null,dest:false,destBg:'',destFg:'',span:1,rspan:1,
   selo:{on:false,kind:'txt',img:null,text:'Oferta',shape:'circulo',bg:'#e30613',fg:'#ffffff'},v:{tab:VDEF(),soc:VDEF(),pc:VDEF()},img2:null,duo:'lado',destImg:null,...extra}}
@@ -566,8 +571,10 @@ function cardHTML(it,ed,opt={}){
   if(o.dest){st+=`--dbg:${o.destBg||t.destBg};--dfg:${o.destFg||t.destFg};`;const di=o.destImg||t.destImg;if(di)st+=`background-image:url(${di});background-size:cover;background-position:center;`}
   const sel=ed&&UI.open===o.id,bh=sel?'<span class="bh"></span>':'';
   const off=(x,y)=>x||y?` style="left:${x}em;top:${y}em"`:'';
-  const DUO={lado:['right:50%','left:50%'],empilhado:['bottom:50%','top:50%'],sobre:['right:22%;bottom:22%','left:42%;top:42%'],sobre2:['left:22%;bottom:22%','right:42%;top:42%']}[o.duo||'lado']||['right:50%','left:50%'];
-  const im=o.img&&o.img2?`<div class="im" style="background-image:url(${o.img});${DUO[0]}"></div><div class="im" style="background-image:url(${o.img2});${DUO[1]}"></div>`:o.img?`<div class="im" style="background-image:url(${o.img})"></div>`:(ed?`<div class="ph">Solte a<br>imagem</div>`:'');
+  let im=o.img?`<div class="im" style="background-image:url(${o.img})"></div>`:(ed?`<div class="ph">Solte a<br>imagem</div>`:'');
+  if(o.img&&o.img2){const b=duoBox(o,v),i1=`<div class="im" style="background-image:url(${o.img});${DUO1[o.duo||'lado']||''}"></div>`,
+    i2=`<div class="im2${ed?' ed':''}" data-i2="${o.id}" style="left:${b[0]}%;top:${b[1]}%;width:${b[2]}%;height:${b[3]}%"><div class="im2i" style="background-image:url(${o.img2})"></div>${ed?'<span class="i2-h"></span>':''}</div>`;
+    im=o.i2tras?i2+i1:i1+i2}
   const cls=['card','al-'+al,o.dest?'dest':'',sp>1?'s2':'',ed?'ed':'',sel?'sel':''].filter(Boolean).join(' ');
   const tag=o.tag&&!opt.noTag?`<div class="c-tag">${esc(o.tag)}</div>`:'';
   return `<div class="${cls}" data-oid="${o.id}" data-lay="${v.lay||''}" data-cs="${sp}" data-rs="${rs}" style="${st}">${ed?`<span class="num">${it.n}</span>`:''}<div class="c-imgcol"><div class="c-img" data-blk="img"${off(v.ix,v.iy)}>${im}${seloHTML(o,ed,v)}${bh}</div>${o.obs?`<div class="c-obs" data-blk="obs"${off(v.ox,v.oy)}>${esc(o.obs)}${bh}</div>`:''}</div>
@@ -578,6 +585,10 @@ function emptyCells(n,ed){return Array.from({length:Math.max(0,n)},()=>`<div cla
 function ctaHTML(){const c=S.cta,h=c.h||64;
   if(c.img)return `<div class="cta img" style="height:${h}px;background-image:url(${c.img})"></div>`;
   return `<div class="cta" style="height:${h}px"><span class="ct1" style="font-size:${Math.round(h*.39)}px">${esc(c.t1)}</span><span class="ct2" style="font-size:${Math.round(h*.34)}px">${esc(c.t2)}</span></div>`}
+/* segunda imagem: posição (centro x, y, largura, altura em % da área da imagem) */
+const DUO1={lado:'right:50%',empilhado:'bottom:50%',sobre:'right:22%;bottom:22%',sobre2:'left:22%;bottom:22%',livre:''};
+const DUO2={lado:[75,50,50,100],empilhado:[50,75,100,50],sobre:[71,71,58,58],sobre2:[29,71,58,58]};
+function duoBox(o,v){return o.duo==='livre'?[v.i2x??71,v.i2y??71,v.i2w??58,v.i2h??58]:(DUO2[o.duo||'lado']||DUO2.lado)}
 /* faixa de título das lâminas internas */
 function stripHTML(P){const c=S.stripCfg||{},img=P.img||c.img,h=c.h||56;
   if(img)return `<div class="strip img" style="height:${h}px;background-image:url(${img})"></div>`;
@@ -714,7 +725,7 @@ function panelOfertas(){
   return `<div class="sec"><h3>Entrada de dados</h3>
     <div class="toolbar"><button class="btn sm pri" data-act="importSheet">Importar planilha</button><button class="btn sm" data-act="bulkImgs">Imagens em lote</button><button class="btn sm" data-act="modelSheet">Baixar modelo</button><button class="btn sm" data-act="addOffer">+ Oferta</button></div>
     <label class="chk"><input type="checkbox" id="k-theme.autoCrop" data-k="theme.autoCrop"${S.theme.autoCrop?' checked':''}> Cortar sobras de margem das imagens ao enviar</label>
-    <div class="toolbar"><button class="btn sm" data-act="cropAll">Cortar margens das imagens atuais</button></div>
+    <div class="toolbar"><button class="btn sm" data-act="cropAll">Cortar margens das imagens atuais</button><button class="btn sm" data-act="semFundoTodas">Remover fundo de todas</button></div>
     <p class="hint">Planilha .xlsx ou .csv exportada do sistema. Imagens em lote: nomeie cada arquivo com o código do produto (ex.: 221729.png) que ela entra na oferta certa e fica guardada para as próximas campanhas.</p></div>
     <div class="sec"><h3>${S.offers.length} ofertas</h3><div class="olist">${S.offers.map((o,i)=>{const op=UI.open===o.id;const lam=pos[o.id];
       return `<div class="oi${op?' sel':''}" data-oid="${o.id}" id="oi-${o.id}"><div class="oh" data-act="toggle"><span class="n">${i+1}</span><span class="t" style="${o.img?`background-image:url(${o.img})`:''}"></span><span class="d"><b>${esc(o.desc)||'Sem descrição'}</b><small>${o.cod?esc(o.cod)+' · ':''}R$ ${fmt(o.por)||'--'}${lam!=null&&UI.mode==='tab'?` · lâmina ${lam+1}`:''}</small></span><span class="flags">${o.dest?'<span class="pillui hl">destaque</span>':''}${o.span>1||o.rspan>1?`<span class="pillui">${o.span>1&&o.rspan>1?'2×2':o.span>1?'largo':'alto'}</span>`:''}</span></div>${op?offerEditor(o,i):''}</div>`}).join('')}</div></div>`;
@@ -729,12 +740,13 @@ function offerEditor(o,i){
    ${o.modo==='parcelado'&&o.por?`<p class="hint">${o.parc}x de R$ ${fmt(o.por/o.parc)} · total R$ ${fmt(o.por)}</p>`:''}
    ${f('tag','Tag (ex.: Lançamento, Últimas unidades)')}
    ${f('obs','Observação pequena junto da imagem')}
-   ${o.img?`<div class="oacts"><button class="btn sm" data-act="cropOne">Cortar margens desta imagem</button><button class="btn sm" data-act="recorte" data-w="img">Recortar imagem</button></div>`:''}
+   ${o.img?`<div class="oacts"><button class="btn sm" data-act="cropOne">Cortar margens desta imagem</button><button class="btn sm" data-act="recorte" data-w="img">Recortar imagem</button><button class="btn sm" data-act="semFundo" data-w="img">Remover fundo</button></div>`:''}
    ${codKey(o.cod)&&BANK.mem[codKey(o.cod)]?`<p class="hint">O código ${esc(o.cod)} tem um layout salvo. Ele é atualizado sozinho quando você mexe nesta oferta.</p><div class="oacts"><button class="btn sm" data-act="loadMem">Carregar layout salvo</button></div>`:''}
    <div class="f"><span>Imagem do produto</span><label class="drop"><span class="th" style="${o.img?`background-image:url(${o.img})`:''}"></span><span style="flex:1;font-size:12.5px">${o.img?'Trocar imagem':'Enviar imagem'} <br><small style="color:var(--ui-mute)">PNG sem fundo, ideal 1200 × 1200 px</small></span><input type="file" accept="image/*" data-oimg="1">${o.img?`<button type="button" class="btn sm ghost" data-act="rmImg">Remover</button>`:''}</label></div>
    ${o.img?`<div class="f"><span>Sombra na imagem</span><div class="seg" style="align-self:flex-start">${[[0,'Sem'],[1,'Suave'],[2,'Pesada']].map(([v,l])=>`<button type="button" data-act="sombra" data-v="${v}" aria-pressed="${(o.sombra||0)===v}">${l}</button>`).join('')}</div><div class="oacts" style="margin-top:4px"><button class="btn sm" data-act="sombraAll">Usar esta sombra em todas</button></div></div>`:''}
    <div class="f"><span>Segunda imagem (combinação, opcional)</span><label class="drop"><span class="th" style="${o.img2?`background-image:url(${o.img2})`:''}"></span><span style="flex:1;font-size:12.5px">${o.img2?'Trocar 2ª imagem':'Enviar 2ª imagem'}<br><small style="color:var(--ui-mute)">Ex.: piso + revestimento, bacia + caixa</small></span><input type="file" accept="image/*" data-oimg="img2">${o.img2?`<button type="button" class="btn sm ghost" data-act="rmImg2">Remover</button>`:''}</label></div>
-   ${o.img2?`<div class="row">${F_('Como mostrar as duas',`<select id="o-${o.id}-duo" data-of="duo">${[['lado','Lado a lado'],['empilhado','Uma em cima da outra'],['sobre','2ª por cima, à direita'],['sobre2','2ª por cima, à esquerda']].map(([v,l])=>`<option value="${v}"${(o.duo||'lado')===v?' selected':''}>${l}</option>`).join('')}</select>`)}<div class="f"><span>&nbsp;</span><button type="button" class="btn sm" data-act="recorte" data-w="img2">Recortar 2ª imagem</button></div></div>`:''}
+   ${o.img2?`<div class="row">${F_('Como mostrar as duas',`<select id="o-${o.id}-duo" data-of="duo">${[['lado','Lado a lado'],['empilhado','Uma em cima da outra'],['sobre','2ª por cima, à direita'],['sobre2','2ª por cima, à esquerda'],['livre','Livre (arraste na prévia)']].map(([v,l])=>`<option value="${v}"${(o.duo||'lado')===v?' selected':''}>${l}</option>`).join('')}</select>`)}<div class="f"><span>&nbsp;</span><button type="button" class="btn sm" data-act="recorte" data-w="img2">Recortar 2ª imagem</button><button type="button" class="btn sm" data-act="semFundo" data-w="img2">Remover fundo da 2ª</button></div></div>
+   <label class="chk"><input type="checkbox" id="o-${o.id}-i2tras" data-of="i2tras"${o.i2tras?' checked':''}> 2ª imagem atrás da 1ª</label><p class="hint">Na prévia, arraste a 2ª imagem para onde quiser e puxe a bolinha azul do canto para mudar o tamanho. A posição vale só para ${CTXN[UI.mode]}.</p>`:''}
    <div class="row"><label class="chk"><input type="checkbox" id="o-${o.id}-dest" data-of="dest"${o.dest?' checked':''}> Destacar com cor</label><span></span></div>
    ${F_('Espaço no tabloide A3',`<select id="o-${o.id}-size" data-of="size">${[['1','1 espaço'],['w','2 espaços lado a lado'],['h','2 espaços em cima e embaixo'],['q','4 espaços (2 × 2)']].map(([val,l])=>`<option value="${val}"${(o.span>1?(o.rspan>1?'q':'w'):(o.rspan>1?'h':'1'))===val?' selected':''}>${l}</option>`).join('')}</select>`)}
    ${o.dest?`<div class="row">${F_('Fundo do destaque',`<span class="col"><input type="color" id="o-${o.id}-destBg" data-of="destBg" value="${o.destBg||S.theme.destBg}"><code>${o.destBg||'do tema'}</code></span>`)}${F_('Texto do destaque',`<span class="col"><input type="color" id="o-${o.id}-destFg" data-of="destFg" value="${o.destFg||S.theme.destFg}"><code>${o.destFg||'do tema'}</code></span>`)}</div><div class="f"><span>Textura ou imagem no fundo do destaque</span><label class="drop"><span class="th" style="${o.destImg?`background-image:url(${o.destImg})`:''}"></span><span style="flex:1;font-size:12.5px">${o.destImg?'Trocar textura':'Enviar textura'}<br><small style="color:var(--ui-mute)">Vazio = usa a textura do tema (aba Visual), se tiver</small></span><input type="file" accept="image/*" data-oimg="dest">${o.destImg?`<button type="button" class="btn sm ghost" data-act="rmDest">Remover</button>`:''}</label></div>`:''}
@@ -924,6 +936,10 @@ document.addEventListener('change',async e=>{
 let dragS=null,noClick=false;
 const BLK={img:['ix','iy','is'],info:['dx','dy','ds'],price:['px','py','ps'],obs:['ox','oy','os']};
 document.addEventListener('pointerdown',e=>{
+  const i2=e.target.closest('.im2.ed');
+  if(i2){const card=i2.closest('.card'),o=S.offers.find(x=>x.id===card.dataset.oid),v=V(o,UI.mode);e.preventDefault();e.stopPropagation();
+    if(o.duo!=='livre'){const b=duoBox(o,v);v.i2x=b[0];v.i2y=b[1];v.i2w=b[2];v.i2h=b[3];o.duo='livre'}
+    dragS={t:'i2',el:i2,o,v,box:i2.parentElement.getBoundingClientRect(),rs:!!e.target.closest('.i2-h'),w0:v.i2w,h0:v.i2h,x0:e.clientX,y0:e.clientY,moved:false};try{i2.setPointerCapture(e.pointerId)}catch{}return}
   const sl=e.target.closest('.sl.ed'),blk=!sl&&e.target.closest('.card.sel [data-blk]');if(!sl&&!blk)return;
   const el=sl||blk,card=el.closest('.card'),o=S.offers.find(x=>x.id===card.dataset.oid),v=V(o,UI.mode);
   e.preventDefault();e.stopPropagation();
@@ -932,6 +948,11 @@ document.addEventListener('pointerdown',e=>{
     dragS={t:'blk',el,card,o,v,k,kx,ky,kz,s:+(card.closest('.sw')?.dataset.s||1),fpx:parseFloat(card.style.fontSize)||13,x0:e.clientX,y0:e.clientY,sx:v[kx],sy:v[ky],sz:v[kz],diag:Math.max(20,r.width+r.height),rs:!!e.target.closest('.bh'),moved:false}}
   try{el.setPointerCapture(e.pointerId)}catch{}},true);
 document.addEventListener('pointermove',e=>{if(!dragS)return;const d=dragS,v=d.v;
+  if(d.t==='i2'){const bx=d.box;if(!d.moved&&Math.hypot(e.clientX-d.x0,e.clientY-d.y0)<3)return;d.moved=true;
+    if(d.rs){const cx=bx.left+bx.width*v.i2x/100,cy=bx.top+bx.height*v.i2y/100,k=Math.max(.15,Math.max(Math.abs(e.clientX-cx)*2/(bx.width*d.w0/100),Math.abs(e.clientY-cy)*2/(bx.height*d.h0/100)));
+      v.i2w=+Math.min(200,d.w0*k).toFixed(1);v.i2h=+Math.min(200,d.h0*k).toFixed(1);d.el.style.width=v.i2w+'%';d.el.style.height=v.i2h+'%'}
+    else{v.i2x=+Math.max(-20,Math.min(120,(e.clientX-bx.left)/bx.width*100)).toFixed(1);v.i2y=+Math.max(-20,Math.min(120,(e.clientY-bx.top)/bx.height*100)).toFixed(1);d.el.style.left=v.i2x+'%';d.el.style.top=v.i2y+'%'}
+    return}
   if(d.t==='sl'){d.moved=true;const box=d.box;
     if(d.rs){const cx=box.left+box.width*v.sx/100;v.ss=Math.round(Math.max(5,Math.min(160,Math.abs(e.clientX-cx)*2/box.width*100)));d.el.style.width=v.ss+'%'}
     else{v.sx=+Math.max(-10,Math.min(110,(e.clientX-box.left)/box.width*100)).toFixed(1);v.sy=+Math.max(-10,Math.min(110,(e.clientY-box.top)/box.height*100)).toFixed(1);d.el.style.left=v.sx+'%';d.el.style.top=v.sy+'%'}
@@ -965,6 +986,12 @@ document.addEventListener('click',e=>{
     async sombraAll(){const n=S.offers[i].sombra||0,b=document.createElement('div');b.className='busy';b.textContent='Aplicando sombra…';document.body.append(b);
       try{for(const o of S.offers)if(o.img)await aplicaSombra(o,n)}finally{b.remove()}refresh();toast('Sombra aplicada em todas as ofertas com imagem.')},
     recorte(){abrirRecorte(S.offers[i],t.dataset.w||'img')},
+    semFundo(){const o=S.offers[i],w=t.dataset.w||'img',base=w==='img2'?(o.img2Base||o.img2):(o.imgBase||o.img);if(!base)return;if(!window.RemoverFundo)return toast('O recortador não carregou. Recarregue a página.');
+      RemoverFundo.dialogo(base,async out=>{await trocaImgOferta(o,w,out);refresh();toast('Fundo removido.')})},
+    semFundoTodas(){if(!window.RemoverFundo)return toast('O recortador não carregou. Recarregue a página.');const l=S.offers.filter(o=>o.img);if(!l.length)return toast('Nenhuma oferta com imagem.');
+      confirmBox(`Remover o fundo das ${l.length} imagens com o recorte automático? Pode levar alguns minutos.`,async()=>{const b=document.createElement('div');b.className='busy';document.body.append(b);let n=0,f=0;
+        try{for(let k=0;k<l.length;k++){const o=l[k];b.textContent=`Removendo fundo ${k+1} de ${l.length}…`;try{await trocaImgOferta(o,'img',await RemoverFundo.ia(o.imgBase||o.img,m=>{if(/Baixando/.test(m))b.textContent=m}));n++}catch(e){console.error(e);f++}}}
+        finally{b.remove()}refresh();toast(`${n} imagens sem fundo${f?`, ${f} não deram certo`:''}.`)})},
     rtCopy(){rtFill(true);refresh();toast('Visual do tabloide copiado para as redes.')},
     newProject(){confirmBox('Começar um projeto novo? Visual, rodapé e topo das redes continuam; as ofertas ficam vazias.',()=>{const n=defaultState();n.theme=clone(S.theme);n.footer=clone(S.footer);n.lay=clone(S.lay);n.rt=clone(S.rt);n.stripCfg=clone(S.stripCfg);n.cta=clone(S.cta);n.offers=[];n.name='Novo tabloide';S=hydrate(n);delete S.fluxoId;UI.open=null;UI.tab='ofertas';refresh();toast('Projeto novo aberto. Salve o anterior no Fluxo antes, se precisar.')})},
     loadMem(){applyMem(S.offers[i]);refresh();toast('Layout salvo carregado.')},
@@ -1012,6 +1039,9 @@ async function aplicaSombra(o,n){
   if(o.img){if(!o.imgBase)o.imgBase=o.img;o.img=n?await sombraImg(o.imgBase,n):o.imgBase;if(!n)o.imgBase=null}
   if(o.img2){if(!o.img2Base)o.img2Base=o.img2;o.img2=n?await sombraImg(o.img2Base,n):o.img2Base;if(!n)o.img2Base=null}
   o.sombra=n}
+async function trocaImgOferta(o,w,out){
+  if(w==='img2'){o.img2Base=o.sombra?out:null;o.img2=o.sombra?await sombraImg(out,o.sombra):out}
+  else{o.imgBase=o.sombra?out:null;setOfferImg(o,o.sombra?await sombraImg(out,o.sombra):out)}}
 /* recortar imagem da oferta */
 function abrirRecorte(o,w){const base=w==='img2'?(o.img2Base||o.img2):(o.imgBase||o.img);if(!base)return;
   const m=modal(`<h2>Recortar imagem</h2><p class="hint">Arraste a moldura e puxe os cantos. O que ficar fora sai da imagem.</p><div style="text-align:center"><div class="crop-wrap"><img src="${base}" alt=""><div class="crop-box"><i class="tl"></i><i></i></div></div></div><div class="acts"><button class="btn" data-close>Cancelar</button><button class="btn" id="crReset">Tudo</button><button class="btn pri" id="crOk">Aplicar recorte</button></div>`);
@@ -1175,6 +1205,7 @@ async function doExport(kind,dpi,opt){syncMem();
   refresh();dl();
 })();
 </script>
+<script src="../estudio/fundo.js"></script>
 <script src="../config.js"></script>
 <script src="fluxo-ponte.js"></script>
 

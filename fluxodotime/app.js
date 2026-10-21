@@ -108,7 +108,7 @@
   /* ---------- permissões por área (Admin > Usuários > Permissões) ---------- */
   var AREAS = [
     ["pauta", "Pauta viva", ["pauta"]], ["quadros", "Quadros", ["quadros", "cartoes"]], ["calendario", "Calendário", ["eventos"]], ["mapa", "Mapa mental", ["mapas"]],
-    ["tabloide", "Tabloide", []], ["golden", "Materiais Golden", []], ["endomarketing", "Endomarketing", []], ["verba", "Verba e NFs", ["nfs", "contratos", "orcamento", "cooperada"]], ["midia", "Mídia", ["midias"]], ["fornecedores", "Fornecedores", ["fornecedores"]],
+    ["tabloide", "Tabloide", []], ["golden", "Materiais Golden", []], ["endomarketing", "Endomarketing", []], ["cartaz", "Cartaz", []], ["cards", "Cards", []], ["verba", "Verba e NFs", ["nfs", "contratos", "orcamento", "cooperada"]], ["midia", "Mídia", ["midias"]], ["fornecedores", "Fornecedores", ["fornecedores"]],
     ["visitas", "Visitas", ["visitas"]], ["reunioes", "Reuniões e documentos", ["reunioes_dir", "documentos"]], ["campanhas", "Campanhas", ["campanhas"]], ["eventosorg", "Eventos", ["eventos_org"]],
     ["indicadores", "Indicadores", ["indicadores"]], ["semana", "Minha semana", []], ["ciclo", "Ciclo do mês", ["ciclo"]], ["time", "Time / Meu fluxo", ["pessoas"]], ["modelos", "Modelos", ["modelos"]]
   ];
@@ -274,7 +274,7 @@
     backupLembrete(); tabsScrollUpd();
     var pb = $("#permBanner"); if (!pb) { pb = document.createElement("div"); pb.id = "permBanner"; var bb = $("#bootBanner"); if (bb) bb.parentNode.insertBefore(pb, bb.nextSibling); }
     if (pb) pb.innerHTML = !adm && perm(view) === "ver" ? '<div class="banner" style="margin-bottom:12px">Você pode ver esta área, mas não alterar.</div>' : "";
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, golden: renderGolden, endomarketing: renderEndo, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, golden: renderGolden, endomarketing: renderEndo, cartaz: renderCartaz, cards: renderCards, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -2168,7 +2168,7 @@
   function abrirPermissoes(p, onSave) {
     var pm = Object.assign({}, p.permissoes || {});
     var OP = [["padrao", "Padrão"], ["nenhum", "Não vê"], ["ver", "Só vê"], ["editar", "Vê e edita"]];
-    var padraoTxt = function (a) { return AREAS_ADMIN.indexOf(a) >= 0 ? "padrão: não vê" : a === "semana" || a === "tabloide" || a === "golden" || a === "endomarketing" || a === "mapa" ? "padrão: vê" : "padrão: vê e mexe só no que é dele"; };
+    var padraoTxt = function (a) { return AREAS_ADMIN.indexOf(a) >= 0 ? "padrão: não vê" : a === "semana" || a === "tabloide" || a === "golden" || a === "endomarketing" || a === "cartaz" || a === "cards" || a === "mapa" ? "padrão: vê" : "padrão: vê e mexe só no que é dele"; };
     var m = openModal('<header><div><div class="eyebrow">Permissões</div><h3>' + esc(p.nome) + '</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
       '<p class="muted">Escolha área por área. <b>Padrão</b> segue a regra normal do sistema. <b>Só vê</b> mostra tudo da área sem deixar alterar. <b>Vê e edita</b> libera tudo da área, inclusive o que é dos outros.</p>' +
       '<div class="row"><span class="hint">Aplicar em todas:</span>' + OP.map(function (o) { return '<button type="button" class="btn ghost small" data-all="' + o[0] + '">' + o[1] + "</button>"; }).join("") + "</div>" +
@@ -3221,6 +3221,20 @@
     el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">RH · Alvorada</div><b>Endomarketing</b><span class="hint"> · aniversariantes, certificados, cheques, vouchers, plaquinhas e assinaturas de e-mail. Gere vários de uma vez com planilha.</span></div>' +
       '<a class="btn ghost small" href="endomarketing/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
       '<iframe id="emFrame" class="tb-frame" src="endomarketing/" title="Endomarketing"></iframe>';
+  }
+  function renderCartaz() {
+    var el = $("#v-cartaz");
+    if ($("#czFrame", el)) return;
+    el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">Loja · Alvorada e Golden</div><b>Cartaz</b><span class="hint"> · cartaz de oferta com código, marca, preço POR, DE/POR ou parcelado e selo de brinde. Story, feed, A5, A4 e A3.</span></div>' +
+      '<a class="btn ghost small" href="cartaz/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
+      '<iframe id="czFrame" class="tb-frame" src="cartaz/" title="Cartaz"></iframe>';
+  }
+  function renderCards() {
+    var el = $("#v-cards");
+    if ($("#cdFrame", el)) return;
+    el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">Eventos · Alvorada e Golden</div><b>Cards</b><span class="hint"> · treinamentos, ações de loja e convites (WhatsApp e impresso duplo). Só preencher: o layout se ajeita sozinho.</span></div>' +
+      '<a class="btn ghost small" href="cards/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
+      '<iframe id="cdFrame" class="tb-frame" src="cards/" title="Cards"></iframe>';
   }
 
   /* ================================================================
@@ -4589,7 +4603,7 @@
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
   initTabsScroll();
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; if (view === "golden" && $("#gdFrame")) return; if (view === "endomarketing" && $("#emFrame")) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; if (view === "golden" && $("#gdFrame")) return; if (view === "endomarketing" && $("#emFrame")) return; if (view === "cartaz" && $("#czFrame")) return; if (view === "cards" && $("#cdFrame")) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;

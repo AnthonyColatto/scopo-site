@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600;1,700&family=Allura&family=Great+Vibes&family=Ms+Madi&family=Pinyon+Script&family=Montserrat:wght@300;400;600;800&family=Bebas+Neue&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link rel="stylesheet" href="../estudio/motor.css">
+<style>
+@font-face{font-family:"Gotham";src:url(../tabloide/fonts/gotham-thin.otf);font-weight:100;font-display:block}
+@font-face{font-family:"Gotham";src:url(../tabloide/fonts/gotham-light.otf);font-weight:300;font-display:block}
+@font-face{font-family:"Gotham";src:url(../tabloide/fonts/gotham-book.ttf);font-weight:400;font-display:block}
+@font-face{font-family:"Gotham";src:url(../tabloide/fonts/gotham-medium.ttf);font-weight:500;font-display:block}
+@font-face{font-family:"Gotham";src:url(../tabloide/fonts/gotham-bold.otf);font-weight:600 700;font-display:block}
+@font-face{font-family:"Gotham";src:url(../tabloide/fonts/gotham-black.otf);font-weight:800 900;font-display:block}
+:root{--bg:#0b0f22;--pn:#121936;--pn2:#1a2246;--ln:#2a3566;--au:#fcd205;--au2:#ffe36b}
+.btn.pri{background:#fcd205;color:#1b2150;border-color:#fcd205}
+.brand img{height:22px}
+</style>
+</head>
+<body>
+<div class="top">
+  <a class="btn ghost" id="voltar" href="../" title="Voltar ao Fluxo do Time">← Fluxo</a>
+  <div class="brand"><img src="../endomarketing/img/logo-am-branco.png" alt="Alvorada"><b>Cards</b></div>
+  <input class="nm" id="projNome" title="Nome do projeto" aria-label="Nome do projeto">
+  <span class="sp"></span>
+  <button class="btn sm" id="undo" title="Desfazer (Ctrl+Z)">↶</button>
+  <button class="btn sm" id="redo" title="Refazer (Ctrl+Y)">↷</button>
+  <button class="btn" id="novoProj">Novo projeto</button>
+  <button class="btn" id="arquivo">Arquivo</button>
+  <button class="btn" id="fxSalvar" hidden>Salvar no Fluxo</button>
+  <button class="btn" id="fxLista" hidden>Projetos do time</button>
+  <button class="btn pri" id="exportar">Exportar</button>
+</div>
+<div class="app">
+  <aside class="col">
+    <div class="sec"><h3>Peças <button class="btn sm" id="novaPeca">+ Nova</button></h3><div class="pecas" id="pecas"></div></div>
+    <div class="sec"><h3>Camadas</h3><div class="lays" id="lays"></div>
+      <div class="addrow">
+        <button class="btn" data-add="texto">+ Texto</button><button class="btn" data-add="img">+ Imagem</button><button class="btn" data-add="forma">+ Forma</button>
+        <button class="btn" data-add="logo">+ Logo</button><button class="btn" data-add="preco">+ Preço</button><button class="btn" data-add="tag">+ Selo</button>
+      </div>
+      <p class="hint">Clique na arte para escolher. Arraste para mover, puxe o canto para redimensionar. Setas movem 1 px (Shift = 10). Del apaga, Ctrl+D duplica.</p>
+    </div>
+  </aside>
+  <main class="mid">
+    <div class="bar"><span class="lbl" id="fmtLbl"></span><span class="sp" style="flex:1"></span>
+      <button class="btn sm" id="zOut" title="Diminuir zoom">−</button><span class="lbl" id="zLbl">100%</span><button class="btn sm" id="zIn" title="Aumentar zoom">+</button><button class="btn sm" id="zFit">Caber</button>
+    </div>
+    <div class="stageWrap" id="wrap"><div class="board" id="board"></div></div>
+  </main>
+  <aside class="col r">
+    <div class="tabs"><button data-t="rap" class="on">Conteúdo</button><button data-t="cam">Camada</button><button data-t="pag">Página</button><button data-t="lib">Imagens</button></div>
+    <div id="painel"></div>
+  </aside>
+</div>
+<div id="stage"></div>
+<script src="../estudio/motor.js"></script>
+<script src="../estudio/fundo.js"></script>
+<script src="../estudio/qrcode.js"></script>
+<script src="../estudio/pecas.js"></script>
+<script src="kit.js"></script>
+<script src="../config.js"></script>
+<script src="../estudio/ponte.js"></script>
+</body>
+</html>

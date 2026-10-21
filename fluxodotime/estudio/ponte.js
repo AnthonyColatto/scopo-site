@@ -30,7 +30,7 @@
         if (perfil.papel !== "admin" && perfil.permissoes && perfil.permissoes[AREA] === "nenhum") { fora("Você não tem acesso a " + ((window.KIT && KIT.nome) || "este estúdio") + ". Fale com o Tony ou a Ellyn."); throw { code: "sem-permissao" }; }
         cortina.remove();
         $("#fxSalvar").hidden = false; $("#fxLista").hidden = false;
-        window.FLUXO_FONTES_ON = true; fontesDoTime();
+        window.FLUXO_FONTES_ON = true; fontesDoTime(); biblioDoTime();
       })
       .catch(function (e) { if (!e || !e.code) fora("Não consegui verificar o acesso. Confira a internet e recarregue."); throw e; });
   }
@@ -90,6 +90,21 @@
       });
     });
   }
+  // biblioteca do time: logos de parceiros, personas e padrões ficam em anexos/biblioteca/<tipo>/
+  function biblioDoTime() {
+    if (typeof biblioAdd !== "function") return;
+    ["parceiros", "personas", "padroes"].forEach(function (tipo) {
+      client.storage.from(BUCKET).list("biblioteca/" + tipo, { limit: 200 }).then(function (r) {
+        (r.data || []).filter(function (f) { return /\.(png|jpe?g|webp|svg)$/i.test(f.name); }).forEach(function (f) {
+          client.storage.from(BUCKET).download("biblioteca/" + tipo + "/" + f.name).then(function (x) { if (x.data) biblioAdd(tipo, nomeFonte(f.name), URL.createObjectURL(x.data)); });
+        });
+      });
+    });
+  }
+  window.aoEnviarBiblio = function (tipo, fs) {
+    if (!client) return;
+    fs.forEach(function (f) { client.storage.from(BUCKET).upload("biblioteca/" + tipo + "/" + Date.now() + "__" + f.name.replace(/[^\w.\-]+/g, "_"), f, { upsert: true, contentType: f.type || "image/png" }).then(function (r) { if (!r.error) { biblioAdd(tipo, nomeFonte(f.name), URL.createObjectURL(f)); toast("Guardado na biblioteca do time."); } }); });
+  };
   window.aoEnviarFonte = function (fs) {
     if (!client) return;
     fs.forEach(function (f) { client.storage.from(BUCKET).upload("fontes/" + f.name.replace(/[^\w.\-]+/g, "_"), f, { upsert: true, contentType: f.type || "font/otf" }).then(function (r) { if (!r.error) toast("Fonte guardada no Fluxo para o time todo."); }); });
