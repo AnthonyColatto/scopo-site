@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Treinamento · Escola SCOPO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Extra+Condensed:wght@200;300;600&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="treinamento.css">
+</head>
+<body>
+<div id="cortina" class="cortina">Verificando acesso ao Fluxo…</div>
+
+<header class="topo">
+  <div class="topo-in">
+    <a class="voltar" href="../" target="_top">← Fluxo</a>
+    <img class="marca" src="estudio/img/logo-scopo-claro.png" alt="SCOPO!">
+    <span class="tag">Treinamento · só admin</span>
+    <span class="sp"></span>
+    <span class="sync" id="sync"></span>
+  </div>
+  <nav class="abas" role="tablist" id="abas">
+    <button role="tab" data-aba="mapa" aria-selected="true">Passo a passo</button>
+    <button role="tab" data-aba="roteiros" aria-selected="false">Roteiros</button>
+    <button role="tab" data-aba="estudio" aria-selected="false">Estúdio</button>
+    <button role="tab" data-aba="kit" aria-selected="false">Kit visual</button>
+    <button role="tab" data-aba="textos" aria-selected="false">Textos</button>
+  </nav>
+</header>
+
+<main>
+  <!-- PASSO A PASSO -->
+  <section class="aba" id="a-mapa">
+    <div class="wrap">
+      <header class="cab">
+        <div class="tag">Escola SCOPO · Mapa de execução</div>
+        <h1><span class="fino">Do zero ao</span><span class="forte">Corte Certo.</span></h1>
+        <p class="lead">Todos os passos, do primeiro clique até o curso vendendo sozinho na Hotmart. Faça <b>um por vez, na ordem</b>. Cada marcação fica salva no Fluxo e aparece para todos os admins.</p>
+        <div class="placar">
+          <div class="placar-linha"><div class="placar-num"><span id="mFeitos">0</span> <small>/ <span id="mTotal">0</span> passos</small></div><div class="tag" id="mFase"></div></div>
+          <div class="barra" aria-hidden="true"><i id="mBarra"></i></div>
+        </div>
+      </header>
+      <section class="proximo" aria-live="polite">
+        <div class="excl" aria-hidden="true">!</div>
+        <div class="tag" id="mProxTag">Seu próximo passo</div>
+        <h2 id="mProxTit"></h2>
+        <p id="mProxDesc"></p>
+        <button class="marcar" id="mProxBtn" type="button">Marcar como feito</button>
+      </section>
+      <div id="fases" class="fases"></div>
+    </div>
+  </section>
+
+  <!-- ROTEIROS -->
+  <section class="aba" id="a-roteiros" hidden>
+    <div class="wrap">
+      <header class="cab">
+        <div class="tag">Escola SCOPO · Fase 2 · 10/11 a 04/12</div>
+        <h1><span class="fino">Roteiros da</span><span class="forte">Lista.</span></h1>
+        <p class="lead">Doze vídeos, três por semana, até a lista de espera e o aulão de 5/12. Cada ficha tem o roteiro na <b>Espinha de Retenção</b>, o Gancho B, a thumb, o título de busca e a legenda pronta para copiar.</p>
+        <div class="placar">
+          <div class="placar-linha"><div class="placar-num"><span id="rPub">0</span> <small>/ 12 publicados</small></div><div class="tag" id="rResumo"></div></div>
+          <div class="barra" aria-hidden="true"><i id="rBarra"></i></div>
+        </div>
+      </header>
+      <section class="proximo" aria-live="polite">
+        <div class="excl" aria-hidden="true">!</div>
+        <div class="tag" id="rProxTag">Próximo a gravar</div>
+        <h2 id="rProxTit"></h2>
+        <p id="rProxDesc"></p>
+        <button class="marcar" id="rProxBtn" type="button">Abrir o roteiro</button>
+      </section>
+      <div id="semanas" class="semanas"></div>
+      <p class="rodape">Bordão fixo, sempre nos 2 s finais: “Escola SCOPO. Corte certo segura gente.” Onde aparecer [00], troque pelo número real antes de gravar: nenhum resultado é inventado.</p>
+    </div>
+  </section>
+
+  <!-- ESTÚDIO -->
+  <section class="aba aba-larga" id="a-estudio" hidden>
+    <div class="est-cab">
+      <div><div class="tag">Estúdio editável</div><p class="lead">Thumbs dos 12 vídeos, post, carrossel, capa de Reels e slides de aula. Troque foto, arraste, mude fundo e pattern, exporte em PNG ou PDF. Use <b>Salvar no Fluxo</b> para abrir de qualquer computador.</p></div>
+      <a class="btn" href="estudio/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a>
+    </div>
+    <div id="estBox"></div>
+  </section>
+
+  <!-- KIT -->
+  <section class="aba" id="a-kit" hidden>
+    <div class="wrap wrap-kit">
+      <header class="cab">
+        <div class="tag">Escola SCOPO · Kit visual</div>
+        <h1><span class="fino">Peças para</span><span class="forte">compor.</span></h1>
+        <p class="lead">Ícones, pilares, elementos, patterns e as aplicações de referência. Clique em qualquer item para baixar o arquivo. Tudo isso também está na aba Imagens do Estúdio.</p>
+        <div><a class="btn pri" href="kit/kit-completo-escola-scopo.zip" download>Baixar o kit completo (.zip)</a></div>
+      </header>
+      <div id="kitBox"></div>
+    </div>
+  </section>
+
+  <!-- TEXTOS -->
+  <section class="aba" id="a-textos" hidden>
+    <div class="wrap">
+      <header class="cab">
+        <div class="tag">Escola SCOPO · Textos</div>
+        <h1><span class="fino">O que a escola</span><span class="forte">fala.</span></h1>
+        <p class="lead">Os documentos do projeto, prontos para usar. Abrem no Claude, na sua conta. As legendas de cada vídeo também estão nas fichas da aba Roteiros, com botão de copiar.</p>
+      </header>
+      <div id="textosBox"></div>
+    </div>
+  </section>
+</main>
+
+<script src="../config.js"></script>
+<script src="dados.js"></script>
+<script src="kit/manifesto.js"></script>
+<script src="treinamento.js"></script>
+</body>
+</html>

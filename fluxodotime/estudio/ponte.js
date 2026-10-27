@@ -1,5 +1,5 @@
 /* Ponte dos estúdios (Materiais Golden, Endomarketing) ↔ Fluxo do Time
-   - Só abre para quem está logado no Fluxo (mesma sessão do Supabase).
+   - Só abre para quem está logado no Fluxo (mesma sessão do Supabase). Com KIT.soAdmin, só para admin.
    - "Salvar no Fluxo" guarda o projeto em anexos/golden/<id>/ para o time abrir de qualquer computador.
    - "Projetos do time" lista e abre. */
 (function () {
@@ -27,6 +27,7 @@
       .then(function (r) {
         if (!r || !r.data) { fora("Seu acesso ao Fluxo ainda não foi liberado."); throw { code: "sem-perfil" }; }
         perfil = r.data;
+        if (window.KIT && KIT.soAdmin && perfil.papel !== "admin") { fora((KIT.nome || "Este estúdio") + " é só para administradores do Fluxo."); throw { code: "sem-permissao" }; }
         if (perfil.papel !== "admin" && perfil.permissoes && perfil.permissoes[AREA] === "nenhum") { fora("Você não tem acesso a " + ((window.KIT && KIT.nome) || "este estúdio") + ". Fale com o Tony ou a Ellyn."); throw { code: "sem-permissao" }; }
         cortina.remove();
         $("#fxSalvar").hidden = false; $("#fxLista").hidden = false;
@@ -93,7 +94,7 @@
   // biblioteca do time: logos de parceiros, personas e padrões ficam em anexos/biblioteca/<tipo>/
   function biblioDoTime() {
     if (typeof biblioAdd !== "function") return;
-    ["parceiros", "personas", "padroes"].forEach(function (tipo) {
+    Object.keys(Object.assign({ parceiros: 1, personas: 1, padroes: 1 }, (window.KIT && KIT.biblio) || {})).forEach(function (tipo) {
       client.storage.from(BUCKET).list("biblioteca/" + tipo, { limit: 200 }).then(function (r) {
         (r.data || []).filter(function (f) { return /\.(png|jpe?g|webp|svg)$/i.test(f.name); }).forEach(function (f) {
           client.storage.from(BUCKET).download("biblioteca/" + tipo + "/" + f.name).then(function (x) { if (x.data) biblioAdd(tipo, nomeFonte(f.name), URL.createObjectURL(x.data)); });

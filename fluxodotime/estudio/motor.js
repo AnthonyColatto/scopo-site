@@ -151,9 +151,9 @@ function redo() { if (!UI.fut.length) return toast("Nada para refazer."); UI.his
 /* ================= cores, textos e imagens ================= */
 var MA = null; // cores da peça que está sendo desenhada (tema da peça ou a marca do projeto)
 function marcaDe(p) { var t = KIT.temas && p && p.tema && KIT.temas[p.tema]; return t ? Object.assign({}, P.marca, t.marca) : P.marca; }
-function cor(c) { if (!c) return "transparent"; if (c[0] === "@") return (MA || P.marca)[c.slice(1)] || "#000"; return c; }
+function cor(c) { if (!c) return "transparent"; if (c[0] === "@") { var m = MA || P.marca, k = c.slice(1); if (m[k]) return m[k]; var al = window.KIT && KIT.alias && KIT.alias[k]; return al ? cor(al) : "#000"; } return c; } // alias: o kit pode apontar tokens padrão do motor (navy, branco, ouro…) para as cores dele
 function rgba(c, a) { c = cor(c); if (a == null || a >= 1 || !/^#[0-9a-f]{6}$/i.test(c)) return c; var n = parseInt(c.slice(1), 16); return "rgba(" + (n >> 16) + "," + (n >> 8 & 255) + "," + (n & 255) + "," + (+a).toFixed(3) + ")"; }
-function ouroGrad(ang) { var m = MA || P.marca; return "linear-gradient(" + (ang == null ? 100 : ang) + "deg," + m.ouro3 + " 0%," + m.ouro + " 28%," + m.ouro2 + " 50%," + m.ouro + " 72%," + m.ouro3 + " 100%)"; }
+function ouroGrad(ang) { var o = cor("@ouro"), o2 = cor("@ouro2"), o3 = cor("@ouro3"); return "linear-gradient(" + (ang == null ? 100 : ang) + "deg," + o3 + " 0%," + o + " 28%," + o2 + " 50%," + o + " 72%," + o3 + " 100%)"; }
 function srcURL(s) { if (!s) return ""; if (s.indexOf("asset:") === 0) return P.assets[s.slice(6)] || ""; return s; }
 function dado(p, s) { // troca {campo} pelos dados da peça (duas passadas: o legal usa {validade})
   var f = function (t) { return String(t == null ? "" : t).replace(/\{(\w+)\}/g, function (m, k) { return p.dados && p.dados[k] != null ? p.dados[k] : ""; }); };
@@ -363,7 +363,7 @@ function renderPecas() {
     el.onclick = function () { if (P.atual === +el.dataset.i) return; P.atual = +el.dataset.i; UI.sel = null; UI.zoom = 0; if (UI.tab === "cam") UI.tab = "rap"; refresh(); commit(); };
   });
 }
-var TIPO_IC = { texto: "T", img: "▣", forma: "■", preco: "$", tag: "◆" };
+var TIPO_IC = { texto: "T", img: "▣", forma: "■", preco: "$", tag: "◆", icone: "✦", chips: "◎" };
 function renderCamadas() {
   var p = peca(), box = $("#lays");
   if (!p.layers.length) { box.innerHTML = '<p class="hint">Sem camadas. Use os botões abaixo.</p>'; return; }
@@ -529,6 +529,10 @@ function painelCamada(p) {
       corCampo("L.cor", L.cor, "Cor do texto") + sel("L.fonte", L.fonte, fontesOps(), "Fonte") +
       '<div class="g3">' + sel("L.peso", L.peso, [[400, "Regular"], [500, "Medium"], [600, "SemiBold"], [700, "Bold"], [800, "ExtraBold"]], "Peso") + num("L.tam", L.tam, "Tamanho") + num("L.raio", L.raio, "Cantos") + "</div>" +
       num("L.ls", L.ls, "Espaço entre letras (em)", { step: .01 }) + chk("L.caixa", L.caixa, "CAIXA ALTA");
+  } else if (L.tipo === "icone") {
+    var nomesIc = (window.KIT && KIT.iconesNomes) || {};
+    h += sel("L.icone", L.icone, Object.keys(ICONES).map(function (k) { return [k, nomesIc[k] || k]; }), "Ícone") + corCampo("L.cor", L.cor, "Cor") +
+      rng("L.traco", L.traco || 1.8, "Espessura do traço", .75, 3, .05, function (v) { return String(v).replace(".", ","); });
   }
   h += "</div><div class=\"sec\"><h3>Posição e tamanho</h3><div class=\"g4\">" + num("L.x", L.x, "X") + num("L.y", L.y, "Y") + num("L.w", L.w, "Largura", { min: 2 }) + num("L.h", L.h, "Altura", { min: 2 }) + "</div>" +
     '<div class="g2">' + num("L.rot", L.rot, "Girar (graus)") + rng("L.op", L.op == null ? 1 : L.op, "Opacidade", 0, 1, .01, function (v) { return Math.round(v * 100) + "%"; }) + "</div>" +
@@ -771,6 +775,7 @@ function addCamada(tipo) {
   else if (tipo === "logo") n = I("Logo", Math.round(d.w * .3), Math.round(d.h * .04), Math.round(d.w * .4), Math.round(d.w * .13), { src: claro ? KIT.tok.logoEscuro : KIT.tok.logoClaro, fit: "contain" });
   else if (tipo === "preco") n = P$("Preço", x, y, w, Math.round(170 * k), { valor: "99,90", unid: "", tam: Math.round(150 * k), cor: claro ? "@navy" : "@branco" });
   else if (tipo === "tag") n = G("Selo", x, y, Math.round(300 * k), Math.round(62 * k), { txt: "SOMENTE", tam: Math.round(32 * k) });
+  else if (tipo === "icone") { var s = Math.round(d.w * .12); n = Ic("Ícone", Math.round((d.w - s) / 2), Math.round((d.h - s) / 2), s, s, { icone: Object.keys(ICONES)[0], cor: claro ? "@navy" : "@branco", traco: 1.6 }); }
   if (KIT.auto) p.manual = true;
   p.layers.push(n); UI.sel = n.id; UI.tab = "cam";
   renderCamadas(); renderPreview(); renderPainel(); commit(true);
@@ -787,7 +792,7 @@ function saveFile(name, blob) {
 }
 function busy(t) { var b = document.createElement("div"); b.className = "busy"; b.textContent = t || "Gerando…"; document.body.appendChild(b); return b; }
 function esperaFontes(p) {
-  var fs = {}; p.layers.forEach(function (L) { if (L.fonte) [300, 400, 500, 600, 700, 800].forEach(function (w) { fs[w + ' 40px "' + L.fonte + '"'] = 1; }); });
+  var fs = {}; p.layers.forEach(function (L) { if (L.fonte) [200, 300, 400, 500, 600, 700, 800].forEach(function (w) { fs[w + ' 40px "' + L.fonte + '"'] = 1; }); });
   return Promise.all(Object.keys(fs).map(function (f) { return document.fonts.load(f).catch(function () {}); })).then(function () { return document.fonts.ready; });
 }
 function esperaImagens(p) {

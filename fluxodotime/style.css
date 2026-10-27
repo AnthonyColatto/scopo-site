@@ -831,6 +831,7 @@ li.done .vi-a-t{text-decoration:line-through;color:var(--ink-3)}
 .tb-head b{font-family:var(--head);font-size:16px}
 .tb-frame{width:100%;height:calc(100vh - 210px);min-height:560px;border:1px solid var(--line-2);border-radius:var(--r);background:#eceef1;display:block}
 @media (max-width:860px){.tb-frame{height:80vh}}
+.tr-frame{background:#0B0B0A;border-color:#242422}
 
 /* ================= Cartões concluídos ================= */
 .kcard .kt{padding-right:24px}

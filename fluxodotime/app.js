@@ -270,11 +270,11 @@
     }
     $$("#tabs button[data-tab]").forEach(function (b) { var a = b.dataset.tab; if (!AREAS.some(function (x) { return x[0] === a; })) return; var ok = podeVerArea(a); b.classList.toggle("perm-off", !ok); b.classList.toggle("perm-on", ok && !adm && AREAS_ADMIN.indexOf(a) >= 0); });
     if (tv && !adm && perm("visitas") !== "padrao") tv.hidden = !podeVerArea("visitas");
-    if (!adm && (view === "admin" || (AREAS.some(function (x) { return x[0] === view; }) && !podeVerArea(view)))) { view = (AREAS.find(function (x) { return podeVerArea(x[0]); }) || ["semana"])[0]; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
+    if (!adm && (view === "admin" || view === "treinamento" || (AREAS.some(function (x) { return x[0] === view; }) && !podeVerArea(view)))) { view = (AREAS.find(function (x) { return podeVerArea(x[0]); }) || ["semana"])[0]; $$("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", String(b.dataset.tab === view)); }); $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; }); }
     backupLembrete(); tabsScrollUpd();
     var pb = $("#permBanner"); if (!pb) { pb = document.createElement("div"); pb.id = "permBanner"; var bb = $("#bootBanner"); if (bb) bb.parentNode.insertBefore(pb, bb.nextSibling); }
     if (pb) pb.innerHTML = !adm && perm(view) === "ver" ? '<div class="banner" style="margin-bottom:12px">Você pode ver esta área, mas não alterar.</div>' : "";
-    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, golden: renderGolden, endomarketing: renderEndo, cartaz: renderCartaz, cards: renderCards, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
+    var fn = { pauta: renderPauta, quadros: renderQuadros, calendario: renderCalendario, mapa: renderMapa, verba: renderVerba, admin: renderAdmin, cofre: renderCofre, visitas: renderVisitas, eventosorg: renderEventosOrg, campanhas: renderCampanhas, reunioes: renderReunioes, indicadores: renderIndicadores, midia: renderMidia, tabloide: renderTabloide, golden: renderGolden, treinamento: renderTreinamento, endomarketing: renderEndo, cartaz: renderCartaz, cards: renderCards, fornecedores: renderFornecedores, semana: renderSemana, ciclo: renderCiclo, time: renderTime, modelos: renderModelos }[view];
     if (fn) fn();
   }
 
@@ -3205,6 +3205,18 @@
   }
 
   /* ================================================================
+     TREINAMENTO · Escola SCOPO: passo a passo, roteiros, estúdio e kit (pasta treinamento/). Só admin.
+     ================================================================ */
+  function renderTreinamento() {
+    var el = $("#v-treinamento");
+    if (!isAdmin()) { el.innerHTML = '<div class="banner">O Treinamento é só para administradores.</div>'; return; }
+    if ($("#trFrame", el)) return;
+    el.innerHTML = '<div class="tb-head"><div><div class="eyebrow">Escola SCOPO</div><b>Treinamento</b><span class="hint"> · passo a passo do Corte Certo, roteiros com legenda, estúdio de thumbs e peças, kit visual e textos. Só admin vê.</span></div>' +
+      '<a class="btn ghost small" href="treinamento/" target="_blank" rel="noopener">Abrir em tela cheia ↗</a></div>' +
+      '<iframe id="trFrame" class="tb-frame tr-frame" src="treinamento/" title="Treinamento Escola SCOPO"></iframe>';
+  }
+
+  /* ================================================================
      MATERIAIS GOLDEN · feed, story, aniversariante e impressos da Alvorada Golden (pasta golden/)
      ================================================================ */
   function renderGolden() {
@@ -4603,7 +4615,7 @@
   $$("section.view").forEach(function (s) { s.hidden = s.id !== "v-" + view; });
 
   initTabsScroll();
-  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; if (view === "golden" && $("#gdFrame")) return; if (view === "endomarketing" && $("#emFrame")) return; if (view === "cartaz" && $("#czFrame")) return; if (view === "cards" && $("#cdFrame")) return; render(); } }); }; })();
+  var renderSoon = (function () { var t = null; return function () { if (t) return; t = requestAnimationFrame(function () { t = null; if (!drag || !drag.started) { if ($("#mb") && (openCardId || ["verba", "cofre", "visitas", "eventosorg", "campanhas", "reunioes", "indicadores", "midia", "fornecedores"].indexOf(view) >= 0)) return; if (view === "tabloide" && $("#tbFrame")) return; if (view === "golden" && $("#gdFrame")) return; if (view === "treinamento" && $("#trFrame")) return; if (view === "endomarketing" && $("#emFrame")) return; if (view === "cartaz" && $("#czFrame")) return; if (view === "cards" && $("#cdFrame")) return; render(); } }); }; })();
 
   window.GestaoStore.init().then(function (st) {
     Store = st;
