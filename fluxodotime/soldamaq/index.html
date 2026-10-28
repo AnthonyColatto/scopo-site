@@ -90,6 +90,9 @@ details.grp[open]{padding-bottom:10px}
 .inst-city{border:1px solid var(--ui-line);border-radius:7px;padding:8px;margin:0 12px 6px;display:grid;gap:5px}
 .inst-city .fld,.inst-city .row2,.inst-city .chk,.inst-city .acts{padding-left:0;padding-right:0}
 .inst-row{display:flex;gap:4px;align-items:center}
+.impo-map{border:1px solid var(--ui-line);border-radius:7px;padding:8px;max-height:170px;overflow:auto}
+.impo-grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:2px 12px;font-size:11.5px;font-family:var(--f-mono)}
+.impo-grid b{color:var(--ui-mute);font-weight:500;font-family:inherit}
 .inst-row .inp{flex:1;min-width:0}
 .spread{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 10px 40px #000a}
 .navarrows{position:absolute;top:14px;right:16px;display:flex;gap:6px;z-index:5}
@@ -1730,16 +1733,68 @@ async function renderPageCanvas(pi, {bleed=0, dpi=150, fmtType='png'}={}){
 const toBlob=(cv,type,q)=>new Promise(ok=>cv.toBlob(ok,type,q));
 function pagesFromScope(scope){ if(scope==='atual') return SPREADS[ui.spread].slice(); return P.pages.map((_,i)=>i); }
 $('#b-export').onclick=()=>ui.mode==='dd'?ddExport():openExport();
+/* Caderno cruzado (grampo a cavalo): folhas A3 frente e verso já na ordem de dobra.
+   Folha s: frente = última−2s | 1+2s, verso = 2+2s | última−1−2s. Páginas em branco entram antes da contracapa. */
+function impoPlan(){
+  const n=P.pages.length, N=Math.ceil(n/4)*4, blanks=N-n;
+  const ord=P.pages.map((_,i)=>i); ord.splice(n-1,0,...Array(blanks).fill(null)); // null = página em branco
+  const sheets=[];
+  for(let s=0;s<N/4;s++) sheets.push({ s, front:[ord[N-1-2*s], ord[2*s]], back:[ord[2*s+1], ord[N-2-2*s]] });
+  return {n,N,blanks,sheets};
+}
+const impoLab = pi => pi==null ? 'branca' : String(pi+1);
+async function impoSide(pair, s, {bleed=3, dpi=300, creep=0}){
+  const pxmm=dpi/25.4, b=bleed, W=2*PW+2*b, H=PH+2*b, d=creep*s;
+  const cv=document.createElement('canvas'); cv.width=Math.round(W*pxmm); cv.height=Math.round(H*pxmm);
+  const g=cv.getContext('2d'); g.fillStyle='#ffffff'; g.fillRect(0,0,cv.width,cv.height);
+  for(let k=0;k<2;k++){
+    const pi=pair[k]; if(pi==null) continue;
+    const pc=await renderPageCanvas(pi,{bleed:b,dpi});
+    // metade esquerda perde a sangria do vinco à direita; a direita perde a da esquerda. Creep empurra o miolo para o vinco.
+    const x0=k?PW+b:0, dx=k?(PW-d):d;
+    g.save(); g.beginPath(); g.rect(x0*pxmm,0,(PW+b)*pxmm,cv.height); g.clip();
+    g.drawImage(pc, dx*pxmm, 0, pc.width, pc.height); g.restore();
+  }
+  return cv;
+}
 function openExport(){
   const bleed=el('select',{class:'inp',id:'f-bleed'},el('option',{value:0},'Sem sangria'),el('option',{value:3,selected:true},'3 mm'),el('option',{value:5},'5 mm'));
   const dpi=el('select',{class:'inp',id:'f-dpi'},el('option',{value:150},'150 dpi'),el('option',{value:300,selected:true},'300 dpi'));
   const marks=el('input',{type:'checkbox',id:'f-marks',checked:true});
+  const pag=el('select',{class:'inp',id:'f-pag'},el('option',{value:'leitura'},'Leitura · uma página A4 por vez (1, 2, 3…)'),el('option',{value:'caderno'},'Caderno cruzado · A3 frente e verso para grampo'));
+  const creep=el('select',{class:'inp',id:'f-creep'},el('option',{value:0},'Sem deslocamento'),el('option',{value:.1},'0,1 mm por folha'),el('option',{value:.2},'0,2 mm por folha'),el('option',{value:.3},'0,3 mm por folha'));
+  const mapa=el('div',{class:'impo-map'});
+  const drawMapa=()=>{ mapa.innerHTML=''; const cad=pag.value==='caderno'; creepF.hidden=!cad; mapa.hidden=!cad; if(!cad) return;
+    const pl=impoPlan();
+    mapa.append(el('p',{class:'fine',style:{margin:'0 0 6px'}}, `${pl.sheets.length} folha(s) A3 frente e verso · ${pl.N} páginas`+(pl.blanks?` · ${pl.blanks} página(s) em branco entram antes da contracapa (o caderno precisa de múltiplo de 4)`:'')+'. Sempre sai o tabloide inteiro.'));
+    const t=el('div',{class:'impo-grid'}, el('b',{},'Folha'), el('b',{},'Frente'), el('b',{},'Verso'));
+    pl.sheets.forEach(sh=>t.append(el('span',{},String(sh.s+1)), el('span',{},sh.front.map(impoLab).join(' | ')), el('span',{},sh.back.map(impoLab).join(' | '))));
+    mapa.append(t); };
+  const creepF=F('Deslocamento no miolo (creep)',creep), pagF=F('Paginação',pag); creepF.style.padding=pagF.style.padding='0';
+  pag.addEventListener('change',drawMapa);
   const scope=el('select',{class:'inp',id:'f-scope',style:{width:'auto'}},el('option',{value:'todas'},`Todas as ${P.pages.length} lâminas`),el('option',{value:'atual'},'Só a prancheta aberta'));
   const prog=el('div',{class:'prog'},el('i')); const status=el('p',{class:'fine',style:{marginTop:'8px'}},'');
   const run=async(kind)=>{
     const list=pagesFromScope(scope.value); const bar=prog.firstChild; status.textContent='Preparando…';
     try{
-      if(kind==='print'||kind==='digital'){
+      if(kind==='print' && pag.value==='caderno'){
+        const {jsPDF}=(await needLib('jspdf',LIB.pdf)); const b=Number(bleed.value), mk=marks.checked?9:0, d=Number(dpi.value), cr=Number(creep.value);
+        const pl=impoPlan(), W=2*PW+2*b+2*mk, Hh=PH+2*b+2*mk; const doc=new jsPDF({unit:'mm',format:[W,Hh],orientation:'landscape',compress:true});
+        const sides=[]; pl.sheets.forEach(sh=>{ sides.push([sh,'frente',sh.front]); sides.push([sh,'verso',sh.back]); });
+        for(let i=0;i<sides.length;i++){
+          const [sh,lado,pair]=sides[i];
+          status.textContent=`Montando folha ${sh.s+1} · ${lado} (${pair.map(impoLab).join(' | ')})…`; bar.style.width=(i/sides.length*100)+'%';
+          const cv=await impoSide(pair, sh.s, {bleed:b, dpi:d, creep:cr}); if(i) doc.addPage([W,Hh],'landscape');
+          doc.addImage(cv.toDataURL('image/jpeg',0.95),'JPEG',mk,mk,2*PW+2*b,PH+2*b,undefined,'FAST');
+          if(mk){ doc.setLineWidth(0.25); doc.setDrawColor(0); const x0=mk+b, y0=mk+b, x1=x0+2*PW, y1=y0+PH, xm=x0+PW, o=b+1.5, L=5;
+            [[x0,y0,-1,-1],[x1,y0,1,-1],[x0,y1,-1,1],[x1,y1,1,1]].forEach(([x,y,sx,sy])=>{ doc.line(x+sx*o,y,x+sx*(o+L),y); doc.line(x,y+sy*o,x,y+sy*(o+L)); });
+            doc.setLineDashPattern([1,1],0); doc.line(xm,y0-o,xm,y0-o-L); doc.line(xm,y1+o,xm,y1+o+L); doc.setLineDashPattern([],0);
+            doc.setFontSize(6); doc.text(`${P.name} · Folha ${sh.s+1}/${pl.sheets.length} ${lado} · páginas ${pair.map(impoLab).join(' | ')} · A3 420×297 mm · sangria ${b} mm${cr?` · creep ${(cr*sh.s).toFixed(1).replace('.',',')} mm`:''} · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3);
+            doc.text('dobra', xm+1, y0-o-L+1.5); }
+        }
+        bar.style.width='100%'; status.textContent='Gerando arquivo…';
+        await save(`${slugify(P.name)}-grafica-caderno.pdf`, doc.output('blob'));
+      } else if(kind==='print'||kind==='digital'){
         const {jsPDF}=(await needLib('jspdf',LIB.pdf)); const b= kind==='print'? Number(bleed.value):0; const mk= kind==='print'&&marks.checked? 9:0; const d= kind==='print'? Number(dpi.value):150;
         const W=PW+2*b+2*mk, Hh=PH+2*b+2*mk; const doc=new jsPDF({unit:'mm',format:[W,Hh],orientation:'portrait',compress:true});
         for(let i=0;i<list.length;i++){
@@ -1762,10 +1817,11 @@ function openExport(){
     }catch(err){ console.error(err); status.textContent='A exportação falhou nesta visualização. Tente “Só a prancheta aberta” ou 150 dpi.'; }
   };
   const ecard=(title,desc,extra,btn,cls)=>el('div',{class:'ecard'+(cls?' '+cls:'')},el('h5',{},title),el('p',{},desc),extra,btn);
+  setTimeout(drawMapa,0);
   modal(`Exportar ${P.pages.length} lâminas A4`, el('div',{},
     el('div',{class:'acts',style:{padding:'0 0 12px'}}, scope),
     el('div',{class:'cards'},
-      ecard('PDF para gráfica','Tamanho final 210 × 297 mm, com sangria e marcas de corte para a gráfica refilar. Imagens em alta.', el('div',{style:{display:'grid',gap:'8px'}}, el('div',{class:'row2',style:{padding:0}}, F('Sangria',bleed), F('Resolução',dpi)), el('label',{class:'chk',style:{padding:0}},marks,'Marcas de corte e informações da página')), el('button',{class:'btn pri',onclick:()=>run('print')},'Gerar PDF para gráfica'),'main'),
+      ecard('PDF para gráfica','Página a página em 210 × 297 mm, ou caderno cruzado em A3 já na ordem de dobra. Com sangria e marcas para a gráfica refilar. Imagens em alta.', el('div',{style:{display:'grid',gap:'8px'}}, el('div',{class:'row2',style:{padding:0}}, F('Sangria',bleed), F('Resolução',dpi)), pagF, creepF, mapa, el('label',{class:'chk',style:{padding:0}},marks,'Marcas de corte, dobra e informações da página')), el('button',{class:'btn pri',onclick:()=>run('print')},'Gerar PDF para gráfica'),'main'),
       ecard('PDF digital','Para mandar no WhatsApp, e-mail ou site. Sem sangria nem marcas, arquivo leve.', null, el('button',{class:'btn',onclick:()=>run('digital')},'Gerar PDF digital')),
       ecard('PNG','Um .zip com uma imagem por lâmina, fundo sólido, ideal para redes sociais.', null, el('button',{class:'btn',onclick:()=>run('png')},'Gerar PNG')),
       ecard('JPEG','Um .zip com uma imagem por lâmina, mais leve que o PNG para web e status.', null, el('button',{class:'btn',onclick:()=>run('jpeg')},'Gerar JPEG')),
