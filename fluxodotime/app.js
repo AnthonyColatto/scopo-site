@@ -3978,7 +3978,7 @@
   };
   var indF = { sec: LS.get("indSec", "atend"), mes: iso(today()).slice(0, 7), metric: {}, hist: 6 };
   (function () { var d = today(); if (d.getDate() <= 10) indF.mes = addMes(indF.mes, -1); })(); // no começo do mês, o foco é fechar o anterior
-  if (!IND_SECS[indF.sec] && indF.sec !== "site") indF.sec = "atend";
+  if (!IND_SECS[indF.sec] && ["site", "insta", "metaads", "gads"].indexOf(indF.sec) < 0) indF.sec = "atend";
 
   function indSec() { return IND_SECS[indF.sec]; }
   function indInputs(sec) { return sec.metrics.filter(function (m) { return !m.calc; }); }
@@ -4131,8 +4131,9 @@
   function renderIndicadores() {
     var el = $("#v-indicadores");
     if (!podeVerArea("indicadores")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
-    var segHTML = '<div class="seg">' + Object.keys(IND_SECS).map(function (k) { return '<button data-insec="' + k + '" aria-pressed="' + (k === indF.sec) + '">' + esc(IND_SECS[k].nome) + "</button>"; }).join("") + '<button data-insec="site" aria-pressed="' + (indF.sec === "site") + '">Site</button></div>';
+    var segHTML = '<div class="seg">' + Object.keys(IND_SECS).map(function (k) { return '<button data-insec="' + k + '" aria-pressed="' + (k === indF.sec) + '">' + esc(IND_SECS[k].nome) + "</button>"; }).join("") + '<button data-insec="site" aria-pressed="' + (indF.sec === "site") + '">Site</button>' + CN_ORDEM.map(function (k) { return '<button data-insec="' + k + '" aria-pressed="' + (indF.sec === k) + '">' + esc(CN[k].nome) + "</button>"; }).join("") + "</div>";
     if (indF.sec === "site") return renderIndSite(el, segHTML);
+    if (CN[indF.sec]) return renderIndCanal(el, segHTML, indF.sec);
     var sk = indF.sec, sec = indSec(), ym = indF.mes, prev = addMes(ym, -1), linhas = indLinhas(sk);
     var mk = indF.metric[sk] || sec.metrics[0].k, m = sec.metrics.find(function (x) { return x.k === mk; }) || sec.metrics[0];
     var tem = indTemDados(sk, ym);
@@ -4489,6 +4490,509 @@
     gaPoll();
     if (!gaF.agora || Date.now() - gaF.agora._t > 30000) gaLoad("agora");
     gaLoad("periodo");
+  }
+
+  /* ================================================================
+     INDICADORES · INSTAGRAM, META ADS E GOOGLE ADS · dados ao vivo das plataformas
+     Instagram e Meta Ads vêm da função /api/meta; Google Ads, da /api/gads.
+     Cada seção tem um seletor de cliente (Alvorada, Golden…), a leitura automática
+     (precisa de atenção · indo bem · oportunidades) com um plano de ação, cartões
+     contra o período anterior, evolução diária e os blocos próprios do canal.
+     Os limites do resumo ficam no documento "cn-regras-<seção>" (Regras do resumo).
+     ================================================================ */
+  var CN_ORDEM = ["insta", "metaads", "gads"];
+  var cnDiv = function (a, b) { return a != null && b ? a / b : null; };
+  var CN_DIA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+  var CN_TIPO = { REELS: "Reels", CARROSSEL: "Carrossel", FOTO: "Foto", VIDEO: "Vídeo" };
+  var CN_TIPO_PL = { REELS: "Reels", CARROSSEL: "carrosséis", FOTO: "fotos", VIDEO: "vídeos" };
+  var CN_TIPO_UM = { REELS: "o Reels", CARROSSEL: "o carrossel", FOTO: "a foto", VIDEO: "o vídeo" };
+  var CN_STATUS = { ACTIVE: "Ativa", ENABLED: "Ativa", PAUSED: "Pausada", CAMPAIGN_PAUSED: "Pausada", ADSET_PAUSED: "Pausada", WITH_ISSUES: "Com problema", DISAPPROVED: "Reprovada", IN_PROCESS: "Em análise", PENDING_REVIEW: "Em análise", ARCHIVED: "Arquivada", DELETED: "Excluída" };
+  var CN_PLAT = { instagram: "Instagram", facebook: "Facebook", messenger: "Messenger", audience_network: "Audience Network", threads: "Threads", whatsapp: "WhatsApp" };
+
+  var CN = {
+    insta: {
+      nome: "Instagram", api: "/api/meta?parte=instagram", contas: "/api/meta?parte=contas", lista: "instagram",
+      desc: "Alcance, engajamento e seguidores do perfil, com os posts que mais funcionaram no período.",
+      met: [
+        { k: "alcance", l: "Contas alcançadas", f: "int", dir: "up", pl: true, serie: "alcance" },
+        { k: "views", l: "Visualizações", f: "int", dir: "up", pl: true },
+        { k: "interacoes", l: "Interações", f: "int", dir: "up", pl: true, hint: "curtidas, comentários, salvos, compartilhamentos e respostas" },
+        { k: "engaj", l: "Taxa de engajamento", f: "pct", dir: "up", calc: function (g) { var v = cnDiv(g.interacoes, g.alcance); return v == null ? null : v * 100; }, hint: "interações ÷ contas alcançadas" },
+        { k: "novosSeg", l: "Novos seguidores", f: "int", dir: "up", pl: true, serie: "seguidores" },
+        { k: "saldo", l: "Saldo de seguidores", f: "sinal", dir: "up", card: false, calc: function (g) { return g.novosSeg == null ? null : g.novosSeg - (g.deixaram || 0); }, hint: "quem seguiu menos quem deixou de seguir" },
+        { k: "cliquesLink", l: "Toques no link da bio", f: "int", dir: "up", pl: true },
+        { k: "salvComp", l: "Salvos + compartilhamentos", f: "int", dir: "up", pl: true, calc: function (g) { return g.salvos == null && g.compartilhamentos == null ? null : (g.salvos || 0) + (g.compartilhamentos || 0); }, hint: "o sinal mais forte de conteúdo relevante" },
+        { k: "posts", l: "Publicações", f: "int", dir: "up", pl: true, hint: "posts e Reels no feed (stories não entram)" }
+      ],
+      series: [{ k: "alcance", l: "Alcance", f: "int" }, { k: "seguidores", l: "Novos seguidores", f: "int" }],
+      regras: { alcance: { piora: 20, melhora: 15 }, views: { piora: 20, melhora: 15 }, interacoes: { piora: 20, melhora: 15 }, engaj: { lim: 2, piora: 0.8, melhora: 0.8 }, novosSeg: { piora: 25, melhora: 20 }, saldo: { lim: 0 }, cliquesLink: { piora: 25, melhora: 20 }, salvComp: { piora: 25, melhora: 20 }, posts: { piora: 30 } },
+      extras: [{ k: "_postsSemana", l: "Publicações por semana", sub: "abaixo disso, alerta de ritmo", v: 3 }],
+      acao: {
+        alcance: "Aposte em Reels curtos (até 30s) com gancho forte nos 3 primeiros segundos, use áudios em alta e publique nos dias que o bloco Melhor dia para postar indica.",
+        views: "Reforce Reels e stories diários e republique os vídeos que mais performaram com capa e gancho novos.",
+        interacoes: "Feche cada post com uma pergunta direta, responda os comentários na primeira hora e use enquete e caixinha nos stories.",
+        engaj: "Muita gente vê e pouca reage: teste capas mais fortes, legendas curtas com chamada clara (comente, salve, marque alguém) e conteúdo útil, como ofertas da semana e dicas de uso.",
+        novosSeg: "Dê motivo para seguir: ofertas que só saem no perfil, collab com parceiros da cidade e um impulsionamento leve dos melhores posts para público semelhante.",
+        saldo: "Mais gente saiu do que entrou. Equilibre a grade: menos post só de venda, mais bastidor, dica e prova social (cliente real, avaliação).",
+        cliquesLink: "Atualize o link da bio (WhatsApp ou página da oferta), cite o link na legenda e use a figurinha de link nos stories.",
+        salvComp: "Faça posts que valem guardar e mandar para alguém: lista de ofertas, comparativo, passo a passo e carrossel de dicas.",
+        posts: "Monte uma grade fixa (ex.: 3 posts por semana e stories todo dia) e produza em lote para não deixar buraco."
+      },
+      titulo: function (per) { return per.perfil ? "@" + per.perfil.usuario : ""; },
+      diag: function (per, R, add) {
+        var ps = per.posts || [], sem = ps.length / per.dias * 7;
+        if (R._postsSemana && sem < R._postsSemana) add({ st: "warn", peso: 2, tema: "Ritmo de publicação", txt: "Foram " + ps.length + (ps.length === 1 ? " publicação" : " publicações") + " em " + per.dias + " dias, perto de " + cnFmt(sem, "dec") + " por semana. O mínimo combinado é " + R._postsSemana + ".", acao: CN.insta.acao.posts });
+        // formatos: alcance médio por post
+        var fm = cnFormatos(ps).filter(function (f) { return f.n >= 2 && f.alc != null; });
+        if (fm.length >= 2) {
+          var top = fm[0], fim = fm[fm.length - 1], razao = fim.alc ? top.alc / fim.alc : null;
+          if (razao && razao >= 1.5) add({ st: "idea", peso: 2, tema: "Formato que mais alcança", txt: cnCap(CN_TIPO_PL[top.tipo]) + " alcançaram em média " + cnFmt(razao, "dec") + "x mais que " + CN_TIPO_PL[fim.tipo] + " (" + cnFmt(top.alc, "int") + " contra " + cnFmt(fim.alc, "int") + " contas por post).", acao: "Puxe a grade para " + CN_TIPO_PL[top.tipo] + ": pelo menos metade das publicações da próxima semana nesse formato, transformando as melhores ideias de " + CN_TIPO_PL[fim.tipo] + " em " + CN_TIPO_PL[top.tipo] + "." });
+        }
+        // melhor dia
+        var md = cnMelhorDia(ps);
+        if (md && md.ganho >= 25) add({ st: "idea", peso: 1, tema: "Melhor dia para postar", txt: "Posts de " + CN_DIA[md.dia] + " alcançaram " + Math.round(md.ganho) + "% mais que a média do período.", acao: "Guarde " + CN_DIA[md.dia] + " para o conteúdo mais importante da semana (lançamento, oferta principal)." });
+        // melhor post
+        var best = ps.slice().sort(function (a, b) { return (b.interacoes || 0) - (a.interacoes || 0); })[0];
+        if (best && ps.length >= 3 && best.interacoes) add({ st: "ok", peso: 1, tema: "Post destaque", txt: cnCap(CN_TIPO_UM[best.tipo] || "o post") + " de " + cnData(best.data) + " foi o que mais engajou: " + cnFmt(best.interacoes, "int") + " interações" + (best.alcance ? " e " + cnFmt(best.alcance, "int") + " contas alcançadas" : "") + ".", acao: "Repita o que funcionou nesse post (tema, gancho, formato) em uma nova versão nesta semana." });
+        // salvos e compartilhamentos sobre o alcance
+        var a = per.atual || {}, sc = (a.salvos || 0) + (a.compartilhamentos || 0);
+        if (a.alcance > 500 && sc / a.alcance * 100 < 0.5) add({ st: "idea", peso: 1, tema: "Conteúdo para salvar", txt: "Só " + cnFmt(sc / a.alcance * 100, "pct") + " de quem foi alcançado salvou ou compartilhou. O algoritmo pesa muito esses dois sinais.", acao: CN.insta.acao.salvComp });
+      }
+    },
+    metaads: {
+      nome: "Meta Ads", api: "/api/meta?parte=anuncios", contas: "/api/meta?parte=contas", lista: "anuncios",
+      desc: "Anúncios no Instagram e no Facebook: quanto foi investido, quantos contatos vieram e quanto custou cada um.",
+      met: [
+        { k: "investimento", l: "Investimento", f: "brl", dir: "neutro", serie: "investimento" },
+        { k: "contatos", l: "Contatos gerados", f: "int", dir: "up", pl: true, serie: "contatos", hint: "conversas no WhatsApp e Direct, cadastros e compras" },
+        { k: "custoContato", l: "Custo por contato", f: "brl", dir: "down", calc: function (g) { return cnDiv(g.investimento, g.contatos); } },
+        { k: "cliquesLink", l: "Cliques no link", f: "int", dir: "up", pl: true, serie: "cliques" },
+        { k: "ctr", l: "CTR do link", f: "pct2", dir: "up", calc: function (g) { var v = cnDiv(g.cliquesLink, g.impressoes); return v == null ? null : v * 100; }, hint: "cliques no link ÷ impressões" },
+        { k: "cpc", l: "Custo por clique", f: "brl", dir: "down", calc: function (g) { return cnDiv(g.investimento, g.cliquesLink); } },
+        { k: "cpm", l: "CPM", f: "brl", dir: "down", calc: function (g) { var v = cnDiv(g.investimento, g.impressoes); return v == null ? null : v * 1000; }, hint: "custo de mil impressões" },
+        { k: "alcance", l: "Pessoas alcançadas", f: "int", dir: "up", pl: true },
+        { k: "frequencia", l: "Frequência", f: "dec", dir: "down", hint: "vezes que cada pessoa viu o anúncio, em média" },
+        { k: "roas", l: "ROAS", f: "x", dir: "up", calc: function (g) { return g.valorCompras ? cnDiv(g.valorCompras, g.investimento) : null; }, so: function (per) { return per.atual.valorCompras > 0 || per.anterior.valorCompras > 0; }, hint: "valor das compras ÷ investimento" }
+      ],
+      series: [{ k: "investimento", l: "Investimento", f: "brl" }, { k: "contatos", l: "Contatos", f: "int" }, { k: "cliques", l: "Cliques no link", f: "int" }],
+      regras: { contatos: { piora: 20, melhora: 15 }, custoContato: { piora: 20, melhora: 15 }, cliquesLink: { piora: 20, melhora: 15 }, ctr: { lim: 1, piora: 0.3, melhora: 0.3 }, cpc: { piora: 25, melhora: 20 }, cpm: { piora: 30, melhora: 20 }, alcance: { piora: 25, melhora: 20 }, frequencia: { lim: 3.5, piora: 30 }, roas: { lim: 3, piora: 20, melhora: 15 } },
+      extras: [{ k: "_campCara", l: "Campanha cara", sub: "custo por resultado X vezes a média da conta", v: 1.6 }],
+      acao: {
+        contatos: "Veja se alguma campanha de mensagem ou cadastro foi pausada ou perdeu verba, e renove os criativos com produto e preço em destaque.",
+        custoContato: "Pause os anúncios com custo acima da média, concentre a verba nos 2 ou 3 melhores criativos e teste uma oferta mais direta (preço, condição, prazo).",
+        ctr: "Troque os criativos: produto em destaque, preço legível no celular, vídeo com gancho nos 2 primeiros segundos e chamada clara.",
+        cpc: "Clique mais caro costuma ser criativo cansado ou público pequeno: suba peças novas e amplie o público (Advantage+ ou semelhantes).",
+        cpm: "O público pode estar saturado ou o leilão mais disputado (datas comerciais). Amplie a segmentação e evite várias campanhas brigando pelo mesmo público.",
+        alcance: "Confira a verba e o tamanho do público: público muito fechado trava a entrega.",
+        frequencia: "As mesmas pessoas estão vendo o anúncio vezes demais. Suba criativos novos, amplie o público ou reduza a verba das campanhas com frequência alta.",
+        cliquesLink: "Confira se o botão e o destino estão certos (WhatsApp, site ou formulário) e teste chamadas mais diretas.",
+        roas: "Concentre a verba nos produtos e públicos que mais vendem e revise o catálogo e as ofertas."
+      },
+      titulo: function (per) { return per.conta ? per.conta.nome : ""; },
+      diag: function (per, R, add) {
+        var A = per.atual, P = per.anterior, xi = cnVarN(A.investimento, P.investimento), xc = cnVarN(A.contatos, P.contatos);
+        if (xi != null && xc != null && xi >= 10 && xc <= -10) add({ st: "late", peso: 4, tema: "Eficiência", txt: "O investimento subiu " + cnFmt(xi, "pct0") + " e os contatos caíram " + cnFmt(-xc, "pct0") + ". Está se pagando mais para receber menos.", acao: "Antes de colocar mais verba, descubra qual campanha piorou na tabela Campanhas e pause ou troque os criativos dela." });
+        if (A.investimento > 0 && !A.contatos && !A.compras) add({ st: "warn", peso: 3, tema: "Resultado não medido", txt: "Houve investimento, mas nenhuma conversa, cadastro ou compra foi registrada.", acao: "Confira o objetivo das campanhas (Mensagens ou Cadastros para gerar contato) e se o Pixel e a API de Conversões do site estão ativos." });
+        var cs = per.campanhas || [], tot = A.investimento || 1;
+        cs.forEach(function (c) {
+          if (/WITH_ISSUES|DISAPPROVED/.test(c.status || "")) add({ st: "late", peso: 4, tema: "Campanha com problema", txt: "A campanha " + c.nome + " está " + CN_STATUS[c.status].toLowerCase() + " no Gerenciador.", acao: "Abra a campanha no Gerenciador de Anúncios, veja o aviso e corrija o anúncio (texto, imagem ou destino)." });
+          if (c.investimento / tot >= 0.1 && !c.resultados) add({ st: "late", peso: 3, tema: "Verba sem retorno", txt: c.nome + " consumiu " + cnFmt(c.investimento, "brl") + " (" + cnFmt(c.investimento / tot * 100, "pct0") + " da verba) sem nenhum resultado.", acao: "Pause " + c.nome + " ou mude o objetivo para o resultado que interessa (conversas ou cadastros)." });
+        });
+        // custo por resultado de cada campanha contra a média das campanhas do mesmo tipo de resultado
+        var grupos = {};
+        cs.filter(function (c) { return c.resultados > 0; }).forEach(function (c) { var g = grupos[c.resultadoNome] = grupos[c.resultadoNome] || { inv: 0, res: 0, cs: [] }; g.inv += c.investimento; g.res += c.resultados; g.cs.push(c); });
+        Object.keys(grupos).forEach(function (k) {
+          var g = grupos[k]; if (g.cs.length < 2) return;
+          var med = g.inv / g.res, melhor = g.cs.slice().sort(function (a, b) { return a.custoRes - b.custoRes; })[0];
+          g.cs.forEach(function (c) {
+            if (c !== melhor && c.investimento / tot >= 0.15 && c.custoRes >= med * (R._campCara || 1.6)) add({ st: "warn", peso: 3, tema: "Verba mal distribuída", txt: c.nome + " paga " + cnFmt(c.custoRes, "brl") + " por " + cnSing(k) + ", " + cnFmt(c.custoRes / med, "dec") + "x a média das campanhas (" + cnFmt(med, "brl") + ").", acao: "Mova parte da verba de " + c.nome + " para " + melhor.nome + ", que entrega a " + cnFmt(melhor.custoRes, "brl") + " por " + cnSing(k) + "." });
+          });
+        });
+        cs.forEach(function (c) { if (c.custoRes && c.custoResAnt && c.resultados >= 5) { var q = cnVarN(c.custoRes, c.custoResAnt); if (q <= -20) add({ st: "ok", peso: 1, tema: "Campanha melhorando", txt: c.nome + " baixou o custo por " + cnSing(c.resultadoNome) + " em " + cnFmt(-q, "pct0") + " (" + cnFmt(c.custoResAnt, "brl") + " → " + cnFmt(c.custoRes, "brl") + ")." }); } });
+        // Instagram x Facebook
+        var pl = (per.plataformas || []).filter(function (p) { return p.contatos >= 20; }).map(function (p) { return Object.assign({ cpc: p.investimento / p.contatos }, p); }).sort(function (a, b) { return a.cpc - b.cpc; });
+        if (pl.length >= 2 && pl[pl.length - 1].cpc / pl[0].cpc >= 1.5) add({ st: "idea", peso: 2, tema: "Onde o anúncio rende mais", txt: "No " + (CN_PLAT[pl[0].nome] || pl[0].nome) + ", cada contato saiu por " + cnFmt(pl[0].cpc, "brl") + "; no " + (CN_PLAT[pl[pl.length - 1].nome] || pl[pl.length - 1].nome) + ", por " + cnFmt(pl[pl.length - 1].cpc, "brl") + ".", acao: "Crie versões dos criativos pensadas para o " + (CN_PLAT[pl[0].nome] || pl[0].nome) + " (formato vertical 9:16, linguagem do canal) e teste dar mais peso a ele no posicionamento." });
+      }
+    },
+    gads: {
+      nome: "Google Ads", api: "/api/gads?parte=dados", contas: "/api/gads?parte=contas", lista: "contas",
+      desc: "Pesquisa, Performance Max e YouTube: investimento, conversões, custo por conversão e onde a verba está escapando.",
+      met: [
+        { k: "custo", l: "Investimento", f: "brl", dir: "neutro", serie: "custo" },
+        { k: "conversoes", l: "Conversões", f: "int", dir: "up", pl: true, serie: "conversoes", hint: "ligações, rotas, WhatsApp e formulários marcados como conversão" },
+        { k: "cpa", l: "Custo por conversão", f: "brl", dir: "down", calc: function (g) { return cnDiv(g.custo, g.conversoes); } },
+        { k: "cliques", l: "Cliques", f: "int", dir: "up", pl: true, serie: "cliques" },
+        { k: "ctr", l: "CTR", f: "pct2", dir: "up", calc: function (g) { var v = cnDiv(g.cliques, g.impressoes); return v == null ? null : v * 100; } },
+        { k: "cpc", l: "Custo por clique", f: "brl", dir: "down", calc: function (g) { return cnDiv(g.custo, g.cliques); } },
+        { k: "taxaConv", l: "Taxa de conversão", f: "pct2", dir: "up", calc: function (g) { var v = cnDiv(g.conversoes, g.cliques); return v == null ? null : v * 100; } },
+        { k: "impressoes", l: "Impressões", f: "int", dir: "up", pl: true },
+        { k: "roas", l: "ROAS", f: "x", dir: "up", calc: function (g) { return g.valorConv ? cnDiv(g.valorConv, g.custo) : null; }, so: function (per) { return per.atual.valorConv > 0 || per.anterior.valorConv > 0; } }
+      ],
+      series: [{ k: "custo", l: "Investimento", f: "brl" }, { k: "conversoes", l: "Conversões", f: "int" }, { k: "cliques", l: "Cliques", f: "int" }],
+      regras: { conversoes: { piora: 20, melhora: 15 }, cpa: { piora: 20, melhora: 15 }, cliques: { piora: 20, melhora: 15 }, ctr: { lim: 3, piora: 0.5, melhora: 0.5 }, cpc: { piora: 25, melhora: 20 }, taxaConv: { lim: 2, piora: 1, melhora: 1 }, impressoes: { piora: 25, melhora: 20 }, roas: { lim: 3, piora: 20, melhora: 15 } },
+      extras: [{ k: "_perdaOrc", l: "Perda por orçamento", sub: "% das impressões perdidas por falta de verba", v: 20 }, { k: "_perdaRank", l: "Perda por classificação", sub: "% perdidas por lance ou qualidade", v: 30 }, { k: "_termoCusto", l: "Termo sem conversão", sub: "gasto a partir do qual o termo vira alerta (R$)", v: 30 }],
+      acao: {
+        conversoes: "Veja se alguma campanha foi pausada ou ficou limitada pelo orçamento e confira se a tag de conversão continua disparando (Metas › Conversões).",
+        cpa: "Negative os termos que gastam sem converter, ajuste lances nos horários e bairros que convertem e revise a página de destino.",
+        ctr: "Coloque a palavra buscada no título do anúncio, inclua preço, condição ou diferencial local (entrega na cidade, loja física) e ative os recursos de local, ligação e sitelinks.",
+        cpc: "Melhore o Índice de qualidade (anúncio e página alinhados à busca) e revise palavras-chave amplas demais.",
+        taxaConv: "A página precisa responder o que a pessoa buscou: preço, disponibilidade e botão de WhatsApp e de ligação visíveis no celular.",
+        cliques: "Confira orçamento, campanhas pausadas e se a parcela de impressões caiu para os concorrentes.",
+        impressoes: "Orçamento acabando cedo ou lance baixo: veja a parcela de impressões perdida na tabela Campanhas.",
+        roas: "Separe os produtos que mais vendem e use metas de ROAS realistas nas campanhas de Shopping e Performance Max."
+      },
+      titulo: function (per) { return per.conta ? per.conta.nome : ""; },
+      diag: function (per, R, add) {
+        var A = per.atual, P = per.anterior, xi = cnVarN(A.custo, P.custo), xc = cnVarN(A.conversoes, P.conversoes);
+        if (A.custo > 0 && !A.conversoes) add({ st: "late", peso: 4, tema: "Conversões não medidas", txt: "Foram investidos " + cnFmt(A.custo, "brl") + " e nenhuma conversão foi registrada.", acao: "Em Metas › Conversões, confira se há ação de conversão ativa (ligação, clique no WhatsApp, rota, formulário) e se a tag do Google está no site." });
+        if (xi != null && xc != null && xi >= 10 && xc <= -10) add({ st: "late", peso: 4, tema: "Eficiência", txt: "O investimento subiu " + cnFmt(xi, "pct0") + " e as conversões caíram " + cnFmt(-xc, "pct0") + ".", acao: "Revise as campanhas que mais gastaram: termos de pesquisa, lances e página de destino, antes de aumentar a verba." });
+        var cs = per.campanhas || [], tot = A.custo || 1, cpaMed = cnDiv(A.custo, A.conversoes);
+        cs.forEach(function (c) {
+          c.cpa = cnDiv(c.custo, c.conversoes);
+          if (c.custo / tot >= 0.15 && !c.conversoes) add({ st: "late", peso: 3, tema: "Verba sem retorno", txt: c.nome + " gastou " + cnFmt(c.custo, "brl") + " (" + cnFmt(c.custo / tot * 100, "pct0") + " do total) sem conversão.", acao: "Revise " + c.nome + ": termos de pesquisa, segmentação e página de destino. Se nada mudar em uma semana, pause e realoque a verba." });
+          if (c.perdaOrc != null && c.perdaOrc >= (R._perdaOrc || 20) && c.conversoes > 0 && (!cpaMed || c.cpa <= cpaMed * 1.1)) {
+            var fator = c.parcela ? Math.min(1.5, (c.parcela + c.perdaOrc) / c.parcela) : 1.3, novo = c.orcDia ? Math.ceil(c.orcDia * fator / 5) * 5 : null;
+            add({ st: "idea", peso: 3, tema: "Orçamento limitando", txt: c.nome + " deixou de aparecer em " + cnFmt(c.perdaOrc, "pct0") + " das buscas por falta de verba, e converte a " + cnFmt(c.cpa, "brl") + ".", acao: "Aumente o orçamento diário de " + c.nome + (novo ? " de " + cnFmt(c.orcDia, "brl") + " para cerca de " + cnFmt(novo, "brl") : "") + ". É a verba com retorno mais garantido da conta." });
+          }
+          if (c.perdaRank != null && c.perdaRank >= (R._perdaRank || 30)) add({ st: "warn", peso: 2, tema: "Perdendo leilão", txt: c.nome + " perdeu " + cnFmt(c.perdaRank, "pct0") + " das impressões por classificação (lance ou qualidade).", acao: "Em " + c.nome + ", melhore anúncios e página (Índice de qualidade) e revise os lances das palavras que mais convertem." });
+        });
+        var bom = cs.filter(function (c) { return c.conversoes >= 3 && c.cpa; }).sort(function (a, b) { return a.cpa - b.cpa; })[0];
+        if (bom && cs.length > 1) add({ st: "ok", peso: 1, tema: "Campanha mais eficiente", txt: bom.nome + " tem o menor custo por conversão: " + cnFmt(bom.cpa, "brl") + " (" + cnFmt(bom.conversoes, "int") + " conversões)." });
+        var ruins = (per.termos || []).filter(function (t) { return !t.conversoes && t.custo >= (R._termoCusto || 30); });
+        if (ruins.length) add({ st: "warn", peso: 2, tema: "Termos sem conversão", txt: ruins.length + (ruins.length === 1 ? " termo de pesquisa gastou " : " termos de pesquisa gastaram ") + cnFmt(ruins.reduce(function (t, x) { return t + x.custo; }, 0), "brl") + " sem converter, como " + ruins.slice(0, 3).map(function (t) { return "“" + t.termo + "”"; }).join(", ") + ".", acao: "Adicione como palavra-chave negativa os termos que não têm a ver com o negócio e crie anúncios próprios para os que têm." });
+      }
+    }
+  };
+
+  var cnF = { dias: +LS.get("cnDias", 28) || 28, conta: {}, contas: {}, per: {}, err: {}, busy: {}, serie: {}, cliente: LS.get("cnCliente", "") };
+  CN_ORDEM.forEach(function (s) { cnF.conta[s] = LS.get("cnConta_" + s, ""); });
+
+  function cnFmt(v, f) {
+    if (v == null || isNaN(v)) return "—";
+    if (f === "dec") return v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    if (f === "conv") return v % 1 ? cnFmt(v, "dec") : Math.round(v).toLocaleString("pt-BR"); // conversões podem vir fracionadas (atribuição)
+    if (f === "pct0") return Math.round(v).toLocaleString("pt-BR") + "%";
+    if (f === "sinal") return (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(Math.round(v)).toLocaleString("pt-BR");
+    if (f === "brlK") return Math.abs(v) >= 10000 ? "R$ " + (v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mil" : "R$ " + Math.round(v).toLocaleString("pt-BR");
+    if (f === "k") return Math.abs(v) >= 10000 ? (v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " mil" : Math.round(v).toLocaleString("pt-BR");
+    return gaFmt(v, f);
+  }
+  function cnCap(s) { return String(s).replace(/^./, function (c) { return c.toUpperCase(); }); }
+  function cnSing(nome) { return { conversas: "conversa", leads: "lead", compras: "compra", engajamentos: "engajamento", "cliques no link": "clique", "visualizações da página": "visualização", "pessoas alcançadas": "pessoa alcançada" }[nome] || nome; }
+  function cnData(s) { var d = new Date(s); return CN_DIA[d.getDay()].slice(0, 3) + ", " + pad(d.getDate()) + "/" + pad(d.getMonth() + 1); }
+  function cnVarN(v, p) { return v == null || p == null || !p ? null : (v - p) / Math.abs(p) * 100; }
+  function cnVal(per, m, qual) { var g = per && per[qual]; if (!g) return null; return m.calc ? m.calc(g) : g[m.k] == null ? null : g[m.k]; }
+  function cnVar(v, p, m) {
+    if (v == null || p == null) return null;
+    if (/^pct/.test(m.f)) return { n: v - p, u: "p.p." };
+    if (p === 0) return v === 0 ? { n: 0, u: "%" } : null;
+    return { n: (v - p) / Math.abs(p) * 100, u: "%" };
+  }
+  function cnMets(sec, per) { return CN[sec].met.filter(function (m) { return !m.so || m.so(per); }); }
+  function cnRegras(sec) {
+    var d = S.indicadores.find(function (x) { return x.id === "cn-regras-" + sec; }) || {}, out = {}, C = CN[sec];
+    Object.keys(C.regras).forEach(function (k) { out[k] = Object.assign({}, C.regras[k], d[k] || {}); });
+    C.extras.forEach(function (x) { out[x.k] = d[x.k] != null ? d[x.k] : x.v; });
+    return out;
+  }
+  // situação de um indicador: late (passou do limite ou piorou o dobro), warn (piorou), ok (melhorou)
+  function cnSt(m, v, x, r) {
+    if (!r || m.dir === "neutro" || v == null) return "";
+    if (r.lim != null && r.lim !== "" && (m.dir === "down" ? v > r.lim : v < r.lim)) return "late";
+    var pior = x ? (m.dir === "down" ? x.n : -x.n) : null;
+    if (pior != null && r.piora && pior >= r.piora) return pior >= 2 * r.piora ? "late" : "warn";
+    if (pior != null && r.melhora && -pior >= r.melhora) return "ok";
+    return "";
+  }
+  function cnFormatos(ps) {
+    var g = {};
+    ps.forEach(function (p) { var t = g[p.tipo] = g[p.tipo] || { tipo: p.tipo, n: 0, alcS: 0, alcN: 0, int: 0 }; t.n++; t.int += p.interacoes || 0; if (p.alcance != null) { t.alcS += p.alcance; t.alcN++; } });
+    return Object.keys(g).map(function (k) { var t = g[k]; t.alc = t.alcN ? t.alcS / t.alcN : null; t.intM = t.int / t.n; t.engaj = t.alcS ? t.int / t.alcS * 100 : null; return t; }).sort(function (a, b) { return (b.alc || 0) - (a.alc || 0); });
+  }
+  function cnMelhorDia(ps) {
+    var com = ps.filter(function (p) { return p.alcance != null; }); if (com.length < 6) return null;
+    var med = com.reduce(function (t, p) { return t + p.alcance; }, 0) / com.length, d = {};
+    com.forEach(function (p) { var k = new Date(p.data).getDay(); (d[k] = d[k] || []).push(p.alcance); });
+    var dias = Object.keys(d).filter(function (k) { return d[k].length >= 2; }).map(function (k) { var m = d[k].reduce(function (t, v) { return t + v; }, 0) / d[k].length; return { dia: +k, media: m, n: d[k].length, ganho: med ? (m / med - 1) * 100 : 0 }; });
+    if (!dias.length) return null;
+    dias.sort(function (a, b) { return b.media - a.media; });
+    return Object.assign({ todos: dias, mediaGeral: med }, dias[0]);
+  }
+
+  /* ---------- dados ---------- */
+  function cnGet(url) {
+    if (!Store || typeof Store.token !== "function") return Promise.resolve({ erro: "modo", msg: "Os dados das redes aparecem na versão publicada do Fluxo do Time, com login." });
+    return Store.token().then(function (tok) { return fetch(url, { headers: { authorization: "Bearer " + (tok || "") } }); }).then(function (r) {
+      return r.json().catch(function () { return { erro: "rede", msg: "A função não respondeu (status " + r.status + ")." }; }).then(function (d) { if (!r.ok && !d.erro) d.erro = "api"; return d; });
+    }).catch(function (e) { return { erro: "rede", msg: "Sem conexão com a função. " + (e && e.message ? e.message : "") }; });
+  }
+  function cnNoCanal(sec) { return view === "indicadores" && indF.sec === sec && $("#v-indicadores") && !$("#v-indicadores").hidden; }
+  function cnRedraw(sec) { if (cnNoCanal(sec)) renderIndicadores(); }
+  function cnLoadContas(sec, force) {
+    var C = CN[sec], url = C.contas, k = "c:" + url;
+    if (cnF.busy[k] || (!force && cnF.contas[url])) return;
+    cnF.busy[k] = true;
+    cnGet(url).then(function (d) {
+      cnF.busy[k] = false;
+      if (d.erro) { cnF.err[sec] = d; return cnRedraw(sec); }
+      cnF.contas[url] = d; cnF.err[sec] = null;
+      cnRedraw(sec); cnLoad(sec);
+    });
+  }
+  function cnLista(sec) { var d = cnF.contas[CN[sec].contas]; return d ? d[CN[sec].lista] || [] : null; }
+  // conta escolhida: a salva, ou a do mesmo cliente escolhido em outra rede, ou a primeira
+  function cnConta(sec) {
+    var l = cnLista(sec); if (!l || !l.length) return null;
+    var s = l.find(function (c) { return c.id === cnF.conta[sec]; });
+    if (!s && cnF.cliente) { var q = cnNorm(cnF.cliente); s = l.find(function (c) { var n = cnNorm(c.nome); return n.indexOf(q) >= 0 || q.indexOf(n) >= 0; }) || l.find(function (c) { return cnNorm(c.nome).slice(0, 5) === q.slice(0, 5); }); }
+    return s || l[0];
+  }
+  function cnNorm(s) { return String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^@/, "").replace(/[^a-z0-9]/g, ""); }
+  function cnChave(sec) { var c = cnConta(sec); return c ? sec + "|" + c.id + "|" + cnF.dias : null; }
+  function cnLoad(sec, force) {
+    var c = cnConta(sec), key = cnChave(sec); if (!c || cnF.busy[key]) return;
+    if (!force && cnF.per[key] && Date.now() - cnF.per[key]._t < 10 * 60 * 1000) return;
+    cnF.busy[key] = true;
+    cnGet(CN[sec].api + "&conta=" + encodeURIComponent(c.id) + "&dias=" + cnF.dias).then(function (d) {
+      cnF.busy[key] = false;
+      if (d.erro) { cnF.err[sec] = d; return cnRedraw(sec); }
+      cnF.err[sec] = null; d._t = Date.now(); cnF.per[key] = d; cnRedraw(sec);
+    });
+  }
+
+  /* ---------- leitura automática + plano de ação ---------- */
+  function cnResumo(sec, per) {
+    var C = CN[sec], R = cnRegras(sec), itens = [];
+    var add = function (i) { itens.push(i); };
+    cnMets(sec, per).forEach(function (m) {
+      var v = cnVal(per, m, "atual"), p = cnVal(per, m, "anterior"), r = R[m.k], x = cnVar(v, p, m);
+      if (v == null || !r || m.dir === "neutro") return;
+      var de = p != null ? " (" + cnFmt(p, m.f) + " → " + cnFmt(v, m.f) + ")" : "";
+      var forma = function (sobe) { return m.pl ? (sobe ? "subiram " : "caíram ") : (sobe ? "subiu " : "caiu "); };
+      var limTxt = r.lim != null && r.lim !== "" && (m.dir === "down" ? v > r.lim : v < r.lim);
+      if (limTxt) add({ st: "late", peso: 3, tema: m.l, txt: m.l + " em " + cnFmt(v, m.f) + (m.dir === "down" ? ", acima do limite de " : ", abaixo do mínimo de ") + cnFmt(r.lim, m.f) + ".", acao: C.acao[m.k] });
+      if (!x) return;
+      var pior = m.dir === "down" ? x.n : -x.n;
+      if (r.piora && pior >= r.piora) add({ st: pior >= 2 * r.piora ? "late" : "warn", peso: 2, tema: m.l, txt: m.l + " " + forma(x.n > 0) + gaVarTxt(x).slice(1) + " contra o período anterior" + de + ".", acao: C.acao[m.k] });
+      else if (r.melhora && -pior >= r.melhora) add({ st: "ok", peso: 1, tema: m.l, txt: m.l + " " + forma(x.n > 0) + gaVarTxt(x).slice(1) + de + "." });
+    });
+    C.diag(per, R, add);
+    var ordem = { late: 0, warn: 1, idea: 2, ok: 3 }, vistas = {}, n = 0;
+    itens.sort(function (a, b) { return ordem[a.st] - ordem[b.st] || b.peso - a.peso; });
+    // plano de ação: uma ação por tema/texto, na ordem de urgência, no máximo 5
+    itens.forEach(function (i) {
+      if (!i.acao || i.st === "ok") return;
+      if (vistas[i.acao]) { i.n = vistas[i.acao]; return; }
+      if (n >= 5) return;
+      i.n = vistas[i.acao] = ++n;
+    });
+    return itens;
+  }
+  function cnPlano(itens) { var p = []; itens.forEach(function (i) { if (i.n && !p[i.n - 1]) p[i.n - 1] = i; }); return p; }
+  function cnResumoTexto(sec, per, itens) {
+    var C = CN[sec], at = itens.filter(function (i) { return i.st === "late" || i.st === "warn"; }), ok = itens.filter(function (i) { return i.st === "ok"; }), id = itens.filter(function (i) { return i.st === "idea"; });
+    var t = C.nome + " · " + C.titulo(per) + " · últimos " + per.dias + " dias\n";
+    var bloco = function (tit, arr) { return arr.length ? "\n" + tit + ":\n" + arr.map(function (i) { return "• " + i.txt; }).join("\n") + "\n" : ""; };
+    t += bloco("Precisa de atenção", at) + bloco("Indo bem", ok) + bloco("Oportunidades", id);
+    var pl = cnPlano(itens);
+    if (pl.length) t += "\nPlano de ação:\n" + pl.map(function (i, k) { return (k + 1) + ". " + i.tema + ": " + i.acao; }).join("\n") + "\n";
+    if (!itens.length) t += "\nTudo dentro do esperado neste período.\n";
+    return t;
+  }
+  function cnResumoHTML(sec, per) {
+    var itens = cnResumo(sec, per), at = itens.filter(function (i) { return i.st === "late" || i.st === "warn"; }), ok = itens.filter(function (i) { return i.st === "ok"; }), id = itens.filter(function (i) { return i.st === "idea"; });
+    var manchete = !itens.length ? "Tudo dentro do esperado neste período." : at.length ? (at.length === 1 ? "1 ponto pede atenção" : at.length + " pontos pedem atenção") + (ok.length ? " · " + ok.length + " indo bem" : "") + (id.length ? " · " + id.length + (id.length === 1 ? " oportunidade" : " oportunidades") : "") : "Período positivo: " + ok.length + (ok.length === 1 ? " destaque" : " destaques") + (id.length ? " e " + id.length + (id.length === 1 ? " oportunidade" : " oportunidades") : "") + ".";
+    var ic = { ok: "▲", warn: "!", late: "▼", idea: "✦" };
+    var li = function (i) { return '<li class="ga-res-i st-' + i.st + '"><span class="ga-res-ic" aria-hidden="true">' + ic[i.st] + "</span><div><p>" + esc(i.txt) + "</p>" + (i.n ? '<a class="cn-ref" href="#cnPlano">ação ' + i.n + "</a>" : "") + "</div></li>"; };
+    var col = function (tit, arr, vazio) { return '<div class="ga-res-col"><h4>' + tit + (arr.length ? " <span>" + arr.length + "</span>" : "") + "</h4>" + (arr.length ? "<ul>" + arr.map(li).join("") + "</ul>" : '<p class="muted small">' + vazio + "</p>") + "</div>"; };
+    var pl = cnPlano(itens);
+    var plano = pl.length ? '<div class="cn-plano" id="cnPlano"><div class="cn-plano-h"><h4>Plano de ação</h4><span class="muted small">em ordem de prioridade, para os próximos 7 dias</span></div><ol>' + pl.map(function (i) { return '<li class="cn-p-' + i.st + '"><b>' + esc(i.tema) + "</b><p>" + esc(i.acao) + "</p></li>"; }).join("") + "</ol></div>" : "";
+    return '<section class="card pad ind-box ga-res cn-res"><div class="ind-box-h"><div><div class="eyebrow">Leitura dos últimos ' + per.dias + " dias · " + esc(CN[sec].titulo(per)) + '</div><h3 class="ga-res-h">' + esc(manchete) + '</h3></div><div class="row"><button class="btn ghost small" id="cnRegras">Regras do resumo</button><button class="btn small" id="cnCopiar">Copiar resumo</button></div></div>' +
+      '<div class="ga-res-grid cn-res-grid">' + col("Precisa de atenção", at, "Nada abaixo do limite nem com queda acima do aceitável.") + col("Indo bem", ok, "Nenhuma alta acima do limite de destaque.") + col("Oportunidades", id, "Sem oportunidades claras com os dados deste período.") + "</div>" + plano +
+      '<p class="hint">Comparação com os ' + per.dias + " dias anteriores. Os limites de cada indicador ficam em <b>Regras do resumo</b>." + (per.atual && per.atual.aprox ? " Em 90 dias, alcance e contas engajadas são somados em blocos de 30 dias (a mesma pessoa pode contar mais de uma vez)." : "") + "</p></section>";
+  }
+  function cnRegrasModal(sec) {
+    var C = CN[sec], R = cnRegras(sec);
+    var linhas = C.met.filter(function (m) { return C.regras[m.k]; }).map(function (x) {
+      var r = R[x.k] || {}, un = /^pct/.test(x.f) ? "p.p." : "%";
+      var inp = function (c, v, ph) { return '<td><input type="text" inputmode="decimal" data-k="' + x.k + '" data-c="' + c + '" value="' + (v == null ? "" : String(v).replace(".", ",")) + '" placeholder="' + ph + '"></td>'; };
+      return "<tr><td>" + esc(x.l) + '<small class="hint" style="display:block">' + (x.dir === "down" ? "menor é melhor · limite = máximo" : "maior é melhor · limite = mínimo") + "</small></td>" + inp("lim", r.lim, "—") + inp("piora", r.piora, un) + inp("melhora", r.melhora, un) + "</tr>";
+    }).join("");
+    var extras = C.extras.map(function (x) { return '<tr class="grp"><td>' + esc(x.l) + '<small class="hint" style="display:block">' + esc(x.sub) + '</small></td><td><input type="text" inputmode="decimal" data-x="' + x.k + '" value="' + String(R[x.k]).replace(".", ",") + '"></td><td></td><td></td></tr>'; }).join("");
+    var m = openModal('<header><div><div class="eyebrow">' + esc(C.nome) + ' · resumo automático</div><h3>Regras do resumo</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
+      '<p class="hint">Para cada indicador: <b>limite</b> (mínimo aceitável quando maior é melhor, máximo quando menor é melhor), <b>piora máxima</b> contra o período anterior (passou disso, alerta; o dobro, alerta forte) e <b>melhora de destaque</b> (entra em "Indo bem"). Deixe em branco para não usar. Valem para todos os clientes.</p>' +
+      '<div class="tbl-wrap"><table class="tbl ind-in"><thead><tr><th>Indicador</th><th>Limite</th><th>Piora máxima<small>% · p.p. nas taxas</small></th><th>Melhora de destaque<small>% · p.p. nas taxas</small></th></tr></thead><tbody>' + linhas + extras +
+      '</tbody></table></div></div><footer><button class="btn ghost small" id="crPadrao">Voltar ao padrão</button><button class="btn" id="crSave">Salvar regras <span class="arrow">→</span></button></footer>', { wide: true });
+    $("[data-close]", m).onclick = closeModal;
+    var salvar = function (doc) { doc.atualizadoEm = new Date().toISOString(); doc.atualizadoPor = me; Store.set("indicadores", "cn-regras-" + sec, doc).then(function () { toast("Regras salvas"); }, fail); closeModal(); renderIndicadores(); };
+    $("#crPadrao").onclick = function () { salvar({}); };
+    $("#crSave").onclick = function () {
+      var doc = {}, num = function (s) { var v = String(s).trim().replace(",", "."); return v === "" || isNaN(Number(v)) ? null : Number(v); };
+      $$("input[data-k]", m).forEach(function (i) { doc[i.dataset.k] = doc[i.dataset.k] || {}; var v = num(i.value); doc[i.dataset.k][i.dataset.c] = v == null ? null : i.dataset.c === "lim" ? v : Math.abs(v); });
+      $$("input[data-x]", m).forEach(function (i) { var v = num(i.value); if (v != null) doc[i.dataset.x] = Math.abs(v); });
+      salvar(doc);
+    };
+  }
+
+  /* ---------- blocos visuais ---------- */
+  function cnSpark(per, m) {
+    if (!m.serie || !per.diario || per.diario.length < 2) return "";
+    var vals = per.diario.map(function (d) { return d[m.serie] || 0; }), W = 150, H = 34, P = 4, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    if (mx === mn) { mx += 1; mn -= 1; }
+    var X = function (i) { return P + i * (W - 2 * P) / (vals.length - 1); }, Y = function (v) { return H - P - (v - mn) / (mx - mn) * (H - 2 * P); };
+    return '<svg class="ind-spark" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" aria-hidden="true"><path d="' + vals.map(function (v, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); }).join(" ") + '"/><circle class="dot" cx="' + X(vals.length - 1) + '" cy="' + Y(vals[vals.length - 1]) + '" r="3"/></svg>';
+  }
+  function cnCards(sec, per) {
+    var R = cnRegras(sec), serie = cnF.serie[sec] || CN[sec].series[0].k;
+    var ms = cnMets(sec, per).filter(function (m) { return m.card !== false; });
+    return '<div class="ind-cards ga-cards cn-cards" style="--cols:' + (ms.length <= 5 ? ms.length : Math.ceil(ms.length / 2)) + '">' + ms.map(function (m) {
+      var v = cnVal(per, m, "atual"), p = cnVal(per, m, "anterior"), x = cnVar(v, p, m), st = cnSt(m, v, x, R[m.k]);
+      var bom = x && x.n !== 0 && m.dir !== "neutro" ? (m.dir === "down" ? x.n < 0 : x.n > 0) : null;
+      var delta = x ? '<span class="ind-delta ' + (bom === true ? "bom" : bom === false ? "ruim" : "") + '">' + (x.n > 0 ? "▲" : x.n < 0 ? "▼" : "=") + " " + esc(gaVarTxt(x)) + ' <span class="muted">vs ' + per.dias + " dias antes</span></span>" : '<span class="ind-delta">sem período anterior</span>';
+      var r = R[m.k] || {}, lim = r.lim != null && r.lim !== "" && m.f !== "int" && m.f !== "sinal" ? '<small class="muted">' + (m.dir === "down" ? "limite " : "mínimo ") + esc(cnFmt(r.lim, m.f)) + "</small>" : "";
+      var tag = m.serie ? "button" : "div";
+      return "<" + tag + ' class="ind-card ga-card' + (st ? " ga-st-" + st : "") + (m.serie === serie ? " on" : "") + '"' + (m.serie ? ' data-cnserie="' + m.serie + '"' : "") + (m.hint ? ' title="' + esc(m.hint) + '"' : m.serie ? ' title="Ver evolução diária"' : "") + '><span class="lbl">' + esc(m.l) + '</span><b class="v">' + esc(cnFmt(v, m.f)) + "</b>" + delta + lim + cnSpark(per, m) + "</" + tag + ">";
+    }).join("") + "</div>";
+  }
+  function cnLinha(per, s) {
+    var d = per.diario || [];
+    if (d.length < 2) return '<div class="empty">Poucos dias com dados para desenhar a evolução.</div>';
+    var vals = d.map(function (x) { return x[s.k] || 0; }), n = vals.length;
+    var W = Math.max(320, Math.min(1400, (($("#v-indicadores") || {}).clientWidth || 1000) - 40)), H = 220, L = 64, Rr = 18, T = 18, B = 30;
+    var ticks = indNice(0, Math.max.apply(null, vals) || 1), mn = ticks[0], mx = ticks[ticks.length - 1];
+    var X = function (i) { return L + i * (W - L - Rr) / (n - 1); }, Y = function (v) { return T + (1 - (v - mn) / (mx - mn)) * (H - T - B); };
+    var dia = function (x) { return x.slice(6, 8) + "/" + x.slice(4, 6); };
+    var sem = function (x) { return CN_DIA[new Date(+x.slice(0, 4), +x.slice(4, 6) - 1, +x.slice(6, 8)).getDay()].slice(0, 3); };
+    var fAx = s.f === "brl" ? "brlK" : "k";
+    var grid = ticks.map(function (t) { return '<line class="g" x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(t) + '" y2="' + Y(t) + '"/><text class="ax" x="' + (L - 8) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + esc(cnFmt(t, fAx)) + "</text>"; }).join("");
+    var every = Math.ceil(n / Math.max(2, Math.floor((W - L) / 56)));
+    var xl = d.map(function (x, i) { if (i % every && i !== n - 1) return ""; if (i !== n - 1 && n - 1 - i < every * 0.7) return ""; return '<text class="ax" x="' + X(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + dia(x.data) + "</text>"; }).join("");
+    var line = vals.map(function (v, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); }).join(" ");
+    var area = line + " L" + X(n - 1).toFixed(1) + " " + Y(mn) + " L" + X(0).toFixed(1) + " " + Y(mn) + " Z";
+    var iMax = vals.indexOf(Math.max.apply(null, vals));
+    var hits = vals.map(function (v, i) { return '<g class="pt"><circle class="dot" cx="' + X(i) + '" cy="' + Y(v) + '" r="' + (n > 40 ? 2.5 : 3.5) + '"/><circle class="hit" cx="' + X(i) + '" cy="' + Y(v) + '" r="' + Math.max(6, (W - L) / n / 2) + '"><title>' + esc(sem(d[i].data) + ", " + dia(d[i].data) + "\n" + s.l + ": " + cnFmt(v, s.f)) + "</title></circle></g>"; }).join("");
+    var pico = '<text class="vl" x="' + Math.min(Math.max(X(iMax), L + 20), W - Rr - 20) + '" y="' + (Y(vals[iMax]) - 10) + '" text-anchor="middle">pico ' + esc(cnFmt(vals[iMax], s.f)) + "</text>";
+    var media = vals.reduce(function (t, v) { return t + v; }, 0) / n;
+    return '<div class="ind-legend"><span><i class="sw serie"></i>' + esc(s.l) + ' por dia</span><span><i class="sw meta"></i>Média do período · ' + esc(cnFmt(media, s.f === "int" && media < 100 ? "dec" : s.f)) + "</span></div>" +
+      '<svg class="ind-line ga-line" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(s.l) + ' por dia">' + grid + xl + '<path class="area" d="' + area + '"/><line class="meta" x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(media) + '" y2="' + Y(media) + '"/><path class="serie" d="' + line + '"/>' + hits + pico + "</svg>";
+  }
+  function cnEvolucao(sec, per) {
+    var C = CN[sec], sk = cnF.serie[sec] || C.series[0].k, s = C.series.find(function (x) { return x.k === sk; }) || C.series[0];
+    var temSeg = sec !== "insta" || (per.diario || []).some(function (x) { return x.seguidores; });
+    var series = C.series.filter(function (x) { return x.k !== "seguidores" || temSeg; });
+    return '<section class="card pad ind-box"><div class="ind-box-h"><h3>Evolução diária · <span class="hl">' + esc(s.l) + '</span></h3><div class="seg">' + series.map(function (x) { return '<button data-cnserie="' + x.k + '" aria-pressed="' + (x.k === s.k) + '">' + esc(x.l) + "</button>"; }).join("") + "</div></div>" + cnLinha(per, s) + (sec === "insta" && s.k === "seguidores" ? '<p class="hint">O Instagram só informa novos seguidores por dia dos últimos 30 dias e para perfis com mais de 100 seguidores.</p>' : "") + "</section>";
+  }
+  // ranking com barra e valor formatado
+  function cnRank(titulo, sub, arr, fmt, extra) {
+    if (!arr.length) return "";
+    var top = Math.max.apply(null, arr.map(function (x) { return x.v; })) || 1;
+    return '<section class="card pad ind-box"><div class="ind-box-h"><h3>' + titulo + '</h3><span class="muted small">' + sub + "</span></div>" +
+      arr.map(function (x) { return '<div class="ga-row cn-row"><span class="n">' + esc(x.nome) + (x.sub ? "<small>" + esc(x.sub) + "</small>" : "") + '</span><div class="ind-btrack"><i class="fill' + (x.on ? " on" : "") + '" style="left:0;width:' + Math.max(1.5, x.v / top * 100) + '%"></i></div><b class="v">' + esc(cnFmt(x.v, fmt)) + '</b><span class="pc">' + (x.pc || "") + "</span></div>"; }).join("") + (extra || "") + "</section>";
+  }
+  function cnPerfil(per) {
+    var p = per.perfil; if (!p) return "";
+    var saldo = per.atual && per.atual.novosSeg != null ? per.atual.novosSeg - (per.atual.deixaram || 0) : null;
+    return '<section class="card cn-perfil">' + (p.foto ? '<img class="cn-av" src="' + esc(p.foto) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '<span class="cn-av"></span>') +
+      '<div class="cn-perfil-n"><b>@' + esc(p.usuario) + "</b><span>" + esc(p.nome || "") + "</span></div>" +
+      '<div class="cn-perfil-s"><div><b>' + cnFmt(p.seguidores, "int") + "</b><span>seguidores</span></div>" + (saldo != null ? '<div><b class="' + (saldo >= 0 ? "c-ok" : "c-late") + '">' + cnFmt(saldo, "sinal") + "</b><span>no período</span></div>" : "") + "<div><b>" + cnFmt(p.totalPosts, "int") + "</b><span>publicações</span></div><div><b>" + cnFmt(per.posts ? per.posts.length : null, "int") + "</b><span>nos últimos " + per.dias + " dias</span></div></div></section>";
+  }
+  function cnPosts(per) {
+    var ps = (per.posts || []).slice().sort(function (a, b) { return (b.interacoes || 0) - (a.interacoes || 0); }).slice(0, 6);
+    if (!ps.length) return '<section class="card pad ind-box"><h3>Posts do período</h3><p class="muted">Nenhuma publicação no feed neste período.</p></section>';
+    return '<section class="card pad ind-box"><div class="ind-box-h"><h3>Posts que mais engajaram</h3><span class="muted small">por interações · clique para abrir no Instagram</span></div><div class="cn-posts">' + ps.map(function (p, i) {
+      var en = p.alcance ? p.interacoes / p.alcance * 100 : null;
+      return '<a class="cn-post" href="' + esc(p.link) + '" target="_blank" rel="noopener"><div class="cn-post-img">' + (p.thumb ? '<img src="' + esc(p.thumb) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : "") + '<span class="cn-rk">' + (i + 1) + 'º</span><span class="cn-tp">' + esc(CN_TIPO[p.tipo] || p.tipo) + "</span></div>" +
+        '<div class="cn-post-b"><small>' + esc(cnData(p.data)) + "</small><p>" + esc(p.legenda || "Sem legenda") + '</p><dl><div><dt>Interações</dt><dd>' + cnFmt(p.interacoes, "k") + "</dd></div><div><dt>Alcance</dt><dd>" + cnFmt(p.alcance, "k") + "</dd></div><div><dt>Engaj.</dt><dd>" + cnFmt(en, "pct") + "</dd></div></dl></div></a>";
+    }).join("") + "</div></section>";
+  }
+  function cnInstaBlocos(per) {
+    var fm = cnFormatos(per.posts || []), md = cnMelhorDia(per.posts || []);
+    var formatos = cnRank("Alcance por formato", "média de contas alcançadas por post", fm.filter(function (f) { return f.alc != null; }).map(function (f, i) { return { nome: CN_TIPO[f.tipo] || f.tipo, sub: f.n + (f.n === 1 ? " post" : " posts") + " · engaj. " + cnFmt(f.engaj, "pct"), v: f.alc, on: i === 0 }; }), "int");
+    var dias = md ? cnRank("Melhor dia para postar", "alcance médio dos posts de cada dia", md.todos.slice().sort(function (a, b) { return (a.dia || 7) - (b.dia || 7); }).map(function (d) { return { nome: CN_DIA[d.dia].replace(/^./, function (c) { return c.toUpperCase(); }), sub: d.n + " posts", v: d.media, on: d.dia === md.dia, pc: (d.ganho >= 0 ? "+" : "−") + Math.abs(Math.round(d.ganho)) + "%" }; }), "int") : "";
+    var a = per.atual || {}, tot = (a.curtidas || 0) + (a.comentarios || 0) + (a.salvos || 0) + (a.compartilhamentos || 0);
+    var inter = tot ? cnRank("Tipos de interação", "no período", [["Curtidas", a.curtidas], ["Comentários", a.comentarios], ["Salvos", a.salvos], ["Compartilhamentos", a.compartilhamentos]].filter(function (x) { return x[1] != null; }).map(function (x) { return { nome: x[0], v: x[1], pc: Math.round(x[1] / tot * 100) + "%" }; }), "int") : "";
+    return cnPosts(per) + '<div class="ga-trio">' + formatos + (dias || "") + inter + "</div>";
+  }
+  function cnPill(st) { if (!st) return ""; var c = /ACTIVE|ENABLED/.test(st) ? "ok" : /ISSUES|DISAPPROVED/.test(st) ? "late" : /PAUSED|ARCHIVED|DELETED/.test(st) ? "off" : "warn"; return '<span class="cn-pill ' + c + '">' + esc(CN_STATUS[st] || st) + "</span>"; }
+  function cnMetaBlocos(per) {
+    var cs = per.campanhas || [], tot = per.atual.investimento || 1;
+    var tab = cs.length ? '<section class="card pad ind-box"><div class="ind-box-h"><h3>Campanhas</h3><span class="muted small">por investimento no período · resultado conforme o objetivo de cada campanha</span></div><div class="tbl-wrap"><table class="tbl ind-tbl cn-tbl"><thead><tr><th>Campanha</th><th class="r">Investimento</th><th class="r">Resultados</th><th class="r">Custo por resultado</th><th class="r">CTR</th><th class="r">Frequência</th></tr></thead><tbody>' +
+      cs.map(function (c) {
+        var q = c.custoRes && c.custoResAnt ? cnVarN(c.custoRes, c.custoResAnt) : null, ctr = c.impressoes ? c.cliques / c.impressoes * 100 : null;
+        return '<tr><td><b class="cn-cn">' + esc(c.nome) + '</b><small class="cn-sub">' + esc(c.objetivo || "") + " " + cnPill(c.status) + "</small></td>" +
+          '<td class="r num">' + cnFmt(c.investimento, "brl") + '<div class="cn-mini"><i style="width:' + Math.max(2, c.investimento / tot * 100) + '%"></i></div></td>' +
+          '<td class="r num">' + cnFmt(c.resultados, "int") + '<small class="cn-sub">' + esc(c.resultadoNome) + "</small></td>" +
+          '<td class="r num">' + cnFmt(c.custoRes, "brl") + (q != null ? '<small class="cn-sub ' + (q <= 0 ? "c-ok" : "c-late") + '">' + (q > 0 ? "▲ " : "▼ ") + cnFmt(Math.abs(q), "pct0") + " vs antes</small>" : "") + "</td>" +
+          '<td class="r num">' + cnFmt(ctr, "pct2") + '</td><td class="r num' + (c.frequencia > 3.5 ? " c-late" : "") + '">' + cnFmt(c.frequencia, "dec") + "</td></tr>";
+      }).join("") + "</tbody></table></div></section>" : '<section class="card pad ind-box"><h3>Campanhas</h3><p class="muted">Nenhuma campanha com entrega neste período.</p></section>';
+    var pl = (per.plataformas || []).slice().sort(function (a, b) { return b.investimento - a.investimento; });
+    var plat = cnRank("Onde os anúncios rodaram", "investimento por plataforma · custo por contato", pl.map(function (p, i) { return { nome: CN_PLAT[p.nome] || p.nome, sub: cnFmt(p.contatos, "int") + " contatos" + (p.contatos ? " · " + cnFmt(p.investimento / p.contatos, "brl") + " cada" : ""), v: p.investimento, on: i === 0, pc: Math.round(p.investimento / tot * 100) + "%" }; }), "brl");
+    var A = per.atual, funil = [["Impressões", A.impressoes], ["Pessoas alcançadas", A.alcance], ["Cliques no link", A.cliquesLink], ["Contatos", A.contatos]].filter(function (x) { return x[1] != null; });
+    var fun = cnRank("Do anúncio ao contato", "funil do período", funil.map(function (x, i) { return { nome: x[0], v: x[1], pc: i && funil[i - 1][1] ? cnFmt(x[1] / funil[i - 1][1] * 100, x[1] / funil[i - 1][1] < 0.1 ? "pct2" : "pct") : "" }; }), "k", '<p class="hint">A coluna da direita é a passagem de uma etapa para a seguinte.</p>');
+    return tab + '<div class="ga-trio cn-duo">' + plat + fun + "</div>";
+  }
+  function cnGadsBlocos(per, R) {
+    var cs = per.campanhas || [], tot = per.atual.custo || 1;
+    var tab = cs.length ? '<section class="card pad ind-box"><div class="ind-box-h"><h3>Campanhas</h3><div class="ind-legend"><span><i class="sw cn-is0"></i>Apareceu</span><span><i class="sw cn-is1"></i>Perdeu por orçamento</span><span><i class="sw cn-is2"></i>Perdeu por classificação</span></div></div><div class="tbl-wrap"><table class="tbl ind-tbl cn-tbl"><thead><tr><th>Campanha</th><th class="r">Investimento</th><th class="r">Cliques</th><th class="r">Conversões</th><th class="r">Custo por conversão</th><th>Parcela de impressões</th></tr></thead><tbody>' +
+      cs.map(function (c) {
+        var cpa = cnDiv(c.custo, c.conversoes), is = c.parcela != null ? '<div class="cn-is" title="Apareceu em ' + cnFmt(c.parcela, "pct0") + " das buscas · perdeu " + cnFmt(c.perdaOrc, "pct0") + " por orçamento e " + cnFmt(c.perdaRank, "pct0") + ' por classificação"><i class="a" style="width:' + c.parcela + '%"></i><i class="b" style="width:' + (c.perdaOrc || 0) + '%"></i><i class="c" style="width:' + (c.perdaRank || 0) + '%"></i></div><small class="cn-sub">' + cnFmt(c.parcela, "pct0") + (c.perdaOrc >= (R._perdaOrc || 20) ? ' · <span class="c-warn">−' + cnFmt(c.perdaOrc, "pct0") + " orçamento</span>" : "") + "</small>" : '<small class="cn-sub">só em Pesquisa</small>';
+        return '<tr><td><b class="cn-cn">' + esc(c.nome) + '</b><small class="cn-sub">' + esc(c.tipo || "") + " " + cnPill(c.status) + (c.orcDia ? " · " + cnFmt(c.orcDia, "brl") + "/dia" : "") + "</small></td>" +
+          '<td class="r num">' + cnFmt(c.custo, "brl") + '<div class="cn-mini"><i style="width:' + Math.max(2, c.custo / tot * 100) + '%"></i></div></td><td class="r num">' + cnFmt(c.cliques, "int") + '</td><td class="r num">' + cnFmt(c.conversoes, "conv") + '</td><td class="r num' + (!c.conversoes && c.custo / tot >= 0.15 ? " c-late" : "") + '">' + cnFmt(cpa, "brl") + '</td><td class="cn-is-td">' + is + "</td></tr>";
+      }).join("") + "</tbody></table></div></section>" : '<section class="card pad ind-box"><h3>Campanhas</h3><p class="muted">Nenhuma campanha com impressões neste período.</p></section>';
+    var ts = per.termos || [], lim = R._termoCusto || 30;
+    var termos = ts.length ? '<section class="card pad ind-box"><div class="ind-box-h"><h3>Termos de pesquisa</h3><span class="muted small">o que as pessoas digitaram antes de clicar · por investimento</span></div><div class="tbl-wrap"><table class="tbl ind-tbl cn-tbl"><thead><tr><th>Termo</th><th class="r">Cliques</th><th class="r">Investimento</th><th class="r">Conversões</th><th class="r">Custo por conversão</th></tr></thead><tbody>' +
+      ts.slice(0, 12).map(function (t) { var semC = !t.conversoes && t.custo >= lim; return "<tr" + (semC ? ' class="cn-alerta"' : "") + "><td>" + esc(t.termo) + (semC ? ' <span class="cn-pill late">sem conversão</span>' : "") + '</td><td class="r num">' + cnFmt(t.cliques, "int") + '</td><td class="r num">' + cnFmt(t.custo, "brl") + '</td><td class="r num">' + cnFmt(t.conversoes, "conv") + '</td><td class="r num">' + cnFmt(cnDiv(t.custo, t.conversoes), "brl") + "</td></tr>"; }).join("") +
+      '</tbody></table></div><p class="hint">Termos marcados gastaram ' + cnFmt(lim, "brl") + " ou mais sem nenhuma conversão: candidatos a palavra-chave negativa.</p></section>" : "";
+    return tab + termos;
+  }
+  function cnSetupHTML(sec, e) {
+    var passos = {
+      insta: ["No <b>Meta Business Suite</b> da agência, crie um <b>Usuário do sistema</b> (Configurações do negócio › Usuários › Usuários do sistema).", "Atribua a ele as <b>Páginas</b> e as <b>contas do Instagram</b> da Alvorada e da Golden, com acesso total ou de visualização.", "Gere o token do usuário do sistema com as permissões <code>instagram_basic</code>, <code>instagram_manage_insights</code>, <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>ads_read</code> e <code>business_management</code>, sem validade.", "Na Netlify, em Variáveis de ambiente, crie <code>META_TOKEN</code> com esse token (marque como secret) e faça um novo deploy."],
+      gads: ["Na sua conta de administrador do Google Ads (MCC), abra <b>Administrador › Central de API</b> e peça o <b>token de desenvolvedor</b> com Acesso básico.", "No Google Cloud (projeto dashboard-alvorada), ative a <b>Google Ads API</b> e crie um <b>ID do cliente OAuth</b> do tipo App da Web.", "No <b>OAuth Playground</b>, entre com o Google que acessa o MCC e gere o <b>refresh token</b> do escopo <code>adwords</code>.", "Na Netlify, crie <code>GADS_DEVELOPER_TOKEN</code>, <code>GADS_CLIENT_ID</code>, <code>GADS_CLIENT_SECRET</code>, <code>GADS_REFRESH_TOKEN</code> (todos secret) e <code>GADS_LOGIN_CUSTOMER_ID</code> com o ID do MCC. Faça um novo deploy."]
+    };
+    var p = passos[sec === "gads" ? "gads" : "insta"];
+    return '<section class="card pad ga-setup"><div class="eyebrow">Falta um passo</div><h3>Conectar o ' + (sec === "gads" ? "Google Ads" : "Meta (Instagram e anúncios)") + "</h3><ol>" + p.map(function (x) { return "<li>" + x + "</li>"; }).join("") + '</ol><p class="hint" style="margin-top:12px">O passo a passo completo, com cada clique, está no guia que a SCOPO recebeu. ' + (e && e.msg ? esc(e.msg) : "") + "</p></section>";
+  }
+  function cnErroHTML(sec, e) {
+    if (e.erro === "config") return cnSetupHTML(sec, e);
+    return '<div class="banner warn">' + esc(e.msg || "Não deu para buscar os dados.") + ' <button class="btn ghost small" id="cnRetry">Tentar de novo</button></div>';
+  }
+
+  function renderIndCanal(el, segHTML, sec) {
+    var C = CN[sec], lista = cnLista(sec), conta = cnConta(sec), key = cnChave(sec), per = key ? cnF.per[key] : null, e = cnF.err[sec];
+    var sel = lista && lista.length > 1 ? '<label class="cn-cli"><span>Cliente</span><select id="cnConta" aria-label="Cliente">' + lista.map(function (c) { return '<option value="' + esc(c.id) + '"' + (conta && c.id === conta.id ? " selected" : "") + ">" + esc(c.nome) + "</option>"; }).join("") + "</select></label>" : "";
+    var nome = per ? C.titulo(per) : conta ? conta.nome : "";
+    var head = '<div class="view-head"><div><div class="eyebrow">Indicadores</div><h2>' + esc(C.nome) + (nome ? ' · <span class="hl">' + esc(nome) + "</span>" : "") + '</h2><p class="muted">' + esc(C.desc) + "</p></div>" +
+      '<div class="row">' + sel + '<div class="seg" role="group" aria-label="Período">' + [7, 28, 90].map(function (n) { return '<button data-cndias="' + n + '" aria-pressed="' + (cnF.dias === n) + '">' + n + " dias</button>"; }).join("") + '</div><button class="btn ghost small" id="cnAtualizar">Atualizar</button></div></div>' +
+      '<div class="ind-bar">' + segHTML + '<span class="ga-stamp">' + (per ? "Atualizado às " + new Date(per.em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "") + "</span></div>";
+    var body;
+    if (e && (e.erro === "config" || e.erro === "acesso" || e.erro === "modo")) body = cnErroHTML(sec, e);
+    else if (lista && !lista.length) body = '<section class="card pad ga-setup"><div class="eyebrow">Nenhuma conta</div><h3>O token não enxerga nenhuma conta de ' + esc(C.nome) + '</h3><p class="muted">Confira se as contas dos clientes foram atribuídas ao usuário que gerou o token' + (sec === "gads" ? " e se estão ligadas à conta de administrador (MCC)." : " (Configurações do negócio › Usuários do sistema › Atribuir ativos).") + "</p></section>";
+    else {
+      body = (e ? cnErroHTML(sec, e) : "");
+      if (per) {
+        body += cnResumoHTML(sec, per) + (sec === "insta" ? cnPerfil(per) : "") + cnCards(sec, per) + cnEvolucao(sec, per) +
+          (sec === "insta" ? cnInstaBlocos(per) : sec === "metaads" ? cnMetaBlocos(per) : cnGadsBlocos(per, cnRegras(sec)));
+      } else if (!e) body += '<div class="empty">' + (lista ? "Carregando os últimos " + cnF.dias + " dias de " + esc(conta ? conta.nome : C.nome) + "…" : "Buscando as contas conectadas…") + "</div>";
+    }
+    el.innerHTML = head + body;
+    $$("[data-insec]", el).forEach(function (b) { b.onclick = function () { indF.sec = b.dataset.insec; LS.set("indSec", indF.sec); renderIndicadores(); }; });
+    $$("[data-cndias]", el).forEach(function (b) { b.onclick = function () { cnF.dias = +b.dataset.cndias; cnF.err[sec] = null; LS.set("cnDias", cnF.dias); renderIndicadores(); cnLoad(sec); }; });
+    $$("[data-cnserie]", el).forEach(function (b) { b.onclick = function () { cnF.serie[sec] = b.dataset.cnserie; renderIndicadores(); }; });
+    if ($("#cnConta")) $("#cnConta").onchange = function () {
+      var c = lista.find(function (x) { return x.id === $("#cnConta").value; }); if (!c) return;
+      cnF.conta[sec] = c.id; cnF.err[sec] = null; cnF.cliente = c.nome; LS.set("cnConta_" + sec, c.id); LS.set("cnCliente", c.nome);
+      renderIndicadores(); cnLoad(sec);
+    };
+    if ($("#cnAtualizar")) $("#cnAtualizar").onclick = function () { cnF.err[sec] = null; if (!lista) cnLoadContas(sec, true); else cnLoad(sec, true); toast("Atualizando…"); };
+    if ($("#cnRetry")) $("#cnRetry").onclick = function () { cnF.err[sec] = null; if (!lista) cnLoadContas(sec, true); else cnLoad(sec, true); renderIndicadores(); };
+    if ($("#cnRegras")) $("#cnRegras").onclick = function () { cnRegrasModal(sec); };
+    if ($("#cnCopiar")) $("#cnCopiar").onclick = function () {
+      var t = cnResumoTexto(sec, per, cnResumo(sec, per));
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast("Resumo copiado"); }, function () { toast("Não deu para copiar"); });
+    };
+    if (e) return; // depois de um erro, só tenta de novo pelo botão
+    if (!lista) cnLoadContas(sec); else cnLoad(sec);
   }
 
   function indBind(el) {
