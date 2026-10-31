@@ -120,28 +120,6 @@
     }
   }
 
-  function setupParallax() {
-    var els = document.querySelectorAll("[data-parallax]");
-    if (!els.length) return;
-    var ticking = false;
-    function apply() {
-      var sy = window.scrollY || window.pageYOffset;
-      els.forEach(function (el) {
-        var factor = parseFloat(el.getAttribute("data-parallax")) || 0;
-        el.style.transform = "translate3d(0," + (sy * factor).toFixed(1) + "px,0)";
-      });
-      ticking = false;
-    }
-    function onScroll() {
-      if (!ticking) {
-        window.requestAnimationFrame(apply);
-        ticking = true;
-      }
-    }
-    window.addEventListener("scroll", onScroll, { passive: true });
-    apply();
-  }
-
   function setupHoverPreview() {
     // delegated (not bound at parse time) because project cards are rendered
     // later, asynchronously, from content/projects.json
@@ -333,7 +311,6 @@
     if (texts) setCache("scopo_cache_texts", texts);
   });
 
-  setupParallax();
   setupHoverPreview();
   setupClickSound();
   setupFloatingCta();

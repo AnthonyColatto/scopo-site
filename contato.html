@@ -6,8 +6,12 @@
 <title>SCOPO — Contato</title>
 <link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="assets/polish.css">
+<meta name="theme-color" content="#050505">
+<meta name="description" content="Fale com a SCOPO pelo WhatsApp ou envie uma mensagem. Atendimento em Mato Grosso do Sul, com clientes em todo o Brasil.">
 <script>
   // apply the last-known brand color instantly (before first paint) so repeat
   // visits don't flash the old default while apply-content.js fetches fresh settings
@@ -29,20 +33,25 @@
   <div style="height:3px;width:100%;background:linear-gradient(90deg, transparent, var(--brand) 50%, transparent);"></div>
   <div style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px var(--pad-x);background:radial-gradient(ellipse 420px 220px at 0% 0%, color-mix(in srgb, var(--brand) 9%, transparent), transparent 70%), rgba(5,5,5,0.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--brand) 14%, transparent);box-sizing:border-box;position:sticky;top:0;z-index:50;" class="site-header">
     <a href="index.html" class="logo-link"><img src="assets/logo.png" data-logo alt="SCOPO" style="height:42px;width:auto;display:block;"></a>
-    <div class="nav-links" style="display:flex;align-items:center;gap:40px;">
+    <nav class="nav-links" id="site-nav" aria-label="Principal" style="display:flex;align-items:center;gap:40px;">
       <a href="index.html" class="navlink">HOME</a>
       <a href="servicos.html" class="navlink">SERVIÇOS</a>
       <a href="portfolio.html" class="navlink">PORTFÓLIO</a>
       <a href="sobre.html" class="navlink">SOBRE</a>
       <a href="contato.html" class="navlink" style="color:var(--brand);">CONTATO</a>
-    </div>
+      <a href="https://wa.me/5567991941891" data-wa target="_blank" rel="noopener" class="btn-primary nav-cta-mobile"><span data-text-key="header_cta_label">FALE NO WHATSAPP</span><span class="arrow">→</span></a>
+    </nav>
     <a href="https://wa.me/5567991941891" data-wa target="_blank" class="btn-primary header-cta" style="padding:12px 24px;font-size:14px;"><span data-text-key="header_cta_label">FALE NO WHATSAPP</span><span class="arrow">→</span></a>
+    <button type="button" class="nav-toggle" aria-label="Abrir menu" aria-expanded="false" aria-controls="site-nav"><span></span><span></span><span></span></button>
   </div>
 
-  <div style="width:100%;padding:100px var(--pad-x) var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;">
-    <div class="eyebrow" data-text-key="contato_hero_eyebrow">FALE COM A GENTE</div>
-    <div class="h1" data-text-key="contato_hero_title" style="font-size:clamp(23px, 4vw, 40px);">Vamos conversar</div>
-    <div class="body-txt" data-text-key="contato_hero_subtitle" style="max-width:600px;">Conta um pouco sobre sua marca e o que você precisa. A gente responde rápido.</div>
+  <div class="hero-layered" style="width:100%;padding:100px var(--pad-x) var(--pad-x);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;text-align:center;gap:20px;">
+    <div data-parallax="0.05" aria-hidden="true" style="position:absolute;width:520px;height:520px;border-radius:50%;left:50%;top:-240px;margin-left:-260px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 10%, transparent),transparent 70%);filter:blur(10px);pointer-events:none;z-index:0;"></div>
+    <div class="parallax-blob" data-parallax="0.03" aria-hidden="true" style="width:320px;height:320px;left:3%;top:10px;background:radial-gradient(circle,color-mix(in srgb, var(--brand) 14%, transparent),transparent 70%);"></div>
+    <div class="parallax-blob" data-parallax="0.12" aria-hidden="true" style="width:200px;height:200px;right:7%;top:120px;background:radial-gradient(circle,rgba(255,255,255,0.09),transparent 70%);"></div>
+    <div class="eyebrow hero-in" data-text-key="contato_hero_eyebrow" style="animation-delay:.05s;">FALE COM A GENTE</div>
+    <h1 class="h1 hero-in" data-text-key="contato_hero_title" style="font-size:clamp(23px, 4vw, 40px);animation-delay:.16s;">Vamos conversar</h1>
+    <div class="body-txt hero-in" data-text-key="contato_hero_subtitle" style="max-width:600px;animation-delay:.28s;">Conta um pouco sobre sua marca e o que você precisa. A gente responde rápido.</div>
   </div>
 
   <div data-reveal style="width:100%;padding:20px var(--pad-x) 110px;box-sizing:border-box;display:grid;grid-template-columns:var(--split-b,0.9fr 1.1fr);gap:40px;align-items:start;">
@@ -95,7 +104,7 @@
         <div class="footlink" data-text-key="footer_tagline" style="line-height:1.6;">Agência de marketing focada em estratégia, criatividade e performance para marcas que querem crescer de verdade.</div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">MENU</div>
+        <p style="margin:0;color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">MENU</p>
         <a href="index.html" class="footlink">Home</a>
         <a href="servicos.html" class="footlink">Serviços</a>
         <a href="portfolio.html" class="footlink">Portfólio</a>
@@ -103,16 +112,16 @@
         <a href="contato.html" class="footlink">Contato</a>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">SERVIÇOS</div>
+        <p style="margin:0;color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">SERVIÇOS</p>
         <div id="js-footer-services" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
       <div style="display:flex;flex-direction:column;gap:12px;">
-        <div style="color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">CONTATO</div>
+        <p style="margin:0;color:var(--brand);font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;letter-spacing:1.5px;">CONTATO</p>
         <a href="https://wa.me/5567991941891" data-wa target="_blank" class="footlink">(67) 99194-1891</a>
         <div id="js-footer-social" style="display:flex;flex-direction:column;gap:12px;"></div>
       </div>
     </div>
-    <div style="border-top:1px solid #1E1E1E;padding-top:24px;color:#5A5A5A;font-family:'Work Sans',sans-serif;font-size:12px;">© 2026 SCOPO. Todos os direitos reservados.</div>
+    <div style="border-top:1px solid #1E1E1E;padding-top:24px;color:#8A8A8A;font-family:'Work Sans',sans-serif;font-size:12px;">© 2026 SCOPO. Todos os direitos reservados.</div>
   </div>
 
   </div>
@@ -129,6 +138,7 @@
 <script src="assets/script.js"></script>
 <script src="assets/apply-content.js"></script>
 <script src="assets/enhance.js"></script>
+<script src="assets/polish.js"></script>
 <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 <script>
   if (window.netlifyIdentity) {

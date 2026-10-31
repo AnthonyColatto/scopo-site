@@ -117,8 +117,10 @@
   function renderSocialLinks(settings) {
     var wrap = document.getElementById("js-footer-social");
     if (!wrap) return;
+    // links que apontam só para a página inicial da rede (instagram.com, linkedin.com)
+    // não levam a lugar nenhum: ficam ocultos até o perfil real ser cadastrado no admin
     var items = ((settings && settings.social_links) || []).filter(function (s) {
-      return s && s.nome && s.link;
+      return s && s.nome && s.link && !/^https?:\/\/(www\.)?[a-z0-9-]+(\.[a-z]+)+\/?$/i.test(String(s.link).trim());
     });
     wrap.innerHTML = items
       .map(function (s) {
@@ -159,9 +161,9 @@
           return (
             '<div class="card" style="padding:28px;display:flex;flex-direction:column;gap:12px;">' +
             serviceBadge(s, idx, 36) +
-            '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:18px;font-weight:700;">' +
+            '<h3 class="card-title" style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:18px;font-weight:700;">' +
             (s.title || "") +
-            "</div>" +
+            "</h3>" +
             '<div class="body-txt" style="font-size:14px;">' +
             (s.description || "") +
             "</div></div>"
@@ -183,9 +185,9 @@
             serviceBadge(s, idx, 56) +
             "</div>" +
             '<div style="flex:1;min-width:240px;display:flex;flex-direction:column;gap:14px;">' +
-            '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:24px;font-weight:700;">' +
+            '<h3 class="card-title" style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:24px;font-weight:700;">' +
             (s.title || "") +
-            "</div>" +
+            "</h3>" +
             '<div class="body-txt">' +
             (s.description || "") +
             "</div>" +
@@ -205,11 +207,23 @@
     }
   }
 
+  // projetos marcados como "EM BREVE" são só espaços reservados: não aparecem no site
+  function isPlaceholderProject(p) {
+    return !p || /^\s*em\s+breve\s*$/i.test(p.tag || "");
+  }
+
   function renderProjects(data) {
     var grid = document.getElementById("js-projects-grid");
     if (!grid || !data || !data.items) return;
-    grid.innerHTML = data.items
-      .map(function (p, idx) {
+    // o índice original é mantido: projeto.html?id=N continua apontando para o item certo
+    var real = [];
+    data.items.forEach(function (p, idx) {
+      if (!isPlaceholderProject(p)) real.push({ p: p, idx: idx });
+    });
+    var cards = real
+      .map(function (entry, pos) {
+        var p = entry.p;
+        var idx = entry.idx;
         var thumbInner = p.video
           ? '<video muted loop playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;" src="' +
             p.video +
@@ -218,13 +232,13 @@
             (p.image || "") +
             '" alt="' +
             (p.title || "Projeto") +
-            '" style="width:100%;height:100%;object-fit:cover;display:block;">';
+            '" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;display:block;">';
         // wrapped in its own data-reveal div (rather than putting data-reveal
         // directly on .card) so the entrance fade-in and the card's own hover
         // lift never fight over the same `transform` transition
         return (
           '<div data-reveal style="transition-delay:' +
-          (idx % 8) * 0.07 +
+          (pos % 8) * 0.07 +
           's;">' +
           '<a href="projeto.html?id=' +
           idx +
@@ -232,19 +246,36 @@
           '<div class="thumb">' +
           thumbInner +
           '<div class="card-frame-tag">CUT ' +
-          String(idx + 1).padStart(2, "0") +
+          String(pos + 1).padStart(2, "0") +
           "</div>" +
           '<div class="thumb-overlay">Ver projeto →</div></div>' +
           '<div style="padding:18px;display:flex;flex-direction:column;gap:8px;">' +
           '<span class="tag">' +
-          (p.tag || "EM BREVE") +
+          (p.tag || "") +
           "</span>" +
-          '<div style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:15px;font-weight:700;">' +
+          '<h3 class="card-title" style="color:#FFFFFF;font-family:\'Poppins\',sans-serif;font-size:15px;font-weight:700;">' +
           (p.title || "") +
-          "</div></div></a></div>"
+          "</h3></div></a></div>"
         );
-      })
-      .join("");
+      });
+    // enquanto há poucos cases, um card de chamada ocupa o espaço no lugar dos "em breve"
+    if (cards.length < 4) {
+      cards.push(
+        '<div data-reveal style="transition-delay:' +
+          cards.length * 0.07 +
+          's;"><a href="https://wa.me/' +
+          (cachedWaNumber() || "5567991941891") +
+          '" data-wa target="_blank" rel="noopener" class="card-cta">' +
+          "<small>PRÓXIMO CASE</small><strong>O seu projeto pode estar aqui</strong>" +
+          '<span class="btn-outline" style="pointer-events:none;">CONVERSAR<span class="arrow">→</span></span></a></div>'
+      );
+    }
+    grid.innerHTML = cards.join("");
+  }
+
+  function cachedWaNumber() {
+    var s = getCache("scopo_cache_settings");
+    return s && s.whatsapp_number ? String(s.whatsapp_number).replace(/\D/g, "") : "";
   }
 
   function renderProjectDetail(data) {
@@ -332,7 +363,7 @@
           (c.logo || "") +
           '" alt="' +
           (c.name || "Cliente") +
-          '" style="width:190px;max-width:190px;display:block;object-fit:contain;padding:14px;box-sizing:border-box;">'
+          '" loading="lazy" decoding="async" style="width:190px;max-width:190px;display:block;object-fit:contain;padding:14px;box-sizing:border-box;">'
         );
       })
       .join("");
