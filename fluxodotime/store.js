@@ -16,6 +16,7 @@
      Store.fileUrl(anexo)             -> Promise<url>
      Store.removeFile(anexo)
      Store.perfis.list/save/remove    gestão de acessos (só no Supabase)
+     Store.token()                    -> Promise<token de login> (só no Supabase; usado pelas funções da Netlify)
      Store.logout()
 */
 (function () {
@@ -191,6 +192,7 @@
         save: function (p) { var row = { email: String(p.email).trim().toLowerCase(), nome: p.nome, papel: p.papel }; if (p.permissoes) row.permissoes = p.permissoes; return client.from(PERFIS).upsert(row).select("email").then(denied); },
         remove: function (email) { return client.from(PERFIS).delete().eq("email", email).select("email").then(denied); }
       },
+      token: function () { return client.auth.getSession().then(function (r) { return r.data && r.data.session ? r.data.session.access_token : null; }); },
       logout: function () { return client.auth.signOut().then(function () { location.reload(); }); }
     };
   }

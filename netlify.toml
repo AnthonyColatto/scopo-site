@@ -1,0 +1,4 @@
+# Funções do servidor (ex: /api/ga4 para os Indicadores do Fluxo do Time).
+# O site em si continua sem build: é publicado como está.
+[functions]
+  directory = "netlify/functions"

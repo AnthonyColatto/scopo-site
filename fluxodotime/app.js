@@ -3978,7 +3978,7 @@
   };
   var indF = { sec: LS.get("indSec", "atend"), mes: iso(today()).slice(0, 7), metric: {}, hist: 6 };
   (function () { var d = today(); if (d.getDate() <= 10) indF.mes = addMes(indF.mes, -1); })(); // no começo do mês, o foco é fechar o anterior
-  if (!IND_SECS[indF.sec]) indF.sec = "atend";
+  if (!IND_SECS[indF.sec] && indF.sec !== "site") indF.sec = "atend";
 
   function indSec() { return IND_SECS[indF.sec]; }
   function indInputs(sec) { return sec.metrics.filter(function (m) { return !m.calc; }); }
@@ -4131,6 +4131,8 @@
   function renderIndicadores() {
     var el = $("#v-indicadores");
     if (!podeVerArea("indicadores")) { el.innerHTML = '<div class="empty">Você não tem acesso a esta área.</div>'; return; }
+    var segHTML = '<div class="seg">' + Object.keys(IND_SECS).map(function (k) { return '<button data-insec="' + k + '" aria-pressed="' + (k === indF.sec) + '">' + esc(IND_SECS[k].nome) + "</button>"; }).join("") + '<button data-insec="site" aria-pressed="' + (indF.sec === "site") + '">Site</button></div>';
+    if (indF.sec === "site") return renderIndSite(el, segHTML);
     var sk = indF.sec, sec = indSec(), ym = indF.mes, prev = addMes(ym, -1), linhas = indLinhas(sk);
     var mk = indF.metric[sk] || sec.metrics[0].k, m = sec.metrics.find(function (x) { return x.k === mk; }) || sec.metrics[0];
     var tem = indTemDados(sk, ym);
@@ -4142,7 +4144,7 @@
     if (tem) indF.auto = true;
     var head = '<div class="view-head"><div><div class="eyebrow">Indicadores</div><h2>' + esc(sec.nome) + '</h2><p class="muted">Lance os números do mês, defina as metas e acompanhe o grupo e cada ' + (sk === "trafego" ? "conta" : "loja") + " contra a meta e contra os meses anteriores.</p></div>" +
       '<div class="row"><button class="btn ghost small" id="inMetas">Metas</button><button class="btn ghost small" id="inPdf">Resumo em PDF</button><button class="btn" id="inLancar">Lançar dados do mês <span class="arrow">→</span></button></div></div>' +
-      '<div class="ind-bar"><div class="seg">' + Object.keys(IND_SECS).map(function (k) { return '<button data-insec="' + k + '" aria-pressed="' + (k === sk) + '">' + esc(IND_SECS[k].nome) + "</button>"; }).join("") + "</div>" +
+      '<div class="ind-bar">' + segHTML +
       '<div class="ind-mes"><button class="btn ghost small" data-inmes="-1" aria-label="Mês anterior">‹</button><b>' + esc(mesLabel(ym).replace(/^./, function (c) { return c.toUpperCase(); })) + '</b><button class="btn ghost small" data-inmes="1" aria-label="Próximo mês">›</button><input type="month" id="inMesPick" value="' + ym + '" aria-label="Escolher mês"></div></div>';
     if (!linhas.length) {
       el.innerHTML = head + '<div class="empty">Cadastre ' + (sk === "trafego" ? "as contas / plataformas de tráfego" : "as unidades") + ' para começar. <button class="btn small" id="inAddLinha">+ ' + (sk === "trafego" ? "conta" : "unidade") + "</button></div>";
@@ -4213,6 +4215,280 @@
     var aviso = nCom < linhas.length ? '<div class="banner warn">' + nCom + " de " + linhas.length + " " + (sk === "trafego" ? "contas" : "lojas") + " com dados em " + esc(mesLabel(ym)) + ". O total do grupo considera só as lançadas.</div>" : "";
     el.innerHTML = head + aviso + '<div class="ind-cards">' + cards + "</div>" + lojaxloja + dist + evo + full + obsBox;
     indBind(el);
+  }
+
+  /* ================================================================
+     INDICADORES · SITE (GA4) · dados ao vivo do Google Analytics
+     Os números vêm da função /api/ga4 (Netlify), que guarda a chave do Google.
+     O resumo "o que está bom / o que precisa de atenção" usa as regras do
+     documento "ga-regras" (editáveis em Regras do resumo).
+     ================================================================ */
+  var GA_MET = [
+    { k: "activeUsers", l: "Usuários", f: "int", serie: "usuarios" },
+    { k: "newUsers", l: "Novos usuários", f: "int" },
+    { k: "sessions", l: "Sessões", f: "int", serie: "sessoes" },
+    { k: "screenPageViews", l: "Visualizações", f: "int", serie: "views" },
+    { k: "engagementRate", l: "Taxa de engajamento", f: "pct", mult: 100, hint: "sessões com 10s+, 2 páginas ou conversão" },
+    { k: "averageSessionDuration", l: "Tempo médio por sessão", f: "seg" },
+    { k: "keyEvents", l: "Eventos-chave", f: "int", hint: "conversões marcadas no GA4" }
+  ];
+  // regras iniciais: "min" = abaixo disso é ruim; "queda" = cair mais que isso vs período anterior é ruim
+  // (em % para totais e tempo, em pontos percentuais para taxas); "alta" = subir mais que isso merece destaque
+  var GA_REGRAS_PADRAO = {
+    activeUsers: { queda: 15, alta: 10 },
+    newUsers: { queda: 20, alta: 10 },
+    sessions: { queda: 15, alta: 10 },
+    screenPageViews: { queda: 15, alta: 10 },
+    engagementRate: { min: 50, queda: 5, alta: 5 },
+    averageSessionDuration: { min: 60, queda: 20, alta: 15 },
+    keyEvents: { queda: 20, alta: 15 },
+    _canalQueda: 30
+  };
+  var GA_CANAL = { "Direct": "Direto", "Organic Search": "Busca orgânica", "Paid Search": "Busca paga", "Organic Social": "Social orgânico", "Paid Social": "Social pago", "Referral": "Sites que indicam", "Email": "E-mail", "Unassigned": "Não atribuído", "Display": "Display", "Organic Video": "Vídeo orgânico", "Paid Video": "Vídeo pago", "Cross-network": "Multirrede", "Organic Shopping": "Shopping orgânico", "Paid Shopping": "Shopping pago", "Affiliates": "Afiliados", "Paid Other": "Outros pagos", "Mobile Push Notifications": "Notificações push", "SMS": "SMS", "Audio": "Áudio" };
+  // o que fazer quando o indicador piora (aparece junto do alerta no resumo)
+  var GA_ACAO = {
+    activeUsers: "Veja em De onde vêm qual canal perdeu força e retome-o primeiro: campanha pausada, verba menor ou menos posts com link costumam explicar a queda.",
+    newUsers: "Está chegando pouca gente nova. Amplie o público das campanhas (semelhantes e interesses) e publique conteúdo que as pessoas buscam, como ofertas e dúvidas frequentes.",
+    sessions: "As pessoas estão voltando menos. Use remarketing e mande pelo WhatsApp e pelas redes links diretos para as ofertas e novidades da semana.",
+    screenPageViews: "Cada visita está vendo menos páginas. Coloque links para produtos relacionados e categorias e destaque as ofertas na home.",
+    engagementRate: "Muita gente sai sem interagir. Teste a velocidade no celular, confira se a página bate com o anúncio que a pessoa clicou e deixe uma chamada clara logo no topo (oferta ou WhatsApp).",
+    averageSessionDuration: "O conteúdo não está segurando a visita. Deixe as páginas mais fáceis de escanear (títulos, fotos, preço visível), use vídeos curtos e sempre indique o próximo passo.",
+    keyEvents: "Menos conversões. Revise o caminho até o contato (botão de WhatsApp visível, formulário curto) e confirme no GA4 se os eventos continuam disparando."
+  };
+  var GA_ACAO_CANAL = {
+    "Organic Search": "Atualize o Perfil da Empresa no Google de cada loja e revise títulos e textos das páginas principais; no Search Console, veja quais buscas caíram.",
+    "Paid Search": "No Google Ads, confira orçamento, lances, anúncios reprovados e campanhas pausadas.",
+    "Paid Social": "No Meta Ads, confira verba, campanhas pausadas e criativos com frequência alta; troque as peças cansadas.",
+    "Organic Social": "Publique mais posts e stories com link para o site (link na bio, figurinha de link).",
+    "Direct": "Reforce o endereço do site na mídia off, nos tabloides, nas lojas e no WhatsApp.",
+    "Referral": "Veja se algum site parceiro tirou o link e busque novas parcerias e citações.",
+    "Email": "Retome os disparos e revise assunto e chamada dos e-mails."
+  };
+  var GA_APARELHO = { desktop: "Computador", mobile: "Celular", tablet: "Tablet", "smart tv": "TV" };
+  var gaF = { dias: +LS.get("gaDias", 28) || 28, serie: "usuarios", agora: null, per: {}, err: null, busy: {}, timer: null };
+
+  function gaRegras() {
+    var d = S.indicadores.find(function (x) { return x.id === "ga-regras"; }) || {}, out = {};
+    Object.keys(GA_REGRAS_PADRAO).forEach(function (k) { out[k] = typeof GA_REGRAS_PADRAO[k] === "object" ? Object.assign({}, GA_REGRAS_PADRAO[k], d[k] || {}) : (d[k] != null ? d[k] : GA_REGRAS_PADRAO[k]); });
+    return out;
+  }
+  function gaVal(per, m, qual) { var v = per && per[qual] ? per[qual][m.k] : null; return v == null ? null : v * (m.mult || 1); }
+  function gaFmt(v, f) {
+    if (v == null || isNaN(v)) return "—";
+    if (f === "seg") { var s = Math.round(v); if (s < 60) return s + "s"; var mi = Math.floor(s / 60); return mi + "min" + (s % 60 ? " " + pad(s % 60) + "s" : ""); }
+    return indFmt(v, f);
+  }
+  function gaVar(v, p, m) { // variação: % para totais e tempo, p.p. para taxas
+    if (v == null || p == null) return null;
+    if (m.f === "pct") return { n: v - p, u: "p.p." };
+    if (p === 0) return v === 0 ? { n: 0, u: "%" } : null;
+    return { n: (v - p) / Math.abs(p) * 100, u: "%" };
+  }
+  function gaVarTxt(x) { return (x.n >= 0 ? "+" : "−") + Math.abs(x.n).toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + (x.u === "%" ? "%" : " p.p."); }
+
+  /* ---------- dados ---------- */
+  function gaLoad(parte, force) {
+    var key = parte === "agora" ? "agora" : "p" + gaF.dias;
+    if (gaF.busy[key]) return;
+    if (!Store || typeof Store.token !== "function") { gaF.err = { erro: "modo", msg: "Os dados do site aparecem na versão publicada do Fluxo do Time, com login." }; return gaRedraw(); }
+    if (!force && parte !== "agora" && gaF.per[gaF.dias] && Date.now() - gaF.per[gaF.dias]._t < 10 * 60 * 1000) return;
+    gaF.busy[key] = true;
+    var dias = gaF.dias;
+    Store.token().then(function (tok) {
+      return fetch("/api/ga4?parte=" + (parte === "agora" ? "agora" : "periodo&dias=" + dias), { headers: { authorization: "Bearer " + (tok || "") } });
+    }).then(function (r) {
+      return r.json().catch(function () { return { erro: "rede", msg: "A função /api/ga4 não respondeu (status " + r.status + ")." }; }).then(function (d) { if (!r.ok && !d.erro) d.erro = "ga4"; return d; });
+    }).then(function (d) {
+      gaF.busy[key] = false;
+      if (d.erro) { gaF.err = d; return gaRedraw(); }
+      gaF.err = null; d._t = Date.now();
+      if (parte === "agora") { gaF.agora = d; gaRedraw("agora"); } else { gaF.per[dias] = d; gaRedraw(); }
+    }).catch(function (e) { gaF.busy[key] = false; gaF.err = { erro: "rede", msg: "Sem conexão com a função do site. " + (e && e.message ? e.message : "") }; gaRedraw(); });
+  }
+  function gaNoSite() { return view === "indicadores" && indF.sec === "site" && $("#v-indicadores") && !$("#v-indicadores").hidden; }
+  function gaRedraw(soAgora) {
+    if (!gaNoSite()) return;
+    var box = $("#gaNow");
+    if (soAgora && box) { box.outerHTML = gaNowHTML(); var st = $("#gaStamp"); if (st) st.innerHTML = gaStamp(); return; }
+    renderIndicadores();
+  }
+  function gaPoll() {
+    if (gaF.timer) return;
+    gaF.timer = setInterval(function () {
+      if (!gaNoSite() || document.hidden) return;
+      gaLoad("agora"); gaLoad("periodo");
+    }, 30000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden && gaNoSite()) gaLoad("agora"); });
+  }
+  function gaStamp() {
+    var a = gaF.agora; if (!a) return "";
+    var d = new Date(a.em); return '<i class="ga-live" aria-hidden="true"></i>Ao vivo · atualizado às ' + pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
+  }
+
+  /* ---------- resumo: o que está bom e o que precisa de atenção ---------- */
+  function gaResumo(per) {
+    var R = gaRegras(), itens = [];
+    GA_MET.forEach(function (m) {
+      var v = gaVal(per, m, "atual"), p = gaVal(per, m, "anterior"), r = R[m.k] || {}, x = gaVar(v, p, m);
+      if (v == null) return;
+      var de = p != null ? " (" + gaFmt(p, m.f) + " → " + gaFmt(v, m.f) + ")" : "";
+      if (r.min != null && r.min !== "" && v < r.min) itens.push({ st: "late", peso: 3, txt: m.l + " em " + gaFmt(v, m.f) + ", abaixo do aceitável de " + gaFmt(r.min, m.f) + ".", acao: GA_ACAO[m.k] });
+      if (x && r.queda && x.n <= -r.queda) itens.push({ st: x.n <= -2 * r.queda ? "late" : "warn", peso: 2, txt: m.l + " " + (m.f === "pct" ? "caiu " : "caíram ") + gaVarTxt(x).slice(1) + " contra o período anterior" + de + ".", acao: GA_ACAO[m.k] });
+      else if (x && r.alta && x.n >= r.alta) itens.push({ st: "ok", peso: 1, txt: m.l + " " + (m.f === "pct" ? "subiu " : "cresceram ") + gaVarTxt(x).slice(1) + de + "." });
+    });
+    // canais que perderam força
+    var ant = per.canaisAnt || {};
+    (per.canais || []).forEach(function (c) {
+      var p = ant[c.nome]; if (!p || p < 20) return;
+      var q = (c.v - p) / p * 100, nome = GA_CANAL[c.nome] || c.nome;
+      if (q <= -R._canalQueda) itens.push({ st: "warn", peso: 2, txt: "O canal " + nome + " trouxe " + Math.abs(Math.round(q)) + "% menos sessões (" + indFmt(p, "int") + " → " + indFmt(c.v, "int") + ").", acao: GA_ACAO_CANAL[c.nome] || "Veja o que mudou nesse canal no período: verba, frequência de posts ou links." });
+      else if (q >= R._canalQueda) itens.push({ st: "ok", peso: 1, txt: "O canal " + nome + " trouxe " + Math.round(q) + "% mais sessões (" + indFmt(p, "int") + " → " + indFmt(c.v, "int") + ")." });
+    });
+    var ordem = { late: 0, warn: 1, ok: 2 }, vistas = {};
+    itens.sort(function (a, b) { return ordem[a.st] - ordem[b.st] || b.peso - a.peso; });
+    itens.forEach(function (i) { if (i.acao && vistas[i.acao]) delete i.acao; else if (i.acao) vistas[i.acao] = 1; }); // mínimo e queda do mesmo indicador: a ação aparece uma vez
+    return itens;
+  }
+  function gaResumoTexto(per, itens) {
+    var ruins = itens.filter(function (i) { return i.st !== "ok"; }), bons = itens.filter(function (i) { return i.st === "ok"; });
+    var t = "Resumo do site " + (per.site || "") + " · últimos " + per.dias + " dias\n";
+    if (ruins.length) t += "\nPrecisa de atenção:\n" + ruins.map(function (i) { return "• " + i.txt + (i.acao ? "\n  O que fazer: " + i.acao : ""); }).join("\n") + "\n";
+    if (bons.length) t += "\nIndo bem:\n" + bons.map(function (i) { return "• " + i.txt; }).join("\n") + "\n";
+    if (!itens.length) t += "\nTudo dentro do esperado: nenhum indicador abaixo do aceitável nem com queda acima do limite.\n";
+    return t;
+  }
+  function gaResumoHTML(per) {
+    var itens = gaResumo(per), ruins = itens.filter(function (i) { return i.st !== "ok"; }).length, bons = itens.length - ruins;
+    var manchete = !itens.length ? "Tudo dentro do esperado neste período." : ruins ? (ruins === 1 ? "1 ponto pede atenção" : ruins + " pontos pedem atenção") + (bons ? " · " + bons + (bons === 1 ? " indo bem" : " indo bem") : "") : "Período positivo: " + bons + (bons === 1 ? " destaque" : " destaques") + " e nada abaixo do aceitável.";
+    var li = function (i) { return '<li class="ga-res-i st-' + i.st + '"><span class="ga-res-ic" aria-hidden="true">' + (i.st === "ok" ? "▲" : i.st === "warn" ? "!" : "▼") + "</span><div><p>" + esc(i.txt) + "</p>" + (i.acao ? '<p class="ga-acao"><b>O que fazer:</b> ' + esc(i.acao) + "</p>" : "") + "</div></li>"; };
+    var col = function (tit, arr, vazio) { return '<div class="ga-res-col"><h4>' + tit + "</h4>" + (arr.length ? "<ul>" + arr.map(li).join("") + "</ul>" : '<p class="muted small">' + vazio + "</p>") + "</div>"; };
+    return '<section class="card pad ind-box ga-res"><div class="ind-box-h"><div><div class="eyebrow">Leitura dos últimos ' + per.dias + ' dias</div><h3 class="ga-res-h">' + esc(manchete) + '</h3></div><div class="row"><button class="btn ghost small" id="gaRegras">Regras do resumo</button><button class="btn small" id="gaCopiar">Copiar resumo</button></div></div>' +
+      '<div class="ga-res-grid">' + col("Precisa de atenção", itens.filter(function (i) { return i.st !== "ok"; }), "Nenhum indicador abaixo do aceitável ou com queda acima do limite.") + col("Indo bem", itens.filter(function (i) { return i.st === "ok"; }), "Nenhuma alta acima do limite de destaque.") + "</div>" +
+      '<p class="hint">Comparação com os ' + per.dias + " dias anteriores. Os limites de cada indicador ficam em <b>Regras do resumo</b>.</p></section>";
+  }
+  function gaRegrasModal() {
+    var R = gaRegras();
+    var unid = function (m) { return m.f === "pct" ? "p.p." : "%"; };
+    var m = openModal('<header><div><div class="eyebrow">Site · resumo automático</div><h3>Regras do resumo</h3></div><button class="x" data-close>✕</button></header><div class="body">' +
+      '<p class="hint">Para cada indicador: <b>mínimo aceitável</b> (abaixo disso entra em "Precisa de atenção"), <b>queda máxima</b> contra o período anterior (passou disso, alerta; o dobro, alerta forte) e <b>alta de destaque</b> (subiu isso ou mais, entra em "Indo bem"). Deixe em branco para não usar.</p>' +
+      '<div class="tbl-wrap"><table class="tbl ind-in"><thead><tr><th>Indicador</th><th>Mínimo aceitável</th><th>Queda máxima<small>% · p.p. na taxa</small></th><th>Alta de destaque<small>% · p.p. na taxa</small></th></tr></thead><tbody>' +
+      GA_MET.map(function (x) {
+        var r = R[x.k] || {}, inp = function (c, v, ph) { return '<td><input type="text" inputmode="decimal" data-k="' + x.k + '" data-c="' + c + '" value="' + (v == null ? "" : String(v).replace(".", ",")) + '" placeholder="' + ph + '"></td>'; };
+        return "<tr><td>" + esc(x.l) + "<small class=\"hint\" style=\"display:block\">" + (x.f === "pct" ? "mínimo em %" : x.f === "seg" ? "mínimo em segundos" : "mínimo em quantidade") + "</small></td>" + inp("min", r.min, "—") + inp("queda", r.queda, unid(x)) + inp("alta", r.alta, unid(x)) + "</tr>";
+      }).join("") +
+      '<tr class="grp"><td>Canais de aquisição<small class="hint" style="display:block">variação de sessões por canal</small></td><td></td><td><input type="text" inputmode="decimal" id="grCanal" value="' + R._canalQueda + '" placeholder="%"></td><td class="hint">mesmo valor, para cima</td></tr>' +
+      '</tbody></table></div></div><footer><button class="btn ghost small" id="grPadrao">Voltar ao padrão</button><button class="btn" id="grSave">Salvar regras <span class="arrow">→</span></button></footer>', { wide: true });
+    $("[data-close]", m).onclick = closeModal;
+    var salvar = function (doc) {
+      doc.atualizadoEm = new Date().toISOString(); doc.atualizadoPor = me;
+      Store.set("indicadores", "ga-regras", doc).then(function () { toast("Regras salvas"); }, fail);
+      closeModal(); renderIndicadores();
+    };
+    $("#grPadrao").onclick = function () { salvar({}); };
+    $("#grSave").onclick = function () {
+      var doc = {};
+      $$("input[data-k]", m).forEach(function (i) { var v = i.value.trim().replace(",", "."); doc[i.dataset.k] = doc[i.dataset.k] || {}; doc[i.dataset.k][i.dataset.c] = v === "" || isNaN(Number(v)) ? null : Math.abs(Number(v)); });
+      var c = Number($("#grCanal").value.replace(",", ".")); doc._canalQueda = isNaN(c) || !c ? GA_REGRAS_PADRAO._canalQueda : Math.abs(c);
+      salvar(doc);
+    };
+  }
+
+  /* ---------- blocos visuais ---------- */
+  function gaNowHTML() {
+    var a = gaF.agora;
+    if (!a) return '<section class="card pad ga-now" id="gaNow"><div class="ga-now-hero"><span class="lbl"><i class="ga-live"></i>Agora no site</span><b class="ga-big muted">…</b><small class="muted">carregando o tempo real</small></div></section>';
+    var mx = Math.max.apply(null, a.porMinuto.concat([1])), W = 300, H = 64, bw = W / 30;
+    var bars = a.porMinuto.map(function (v, i) { var h = v ? Math.max(2, v / mx * (H - 4)) : 1, ago = 29 - i; return '<rect x="' + (i * bw + 1).toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + (bw - 2).toFixed(1) + '" height="' + h.toFixed(1) + '" rx="1.5"' + (ago === 0 ? ' class="now"' : "") + "><title>" + (ago === 0 ? "Este minuto" : "Há " + ago + " min") + ": " + v + (v === 1 ? " usuário" : " usuários") + "</title></rect>"; }).join("");
+    var lista = function (arr, fmt) {
+      if (!arr.length) return '<p class="muted small">Ninguém agora.</p>';
+      var top = arr[0].v || 1;
+      return arr.map(function (x) { return '<div class="ga-li"><span class="n" title="' + esc(x.nome) + '">' + esc(fmt ? fmt(x.nome) : x.nome) + '</span><b>' + indFmt(x.v, "int") + '</b><i style="width:' + Math.max(3, x.v / top * 100) + '%"></i></div>'; }).join("");
+    };
+    var totDev = a.aparelhos.reduce(function (t, x) { return t + x.v; }, 0) || 1;
+    var dev = a.aparelhos.length ? '<div class="ga-dev">' + a.aparelhos.map(function (x, i) { return '<i class="d' + i + '" style="width:' + (x.v / totDev * 100) + '%" title="' + esc((GA_APARELHO[x.nome] || x.nome) + ": " + x.v) + '"></i>'; }).join("") + '</div><div class="ind-legend">' + a.aparelhos.map(function (x, i) { return '<span><i class="sw ga-d' + i + '"></i>' + esc(GA_APARELHO[x.nome] || x.nome) + " " + Math.round(x.v / totDev * 100) + "%</span>"; }).join("") + "</div>" : '<p class="muted small">Sem dados.</p>';
+    return '<section class="card pad ga-now" id="gaNow">' +
+      '<div class="ga-now-hero"><span class="lbl"><i class="ga-live"></i>Agora no site</span><b class="ga-big">' + indFmt(a.usuarios, "int") + '</b><small class="muted">' + (a.usuarios === 1 ? "usuário" : "usuários") + " nos últimos 30 minutos · " + indFmt(a.views, "int") + " visualizações</small>" +
+      '<svg class="ga-min" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="Usuários por minuto, últimos 30 minutos">' + bars + '</svg><div class="ga-min-ax"><span>há 30 min</span><span>agora</span></div></div>' +
+      '<div class="ga-now-col"><h4>Páginas sendo vistas</h4>' + lista(a.paginas) + "</div>" +
+      '<div class="ga-now-col"><h4>Aparelhos</h4>' + dev + '<h4 style="margin-top:14px">Cidades</h4>' + lista(a.cidades) + "</div></section>";
+  }
+  function gaSpark(per, m) {
+    if (!m.serie || !per.diario || per.diario.length < 2) return "";
+    var vals = per.diario.map(function (d) { return d[m.serie] || 0; }), W = 150, H = 34, P = 4, mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    if (mx === mn) { mx += 1; mn -= 1; }
+    var X = function (i) { return P + i * (W - 2 * P) / (vals.length - 1); }, Y = function (v) { return H - P - (v - mn) / (mx - mn) * (H - 2 * P); };
+    return '<svg class="ind-spark" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" aria-hidden="true"><path d="' + vals.map(function (v, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); }).join(" ") + '"/><circle class="dot" cx="' + X(vals.length - 1) + '" cy="' + Y(vals[vals.length - 1]) + '" r="3"/></svg>';
+  }
+  function gaCards(per) {
+    var R = gaRegras();
+    return '<div class="ind-cards ga-cards">' + GA_MET.map(function (m) {
+      var v = gaVal(per, m, "atual"), p = gaVal(per, m, "anterior"), x = gaVar(v, p, m), r = R[m.k] || {};
+      var st = r.min != null && v != null && v < r.min ? "late" : x && r.queda && x.n <= -r.queda ? "warn" : x && r.alta && x.n >= r.alta ? "ok" : "";
+      var delta = x ? '<span class="ind-delta ' + (x.n > 0 ? "bom" : x.n < 0 ? "ruim" : "") + '">' + (x.n > 0 ? "▲" : x.n < 0 ? "▼" : "=") + " " + esc(gaVarTxt(x)) + ' <span class="muted">vs ' + per.dias + " dias antes</span></span>" : '<span class="ind-delta">sem período anterior</span>';
+      var tag = m.serie ? "button" : "div";
+      return "<" + tag + ' class="ind-card ga-card' + (st ? " ga-st-" + st : "") + (m.serie === gaF.serie ? " on" : "") + '"' + (m.serie ? ' data-gaserie="' + m.serie + '" title="Ver evolução diária"' : m.hint ? ' title="' + esc(m.hint) + '"' : "") + '><span class="lbl">' + esc(m.l) + "</span><b class=\"v\">" + esc(gaFmt(v, m.f)) + "</b>" + delta + (r.min != null && m.f !== "int" ? '<small class="muted">mínimo aceitável ' + esc(gaFmt(r.min, m.f)) + "</small>" : "") + gaSpark(per, m) + "</" + tag + ">";
+    }).join("") + "</div>";
+  }
+  function gaLinha(per) {
+    var m = GA_MET.find(function (x) { return x.serie === gaF.serie; }) || GA_MET[0], d = per.diario || [];
+    if (d.length < 2) return '<div class="empty">Poucos dias com dados para desenhar a evolução.</div>';
+    var vals = d.map(function (x) { return x[m.serie] || 0; }), n = vals.length;
+    var W = Math.max(320, Math.min(1400, (($("#v-indicadores") || {}).clientWidth || 1000) - 40)), H = 220, L = 56, Rr = 18, T = 18, B = 30;
+    var ticks = indNice(0, Math.max.apply(null, vals) || 1), mn = ticks[0], mx = ticks[ticks.length - 1];
+    var X = function (i) { return L + i * (W - L - Rr) / (n - 1); }, Y = function (v) { return T + (1 - (v - mn) / (mx - mn)) * (H - T - B); };
+    var dia = function (s) { return s.slice(6, 8) + "/" + s.slice(4, 6); };
+    var sem = function (s) { return ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"][new Date(+s.slice(0, 4), +s.slice(4, 6) - 1, +s.slice(6, 8)).getDay()]; };
+    var grid = ticks.map(function (t) { return '<line class="g" x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(t) + '" y2="' + Y(t) + '"/><text class="ax" x="' + (L - 8) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + esc(indFmt(t, "int")) + "</text>"; }).join("");
+    var every = Math.ceil(n / Math.max(2, Math.floor((W - L) / 56)));
+    var xl = d.map(function (x, i) { if (i % every && i !== n - 1) return ""; if (i !== n - 1 && n - 1 - i < every * 0.7) return ""; return '<text class="ax" x="' + X(i) + '" y="' + (H - 8) + '" text-anchor="middle">' + dia(x.data) + "</text>"; }).join("");
+    var line = vals.map(function (v, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); }).join(" ");
+    var area = line + " L" + X(n - 1).toFixed(1) + " " + Y(mn) + " L" + X(0).toFixed(1) + " " + Y(mn) + " Z";
+    var iMax = vals.indexOf(Math.max.apply(null, vals));
+    var hits = vals.map(function (v, i) { return '<g class="pt"><circle class="dot" cx="' + X(i) + '" cy="' + Y(v) + '" r="' + (n > 40 ? 2.5 : 3.5) + '"/><circle class="hit" cx="' + X(i) + '" cy="' + Y(v) + '" r="' + Math.max(6, (W - L) / n / 2) + '"><title>' + esc(sem(d[i].data) + ", " + dia(d[i].data) + "\n" + m.l + ": " + indFmt(v, "int")) + "</title></circle></g>"; }).join("");
+    var pico = '<text class="vl" x="' + Math.min(Math.max(X(iMax), L + 20), W - Rr - 20) + '" y="' + (Y(vals[iMax]) - 10) + '" text-anchor="middle">pico ' + esc(indFmt(vals[iMax], "int")) + "</text>";
+    var media = vals.reduce(function (t, v) { return t + v; }, 0) / n;
+    return '<div class="ind-legend"><span><i class="sw serie"></i>' + esc(m.l) + ' por dia</span><span><i class="sw meta"></i>Média do período · ' + esc(indFmt(media, "int")) + "</span></div>" +
+      '<svg class="ind-line ga-line" viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + esc(m.l) + ' por dia">' + grid + xl + '<path class="area" d="' + area + '"/><line class="meta" x1="' + L + '" x2="' + (W - Rr) + '" y1="' + Y(media) + '" y2="' + Y(media) + '"/><path class="serie" d="' + line + '"/>' + hits + pico + "</svg>";
+  }
+  function gaRank(titulo, sub, arr, fmtNome, total) {
+    if (!arr || !arr.length) return '<section class="card pad ind-box"><h3>' + titulo + '</h3><p class="muted">Sem dados no período.</p></section>';
+    var top = arr[0].v || 1, tot = total || arr.reduce(function (t, x) { return t + x.v; }, 0) || 1;
+    return '<section class="card pad ind-box"><div class="ind-box-h"><h3>' + titulo + '</h3><span class="muted small">' + sub + "</span></div>" +
+      arr.map(function (x, i) { var nome = fmtNome ? fmtNome(x.nome) : x.nome; return '<div class="ga-row" title="' + esc(x.nome + ": " + indFmt(x.v, "int")) + '"><span class="n"><em>' + (i + 1) + "º</em>" + esc(nome) + '</span><div class="ind-btrack"><i class="fill" style="left:0;width:' + Math.max(1.5, x.v / top * 100) + '%"></i></div><b class="v">' + indFmt(x.v, "int") + '</b><span class="pc">' + Math.round(x.v / tot * 100) + "%</span></div>"; }).join("") + "</section>";
+  }
+  function gaErroHTML(e) {
+    if (e.erro === "config") return '<section class="card pad ga-setup"><div class="eyebrow">Falta um passo</div><h3>Conectar o Google Analytics</h3><ol><li>No GA4 do site, em Admin › Detalhes da propriedade, copie o <b>ID da propriedade</b> (9 dígitos).</li><li>No Google Cloud, ative a <b>Google Analytics Data API</b>, crie uma <b>conta de serviço</b> e baixe a chave JSON.</li><li>No GA4, em Admin › Gerenciamento de acesso, adicione o e-mail da conta de serviço como <b>Leitor</b>.</li><li>Na Netlify, em Variáveis de ambiente, crie <code>GA4_CREDENTIALS</code> (o JSON inteiro, como secret), <code>GA4_PROPERTY_ID</code> e, se quiser, <code>GA4_SITE_NOME</code>. Depois, faça um novo deploy.</li></ol></section>';
+    return '<div class="banner warn">' + esc(e.msg || "Não deu para buscar os dados do site.") + ' <button class="btn ghost small" id="gaRetry">Tentar de novo</button></div>';
+  }
+  function renderIndSite(el, segHTML) {
+    var per = gaF.per[gaF.dias], nome = (per && per.site) || (gaF.agora && gaF.agora.site) || "";
+    var head = '<div class="view-head"><div><div class="eyebrow">Indicadores</div><h2>Site' + (nome ? ' · <span class="hl">' + esc(nome) + "</span>" : "") + '</h2><p class="muted">Dados do Google Analytics. O bloco <b>Agora no site</b> se atualiza sozinho a cada 30 segundos; o resto, a cada 10 minutos.</p></div>' +
+      '<div class="row"><div class="seg" role="group" aria-label="Período">' + [7, 28, 90].map(function (n) { return '<button data-gadias="' + n + '" aria-pressed="' + (gaF.dias === n) + '">' + n + " dias</button>"; }).join("") + '</div><button class="btn ghost small" id="gaAtualizar">Atualizar</button></div></div>' +
+      '<div class="ind-bar">' + segHTML + '<span class="ga-stamp" id="gaStamp">' + gaStamp() + "</span></div>";
+    var body;
+    if (gaF.err && (gaF.err.erro === "config" || gaF.err.erro === "acesso" || gaF.err.erro === "modo")) body = gaErroHTML(gaF.err);
+    else {
+      body = (gaF.err ? gaErroHTML(gaF.err) : "") + (per ? gaResumoHTML(per) : "") + gaNowHTML();
+      if (per) {
+        body += gaCards(per) +
+          '<section class="card pad ind-box"><div class="ind-box-h"><h3>Evolução diária · <span class="hl">' + esc((GA_MET.find(function (x) { return x.serie === gaF.serie; }) || GA_MET[0]).l) + '</span></h3><div class="seg">' + GA_MET.filter(function (x) { return x.serie; }).map(function (x) { return '<button data-gaserie="' + x.serie + '" aria-pressed="' + (gaF.serie === x.serie) + '">' + esc(x.l) + "</button>"; }).join("") + "</div></div>" + gaLinha(per) + "</section>" +
+          '<div class="ga-trio">' + gaRank("De onde vêm", "sessões por canal", per.canais, function (n) { return GA_CANAL[n] || n; }, per.atual && per.atual.sessions) + gaRank("Páginas mais vistas", "visualizações", per.paginas, null, per.atual && per.atual.screenPageViews) + gaRank("Cidades", "usuários", per.cidades) + "</div>";
+      } else if (!gaF.err) body += '<div class="empty">Carregando os últimos ' + gaF.dias + " dias do GA4…</div>";
+    }
+    el.innerHTML = head + body;
+    $$("[data-insec]", el).forEach(function (b) { b.onclick = function () { indF.sec = b.dataset.insec; LS.set("indSec", indF.sec); renderIndicadores(); }; });
+    $$("[data-gadias]", el).forEach(function (b) { b.onclick = function () { gaF.dias = +b.dataset.gadias; LS.set("gaDias", gaF.dias); renderIndicadores(); gaLoad("periodo"); }; });
+    $$("[data-gaserie]", el).forEach(function (b) { b.onclick = function () { gaF.serie = b.dataset.gaserie; renderIndicadores(); }; });
+    if ($("#gaAtualizar")) $("#gaAtualizar").onclick = function () { gaLoad("agora", true); gaLoad("periodo", true); toast("Atualizando…"); };
+    if ($("#gaRetry")) $("#gaRetry").onclick = function () { gaF.err = null; gaLoad("agora", true); gaLoad("periodo", true); };
+    if ($("#gaRegras")) $("#gaRegras").onclick = gaRegrasModal;
+    if ($("#gaCopiar")) $("#gaCopiar").onclick = function () {
+      var t = gaResumoTexto(per, gaResumo(per));
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast("Resumo copiado"); }, function () { toast("Não deu para copiar"); });
+    };
+    gaPoll();
+    if (!gaF.agora || Date.now() - gaF.agora._t > 30000) gaLoad("agora");
+    gaLoad("periodo");
   }
 
   function indBind(el) {
