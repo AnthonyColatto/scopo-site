@@ -90,6 +90,10 @@ details.grp[open]{padding-bottom:10px}
 .inst-city{border:1px solid var(--ui-line);border-radius:7px;padding:8px;margin:0 12px 6px;display:grid;gap:5px}
 .inst-city .fld,.inst-city .row2,.inst-city .chk,.inst-city .acts{padding-left:0;padding-right:0}
 .inst-row{display:flex;gap:4px;align-items:center}
+.api-list{border:1px solid var(--ui-line);border-radius:7px;max-height:180px;overflow:auto;padding:4px 8px}
+.api-row{display:grid;grid-template-columns:minmax(70px,auto) 1fr;gap:8px;font-size:11.5px;padding:3px 0;border-bottom:1px solid var(--ui-line)}
+.api-row:last-child{border-bottom:0}
+.api-row b{font-family:var(--f-mono);font-weight:500}
 .impo-map{border:1px solid var(--ui-line);border-radius:7px;padding:8px;max-height:170px;overflow:auto}
 .impo-grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:2px 12px;font-size:11.5px;font-family:var(--f-mono)}
 .impo-grid b{color:var(--ui-mute);font-weight:500;font-family:inherit}
@@ -291,6 +295,7 @@ pre.code-blk{background:var(--ui-bg);border:1px solid var(--ui-line);border-radi
     <div class="sep"></div>
     <button class="btn tb-only" id="b-import" title="Importar planilha (.xlsx / .csv)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>Planilha</button>
     <button class="btn tb-only" id="b-imgs" title="Carregar imagens em lote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="m21 17-5-5-8 7"/></svg>Imagens em lote</button>
+    <button class="btn tb-only" id="b-api" title="Puxar a foto de cada produto pelo código no sistema da Soldamaq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0 1 14.9-4M20 10a8 8 0 0 1-14.9 4"/><path d="M19 4v6h-6M5 20v-6h6"/></svg>Fotos do sistema</button>
     <div class="sep"></div>
     <button class="btn ghost tb-only" id="b-addprod" title="Novo produto no primeiro bloco livre">+ Produto</button>
     <button class="btn ghost tb-only" id="b-addshape" title="Bloco de cor (shape) na grade">+ Bloco</button>
@@ -1114,6 +1119,7 @@ function inspProduct(box,it,pi){
     el('div',{class:'acts'},
       imgPick(id=>{it.img=id; changed({insp:true});},'Foto do produto'),
       it.img?el('button',{class:'btn sm',onclick:async()=>{ it.img=await reprocess(it.img); changed({insp:true}); toast('Fundo removido e recortado'); }},'Remover fundo'):null,
+      apiCodes(it).length?el('button',{class:'btn sm',title:'Busca a foto pelo código no sistema da Soldamaq',onclick:()=>apiOne(it)},'Puxar do sistema'):null,
       imgPick(id=>{it.logo=id; changed({insp:true});},'Logo fornecedor',false),
       it.logo?el('button',{class:'btn sm ghost',onclick:()=>{it.logo=null; changed({insp:true});}},'Tirar logo'):null),
     (()=>{ const b=blockMM(it,pi); const fw = it.variants.length? b.w*0.45 : (b.h>b.w*1.05? b.w : b.w*0.42), fh = it.variants.length? b.h*0.45 : (b.h>b.w*1.05? b.h*0.45 : b.h); return spec('Formatos recomendados', `Foto: PNG com fundo transparente (ou JPG em fundo branco), no mínimo 1500 px no lado maior. Área da foto neste bloco ≈ ${dims(fw,fh)}. Nome do arquivo = código (${(it.code||'34543').split('/')[0].trim()}.png). Logo: PNG transparente ou SVG, 600 px de largura, arquivo com o nome da marca${it.brand?` (${it.brand}.png)`:''}.`); })(),
@@ -1377,6 +1383,7 @@ function pickOne(cb){ const f=$('#f-one'); f.value=''; f.onchange=()=>{ if(f.fil
 
 // Lote: casa pelo código no nome do arquivo (ex.: 34543.png, 34543_serra.jpg) ou pela descrição
 $('#b-imgs').onclick=()=>openBatch();
+$('#b-api').onclick=()=>openApiImgs();
 function openBatch(){
   const rmC=el('input',{type:'checkbox',id:'f-rm',checked:true});
   const m=modal('Imagens em lote', el('div',{},
@@ -1401,6 +1408,101 @@ async function runBatch(files, rm){
   }
   t.remove(); changed({tray:true,insp:true,now:true});
   toast(`<b>${hit}</b> foto(s) aplicada(s) nos produtos · <b>${lib}</b> na biblioteca`);
+}
+
+/* =====================================================================
+   FOTOS DO SISTEMA (Sankhya) · puxa a foto de cada produto pelo código
+   No FLUXO o pedido passa pelo próprio site (/sankhya-img/, regra do _redirects no Netlify):
+   a imagem chega sem bloqueio de CORS e sai igual na exportação. Fora dele tenta o link direto.
+   ===================================================================== */
+const API_IMG_URL='https://apisankhya.soldamaq.com.br/api/v1/img/{codigo}.png';
+function apiCodes(it){ const cs=String(it.code||'').match(/\d{2,}/g)||[]; (it.variants||[]).forEach(v=>{ const m=String(v.code||'').match(/\d{2,}/); if(m) cs.push(m[0]); }); return [...new Set(cs)]; }
+function apiURLs(code){
+  const tpl=(P.apiImg&&P.apiImg.url)||API_IMG_URL, c=encodeURIComponent(code), out=[];
+  if(tpl===API_IMG_URL && /^https?:$/.test(location.protocol)) out.push(`/sankhya-img/${c}.png`);
+  out.push(tpl.split('{codigo}').join(c));
+  return out;
+}
+// {url} achou · {miss} o sistema não tem foto desse código · {err} não conseguiu acessar
+async function apiFetch(code){
+  const us=apiURLs(code);
+  for(let k=0;k<us.length;k++){
+    const last=k===us.length-1;
+    try{
+      const r=await fetch(us[k],{mode:'cors',cache:'no-store'});
+      const ct=r.headers.get('content-type')||'';
+      if(r.ok && ct.startsWith('image/')){ const b=await r.blob(); if(b.size<200) return {miss:true}; return {url:await readURL(b)}; }
+      // resposta que não é a página de erro do próprio site (HTML) vale como resposta da API
+      if(last || (r.status===404 && !ct.includes('text/html'))) return r.status===404||r.ok ? {miss:true} : {err:true, status:r.status};
+    }catch(e){ if(last) return {err:true}; }
+  }
+  return {err:true};
+}
+function apiTargets(scope, onlyEmpty){
+  const pis = scope==='atual' ? SPREADS[ui.spread] : P.pages.map((_,i)=>i);
+  const all=[]; pis.forEach(pi=>P.pages[pi].items.forEach(it=>it.type==='product'&&all.push(it)));
+  if(scope!=='atual') P.tray.forEach(it=>it.type!=='shape'&&all.push(it));
+  return all.filter(it=>apiCodes(it).length && (!onlyEmpty || !asset(it.img)));
+}
+async function runApiImgs({scope, onlyEmpty, rm}, onStep){
+  const items=apiTargets(scope, onlyEmpty), cache=new Map(), res=[];
+  const get=code=>{ if(!cache.has(code)) cache.set(code, apiFetch(code)); return cache.get(code); };
+  let i=0, done=0;
+  const worker=async()=>{ while(i<items.length){ const it=items[i++]; let r={miss:true}, used=null;
+    for(const c of apiCodes(it)){ r=await get(c); used=c; if(r.url||r.err) break; }
+    res.push({it, code:used, r}); onStep&&onStep(++done, items.length); } };
+  await Promise.all(Array.from({length:Math.min(4,items.length)},worker));
+  // imagem repetida em 3+ códigos diferentes = foto padrão "sem imagem" do sistema
+  const seen=new Map(); res.forEach(x=>{ if(x.r.url){ const k=x.r.url.length+':'+x.r.url.slice(64,160); (seen.get(k)||seen.set(k,new Set()).get(k)).add(x.code); x.k=k; } });
+  const ids=new Map(); let hit=0; const miss=[], err=[];
+  for(const x of res){
+    if(x.r.url && seen.get(x.k).size<3){
+      if(!ids.has(x.code)) ids.set(x.code, addAsset(rm? await removeBg(x.r.url) : x.r.url));
+      x.it.img=ids.get(x.code); hit++;
+    } else if(x.r.err) err.push(x); else miss.push(x);
+  }
+  if(hit) changed({tray:true,insp:true,now:true});
+  return {total:items.length, hit, miss, err};
+}
+function apiReport(r){
+  const line=x=>el('div',{class:'api-row'}, el('b',{},apiCodes(x.it).join(' / ')||'—'), el('span',{},x.it.desc||'(sem descrição)'));
+  return el('div',{},
+    el('p',{style:{margin:'0 0 8px'}}, el('b',{},String(r.hit)), ` de ${r.total} produto(s) receberam a foto do sistema.`),
+    r.miss.length?el('div',{}, el('p',{class:'fine',style:{margin:'8px 0 4px'}},`${r.miss.length} sem foto no sistema (o código não tem imagem cadastrada):`), el('div',{class:'api-list'}, ...r.miss.map(line))):null,
+    r.err.length?el('div',{}, el('p',{class:'fine',style:{margin:'8px 0 4px',color:'var(--ui-warn)'}},`${r.err.length} não consegui buscar. Se for todos, o navegador não alcançou a API: no FLUXO publicado ela passa pelo próprio site; fora dele a API precisa liberar o acesso (CORS) ou a rede precisa enxergar o servidor da Soldamaq.`), el('div',{class:'api-list'}, ...r.err.map(line))):null);
+}
+function openApiImgs(){
+  P.apiImg=P.apiImg||{url:API_IMG_URL};
+  const st={scope:'todas', onlyEmpty:true, rm:true};
+  const info=el('p',{class:'fine',style:{margin:'6px 0 0'}});
+  const count=()=>{ const a=apiTargets(st.scope,false), b=apiTargets(st.scope,st.onlyEmpty); info.textContent=`${a.length} produto(s) com código nesta seleção · ${b.length} vão ser buscados.`; };
+  const sc=el('select',{class:'inp'},el('option',{value:'todas'},`Todas as ${P.pages.length} lâminas e a bandeja`),el('option',{value:'atual'},'Só a prancheta aberta')); sc.onchange=()=>{ st.scope=sc.value; count(); };
+  const oe=el('input',{type:'checkbox',checked:true}); oe.onchange=()=>{ st.onlyEmpty=oe.checked; count(); };
+  const rm=el('input',{type:'checkbox',checked:true}); rm.onchange=()=>{ st.rm=rm.checked; };
+  const url=el('input',{class:'inp',value:P.apiImg.url}); url.oninput=()=>{ P.apiImg.url=url.value.trim()||API_IMG_URL; };
+  const prog=el('div',{class:'prog'},el('i')), out=el('div',{style:{marginTop:'10px'}});
+  const go=el('button',{class:'btn pri',onclick:async()=>{
+    if(!/\{codigo\}/.test(P.apiImg.url)) return toast('O link precisa ter {codigo} no lugar do código do produto.');
+    go.disabled=true; out.innerHTML=''; out.append(el('p',{class:'fine'},'Buscando…'));
+    try{ const r=await runApiImgs(st,(d,t)=>{ prog.firstChild.style.width=(d/t*100)+'%'; out.firstChild.textContent=`Buscando ${d}/${t}…`; });
+      out.innerHTML=''; out.append(apiReport(r)); count(); }
+    catch(e){ console.error(e); out.innerHTML=''; out.append(el('p',{class:'fine'},'A busca falhou. Tente de novo.')); }
+    go.disabled=false; }},'Buscar fotos');
+  modal('Fotos do sistema', el('div',{},
+    el('p',{class:'fine',style:{marginTop:0}},'Busca a foto de cada produto no sistema da Soldamaq pelo código (CÓD.) que está no tabloide. Produto com mais de um código tenta um por um até achar.'),
+    (()=>{ const f=F('Onde buscar', sc); f.style.padding='0'; return f; })(),
+    el('label',{class:'chk',style:{padding:'8px 0 0'}},oe,'Só produtos sem foto (não troca as que você já colocou)'),
+    el('label',{class:'chk',style:{padding:'4px 0'}},rm,'Remover fundo e recortar automaticamente'),
+    (()=>{ const f=F('Link da API ({codigo} vira o código)', url); f.style.padding='0'; return f; })(),
+    info, el('div',{class:'acts',style:{padding:'12px 0 6px'}}, go), prog, out));
+  count();
+}
+async function apiOne(it){
+  const t=toast('Buscando no sistema…',0); const codes=apiCodes(it); let r={miss:true};
+  for(const c of codes){ r=await apiFetch(c); if(r.url||r.err) break; }
+  t.remove();
+  if(r.url){ it.img=addAsset(await removeBg(r.url)); changed({insp:true,now:true}); toast('Foto do sistema aplicada'); }
+  else toast(r.err?'Não consegui acessar o sistema da Soldamaq daqui.':`O sistema não tem foto para o código ${codes.join(' / ')}.`);
 }
 
 /* =====================================================================
