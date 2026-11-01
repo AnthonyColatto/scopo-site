@@ -4144,7 +4144,7 @@
     }
     if (tem) indF.auto = true;
     var head = '<div class="view-head"><div><div class="eyebrow">Indicadores</div><h2>' + esc(sec.nome) + '</h2><p class="muted">Lance os números do mês, defina as metas e acompanhe o grupo e cada ' + (sk === "trafego" ? "conta" : "loja") + " contra a meta e contra os meses anteriores.</p></div>" +
-      '<div class="row"><button class="btn ghost small" id="inMetas">Metas</button><button class="btn ghost small" id="inPdf">Resumo em PDF</button><button class="btn" id="inLancar">Lançar dados do mês <span class="arrow">→</span></button></div></div>' +
+      '<div class="row"><button class="btn ghost small" id="inMetas">Metas</button><button class="btn ghost small" id="inPdf">PDF de apresentação</button><button class="btn" id="inLancar">Lançar dados do mês <span class="arrow">→</span></button></div></div>' +
       '<div class="ind-bar">' + segHTML +
       '<div class="ind-mes"><button class="btn ghost small" data-inmes="-1" aria-label="Mês anterior">‹</button><b>' + esc(mesLabel(ym).replace(/^./, function (c) { return c.toUpperCase(); })) + '</b><button class="btn ghost small" data-inmes="1" aria-label="Próximo mês">›</button><input type="month" id="inMesPick" value="' + ym + '" aria-label="Escolher mês"></div></div>';
     if (!linhas.length) {
@@ -4464,7 +4464,7 @@
   function renderIndSite(el, segHTML) {
     var per = gaF.per[gaF.dias], nome = (per && per.site) || (gaF.agora && gaF.agora.site) || "";
     var head = '<div class="view-head"><div><div class="eyebrow">Indicadores</div><h2>Site' + (nome ? ' · <span class="hl">' + esc(nome) + "</span>" : "") + '</h2><p class="muted">Dados do Google Analytics. O bloco <b>Agora no site</b> se atualiza sozinho a cada 30 segundos; o resto, a cada 10 minutos.</p></div>' +
-      '<div class="row"><div class="seg" role="group" aria-label="Período">' + [7, 28, 90].map(function (n) { return '<button data-gadias="' + n + '" aria-pressed="' + (gaF.dias === n) + '">' + n + " dias</button>"; }).join("") + '</div><button class="btn ghost small" id="gaAtualizar">Atualizar</button></div></div>' +
+      '<div class="row"><div class="seg" role="group" aria-label="Período">' + [7, 28, 90].map(function (n) { return '<button data-gadias="' + n + '" aria-pressed="' + (gaF.dias === n) + '">' + n + " dias</button>"; }).join("") + '</div><button class="btn ghost small" id="gaAtualizar">Atualizar</button>' + (per ? '<button class="btn small" id="gaPdf">PDF de apresentação</button>' : "") + '</div></div>' +
       '<div class="ind-bar">' + segHTML + '<span class="ga-stamp" id="gaStamp">' + gaStamp() + "</span></div>";
     var body;
     if (gaF.err && (gaF.err.erro === "config" || gaF.err.erro === "acesso" || gaF.err.erro === "modo")) body = gaErroHTML(gaF.err);
@@ -4483,6 +4483,7 @@
     if ($("#gaAtualizar")) $("#gaAtualizar").onclick = function () { gaLoad("agora", true); gaLoad("periodo", true); toast("Atualizando…"); };
     if ($("#gaRetry")) $("#gaRetry").onclick = function () { gaF.err = null; gaLoad("agora", true); gaLoad("periodo", true); };
     if ($("#gaRegras")) $("#gaRegras").onclick = gaRegrasModal;
+    if ($("#gaPdf")) $("#gaPdf").onclick = function () { gaApres(per); };
     if ($("#gaCopiar")) $("#gaCopiar").onclick = function () {
       var t = gaResumoTexto(per, gaResumo(per));
       (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast("Resumo copiado"); }, function () { toast("Não deu para copiar"); });
@@ -4500,7 +4501,7 @@
      contra o período anterior, evolução diária e os blocos próprios do canal.
      Os limites do resumo ficam no documento "cn-regras-<seção>" (Regras do resumo).
      ================================================================ */
-  var CN_ORDEM = ["insta", "metaads", "gads"];
+  var CN_ORDEM = ["insta", "metaads", "gads", "gbp"];
   var cnDiv = function (a, b) { return a != null && b ? a / b : null; };
   var CN_DIA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
   var CN_TIPO = { REELS: "Reels", CARROSSEL: "Carrossel", FOTO: "Foto", VIDEO: "Vídeo" };
@@ -4661,6 +4662,82 @@
         var ruins = (per.termos || []).filter(function (t) { return !t.conversoes && t.custo >= (R._termoCusto || 30); });
         if (ruins.length) add({ st: "warn", peso: 2, tema: "Termos sem conversão", txt: ruins.length + (ruins.length === 1 ? " termo de pesquisa gastou " : " termos de pesquisa gastaram ") + cnFmt(ruins.reduce(function (t, x) { return t + x.custo; }, 0), "brl") + " sem converter, como " + ruins.slice(0, 3).map(function (t) { return "“" + t.termo + "”"; }).join(", ") + ".", acao: "Adicione como palavra-chave negativa os termos que não têm a ver com o negócio e crie anúncios próprios para os que têm." });
       }
+    },
+    gbp: {
+      nome: "Perfil no Google", api: "/api/gbp?parte=dados", contas: "/api/gbp?parte=contas", lista: "locais",
+      desc: "O perfil da loja na Busca e no Maps: quantas vezes apareceu, o que as pessoas fizeram (rota, ligação, site), o que pesquisaram e como estão as avaliações.",
+      met: [
+        { k: "visualizacoes", l: "Visualizações do perfil", f: "int", dir: "up", pl: true, serie: "visualizacoes", hint: "vezes que o perfil apareceu na Busca e no Maps" },
+        { k: "acoes", l: "Ações de clientes", f: "int", dir: "up", pl: true, serie: "acoes", hint: "pedidos de rota, ligações, cliques no site, conversas e reservas" },
+        { k: "taxaAcao", l: "Taxa de ação", f: "pct", dir: "up", calc: function (g) { var v = cnDiv(g.acoes, g.visualizacoes); return v == null ? null : v * 100; }, hint: "ações ÷ visualizações" },
+        { k: "rotas", l: "Pedidos de rota", f: "int", dir: "up", pl: true, serie: "rotas", hint: "gente pedindo o caminho até a loja" },
+        { k: "ligacoes", l: "Ligações", f: "int", dir: "up", pl: true, serie: "ligacoes" },
+        { k: "site", l: "Cliques no site", f: "int", dir: "up", pl: true, serie: "site" },
+        { k: "conversas", l: "Conversas", f: "int", dir: "up", pl: true, so: function (per) { return per.atual.conversas > 0 || per.anterior.conversas > 0; } },
+        { k: "novasAval", l: "Avaliações novas", f: "int", dir: "up", pl: true, so: function (per) { return per.atual.novasAval != null; } },
+        { k: "notaPeriodo", l: "Nota das novas avaliações", f: "dec", dir: "up", so: function (per) { return per.atual.novasAval > 0; }, hint: "média de estrelas das avaliações recebidas no período" }
+      ],
+      series: [{ k: "visualizacoes", l: "Visualizações", f: "int" }, { k: "acoes", l: "Ações", f: "int" }, { k: "rotas", l: "Rotas", f: "int" }, { k: "ligacoes", l: "Ligações", f: "int" }, { k: "site", l: "Site", f: "int" }],
+      regras: { visualizacoes: { piora: 20, melhora: 15 }, acoes: { piora: 20, melhora: 15 }, taxaAcao: { piora: 1, melhora: 1 }, rotas: { piora: 25, melhora: 20 }, ligacoes: { piora: 25, melhora: 20 }, site: { piora: 25, melhora: 20 }, conversas: { piora: 30, melhora: 25 }, novasAval: { piora: 40, melhora: 30 }, notaPeriodo: { lim: 4.5 } },
+      extras: [{ k: "_avalMes", l: "Avaliações por mês", sub: "abaixo disso, alerta de ritmo", v: 8 }, { k: "_notaGeral", l: "Nota geral mínima", sub: "média de todas as avaliações do perfil", v: 4.5 }, { k: "_semResp", l: "Avaliações sem resposta", sub: "a partir de quantas vira alerta", v: 1 }],
+      acao: {
+        visualizacoes: "Publique no perfil toda semana (oferta, novidade, foto real da loja), suba fotos novas e confira se categorias, produtos e horário estão completos. Perfil movimentado aparece mais.",
+        acoes: "Encurte o caminho: telefone e WhatsApp certos, link do site levando para a página certa, horário atualizado (feriados também) e posts com chamada direta (venha, ligue, chame no WhatsApp).",
+        taxaAcao: "Muita gente vê e pouca age: troque a foto de capa e as primeiras fotos por imagens fortes da loja e dos produtos, responda as avaliações e publique uma oferta com chamada clara.",
+        rotas: "Confira se o pino no mapa e o endereço estão exatos e se o horário está certo, e publique fotos da fachada e do estacionamento para quem vem pela primeira vez.",
+        ligacoes: "Confira o telefone do perfil e se alguém atende no horário divulgado. Se a loja responde mais pelo WhatsApp, deixe esse número como principal.",
+        site: "Aponte o link do perfil para a página mais útil (ofertas, produtos ou WhatsApp) e coloque o link também nos posts.",
+        conversas: "Responda as mensagens do perfil rápido: o Google mostra o tempo de resposta e esconde o botão de quem demora.",
+        novasAval: "Peça avaliação no caixa e no pós-venda: QR code no balcão e na nota, e mensagem no WhatsApp depois da compra com o link direto de avaliação (botão no topo desta tela).",
+        notaPeriodo: "Responda cada avaliação negativa em até 24h com nome, desculpa e solução, e leve o problema citado para a equipe resolver na loja."
+      },
+      titulo: function (per) { return per.perfil ? per.perfil.nome : ""; },
+      diag: function (per, R, add) {
+        var av = per.avaliacoes || {}, A = per.atual;
+        if (!av.erro && av.lidas) {
+          if (av.semResposta >= (R._semResp || 1)) add({ st: av.semRespostaRuins ? "late" : "warn", peso: av.semRespostaRuins ? 4 : 3, tema: "Avaliações sem resposta", txt: av.semResposta + (av.semResposta === 1 ? " das " : " das ") + av.lidas + " avaliações mais recentes " + (av.semResposta === 1 ? "está" : "estão") + " sem resposta" + (av.semRespostaRuins ? ", " + av.semRespostaRuins + " delas com 3 estrelas ou menos" : "") + ".", acao: "Responda todas as avaliações, começando pelas negativas: agradeça pelo nome, cite o produto ou o atendimento e, nas negativas, ofereça um contato direto para resolver. O Google favorece perfis que respondem." });
+          if (av.media != null && av.media < (R._notaGeral || 4.5)) add({ st: "warn", peso: 3, tema: "Nota geral", txt: "A nota geral do perfil é " + cnFmt(av.media, "dec") + " em " + cnFmt(av.total, "int") + " avaliações, abaixo do mínimo de " + cnFmt(R._notaGeral || 4.5, "dec") + ". No Maps, a nota é o primeiro critério que o cliente compara.", acao: CN.gbp.acao.novasAval });
+          else if (av.media >= 4.7 && av.total >= 50) add({ st: "ok", peso: 1, tema: "Reputação", txt: "Nota " + cnFmt(av.media, "dec") + " em " + cnFmt(av.total, "int") + " avaliações: reputação forte para disputar o Maps." });
+          var porMes = A.novasAval != null ? A.novasAval / per.dias * 30 : null;
+          if (porMes != null && porMes < (R._avalMes || 8)) add({ st: "idea", peso: 2, tema: "Ritmo de avaliações", txt: "Entraram " + A.novasAval + (A.novasAval === 1 ? " avaliação" : " avaliações") + " em " + per.dias + " dias, perto de " + cnFmt(porMes, "dec") + " por mês. Avaliação recente pesa no ranking do Maps.", acao: CN.gbp.acao.novasAval });
+        }
+        // de onde vêm as buscas: nome da loja (marca) ou termos genéricos (descoberta)
+        var tm = cnGbpTermos(per), tot = tm.marca + tm.desc;
+        if (tot >= 50) {
+          var pd = tm.desc / tot * 100, ex = tm.lista.filter(function (t) { return !t.marca; }).slice(0, 3).map(function (t) { return "“" + t.termo + "”"; }).join(", ");
+          if (pd < 40) add({ st: "idea", peso: 2, tema: "Clientes novos pela busca", txt: "Só " + cnFmt(pd, "pct0") + " das buscas que mostraram o perfil foram por termos genéricos" + (ex ? ", como " + ex : "") + ". O resto já procurava a loja pelo nome.", acao: "Complete o perfil com categorias secundárias, produtos e serviços usando as palavras que o cliente digita (veja a lista de termos) e repita esses termos nos posts semanais." });
+          else add({ st: "ok", peso: 1, tema: "Clientes novos pela busca", txt: cnFmt(pd, "pct0") + " das buscas vieram de termos genéricos" + (ex ? ", como " + ex : "") + ": o perfil está trazendo gente que ainda não conhecia a loja." });
+          var alta = tm.lista.filter(function (t) { return !t.marca && t.v >= 30 && t.antes > 0 && (t.v / t.antes - 1) * 100 >= 50; }).sort(function (a, b) { return b.v / b.antes - a.v / a.antes; })[0];
+          if (alta) add({ st: "idea", peso: 2, tema: "Busca em alta", txt: "“" + alta.termo + "” cresceu " + cnFmt((alta.v / alta.antes - 1) * 100, "pct0") + " (" + cnFmt(alta.antes, "int") + " → " + cnFmt(alta.v, "int") + " buscas por mês).", acao: "Aproveite a procura: post e oferta sobre “" + alta.termo + "” no perfil e no Instagram, e confira se o produto está no catálogo do perfil." });
+        }
+        // dia da semana com mais ações
+        var d = per.diario || [];
+        if (d.length >= 28 && A.acoes >= 60) {
+          var sem = [0, 0, 0, 0, 0, 0, 0], n = [0, 0, 0, 0, 0, 0, 0];
+          d.forEach(function (x) { var w = new Date(+x.data.slice(0, 4), +x.data.slice(4, 6) - 1, +x.data.slice(6, 8)).getDay(); sem[w] += x.acoes; n[w]++; });
+          var med = sem.reduce(function (t, v) { return t + v; }, 0) / d.length, top = 0;
+          sem.forEach(function (v, i) { if (n[i] && v / n[i] > sem[top] / (n[top] || 1)) top = i; });
+          var g = med ? (sem[top] / n[top] / med - 1) * 100 : 0;
+          if (g >= 30) add({ st: "idea", peso: 1, tema: "Dia de mais movimento", txt: cnCap(CN_DIA[top]) + " é o dia em que o perfil gera mais ações: " + Math.round(g) + "% acima da média do período.", acao: "Publique a oferta da semana no perfil na véspera (" + CN_DIA[(top + 6) % 7] + ") e reforce a equipe e o atendimento do telefone e do WhatsApp na " + CN_DIA[top] + "." });
+        }
+        // todas as unidades: compara as lojas entre si
+        var us = (per.unidades || []).filter(function (u) { return !u.erro; });
+        if (us.length >= 2) {
+          us.forEach(function (u) {
+            var q = cnVarN(u.acoes, u.acoesAnt);
+            if (q != null && q <= -25 && u.acoesAnt >= 30) add({ st: q <= -40 ? "late" : "warn", peso: 3, tema: "Unidade em queda", txt: u.nome + " teve " + cnFmt(-q, "pct0") + " menos ações de clientes (" + cnFmt(u.acoesAnt, "int") + " → " + cnFmt(u.acoes, "int") + ").", acao: "Revise o perfil de " + u.nome + ": horário (inclusive feriados), telefone, fotos recentes e avaliações sem resposta. Publique uma oferta só dessa loja nesta semana." });
+            if (u.nota != null && u.avaliacoes >= 10 && u.nota < (R._notaGeral || 4.5)) add({ st: "warn", peso: 2, tema: "Nota da unidade", txt: u.nome + " está com nota " + cnFmt(u.nota, "dec") + " (" + cnFmt(u.avaliacoes, "int") + " avaliações), abaixo do mínimo de " + cnFmt(R._notaGeral || 4.5, "dec") + ".", acao: "Leia as últimas avaliações de " + u.nome + ", identifique a reclamação que mais se repete e combine com o gerente da loja uma correção visível em 15 dias. Depois peça avaliações aos clientes satisfeitos." });
+          });
+          var sr = us.filter(function (u) { return u.semResposta; }).sort(function (a, b) { return b.semResposta - a.semResposta; })[0];
+          if (sr && us.length > 1 && sr.semResposta >= 3) add({ st: "warn", peso: 2, tema: "Respostas por unidade", txt: sr.nome + " concentra " + sr.semResposta + " avaliações sem resposta.", acao: "Defina um responsável por responder as avaliações de cada loja, com prazo de 24h, e confira toda segunda-feira nesta tela." });
+          var tx = us.filter(function (u) { return u.visualizacoes >= 300; }).map(function (u) { return { u: u, t: u.acoes / u.visualizacoes * 100 }; }).sort(function (a, b) { return b.t - a.t; });
+          if (tx.length >= 2 && tx[0].t >= tx[tx.length - 1].t * 1.5) add({ st: "idea", peso: 2, tema: "Perfil modelo", txt: tx[0].u.nome + " converte " + cnFmt(tx[0].t, "pct") + " das visualizações em ações, contra " + cnFmt(tx[tx.length - 1].t, "pct") + " em " + tx[tx.length - 1].u.nome + ".", acao: "Use o perfil de " + tx[0].u.nome + " como modelo: copie para " + tx[tx.length - 1].u.nome + " o padrão de fotos, descrição, produtos e frequência de posts." });
+          var best = us.map(function (u) { return { u: u, q: cnVarN(u.acoes, u.acoesAnt) }; }).filter(function (x) { return x.q != null && x.u.acoesAnt >= 30; }).sort(function (a, b) { return b.q - a.q; })[0];
+          if (best && best.q >= 15) add({ st: "ok", peso: 1, tema: "Unidade em alta", txt: best.u.nome + " cresceu " + cnFmt(best.q, "pct0") + " em ações de clientes (" + cnFmt(best.u.acoesAnt, "int") + " → " + cnFmt(best.u.acoes, "int") + ")." });
+        }
+        var mp = A.visualizacoes ? A.maps / A.visualizacoes * 100 : null;
+        if (mp != null && A.visualizacoes >= 300 && mp < 25) add({ st: "idea", peso: 1, tema: "Presença no Maps", txt: "Só " + cnFmt(mp, "pct0") + " das visualizações vieram do Maps. O Maps é onde se decide para qual loja ir.", acao: "Suba fotos da fachada, interior e produtos, confira a categoria principal e peça avaliações citando o produto comprado: são os sinais que puxam o perfil para o topo do Maps." });
+      }
     }
   };
 
@@ -4809,7 +4886,7 @@
     var plano = pl.length ? '<div class="cn-plano" id="cnPlano"><div class="cn-plano-h"><h4>Plano de ação</h4><span class="muted small">em ordem de prioridade, para os próximos 7 dias</span></div><ol>' + pl.map(function (i) { return '<li class="cn-p-' + i.st + '"><b>' + esc(i.tema) + "</b><p>" + esc(i.acao) + "</p></li>"; }).join("") + "</ol></div>" : "";
     return '<section class="card pad ind-box ga-res cn-res"><div class="ind-box-h"><div><div class="eyebrow">Leitura dos últimos ' + per.dias + " dias · " + esc(CN[sec].titulo(per)) + '</div><h3 class="ga-res-h">' + esc(manchete) + '</h3></div><div class="row"><button class="btn ghost small" id="cnRegras">Regras do resumo</button><button class="btn small" id="cnCopiar">Copiar resumo</button></div></div>' +
       '<div class="ga-res-grid cn-res-grid">' + col("Precisa de atenção", at, "Nada abaixo do limite nem com queda acima do aceitável.") + col("Indo bem", ok, "Nenhuma alta acima do limite de destaque.") + col("Oportunidades", id, "Sem oportunidades claras com os dados deste período.") + "</div>" + plano +
-      '<p class="hint">Comparação com os ' + per.dias + " dias anteriores. Os limites de cada indicador ficam em <b>Regras do resumo</b>." + (per.atual && per.atual.aprox ? " Em 90 dias, alcance e contas engajadas são somados em blocos de 30 dias (a mesma pessoa pode contar mais de uma vez)." : "") + "</p></section>";
+      '<p class="hint">Comparação com os ' + per.dias + " dias anteriores. Os limites de cada indicador ficam em <b>Regras do resumo</b>." + (per.atual && per.atual.aprox ? " Em 90 dias, alcance e contas engajadas são somados em blocos de 30 dias (a mesma pessoa pode contar mais de uma vez)." : "") + (per.atraso ? " O Google entrega estes dados com " + per.atraso + " dias de atraso: o período vai até " + per.periodo.ate.split("-").reverse().slice(0, 2).join("/") + "." : "") + "</p></section>";
   }
   function cnRegrasModal(sec) {
     var C = CN[sec], R = cnRegras(sec);
@@ -4945,13 +5022,58 @@
       '</tbody></table></div><p class="hint">Termos marcados gastaram ' + cnFmt(lim, "brl") + " ou mais sem nenhuma conversão: candidatos a palavra-chave negativa.</p></section>" : "";
     return tab + termos;
   }
+
+  /* ---------- Perfil no Google ---------- */
+  function cnGbpTermos(per) {
+    var nome = per.perfil ? per.perfil.nome : "", marca = cnNorm(nome.split(/[\s·\-|]+/).filter(function (w) { return w.length >= 4 && !/^(loja|casa|grupo|ferragem|ferragens|materiais|comercio|comércio)$/i.test(w); })[0] || nome).slice(0, 7);
+    var out = { marca: 0, desc: 0, lista: [] };
+    (per.termos || []).forEach(function (t) {
+      var v = t.v != null ? t.v : t.menosDe ? t.menosDe / 2 : 0, m = !!marca && cnNorm(t.termo).indexOf(marca) >= 0;
+      out[m ? "marca" : "desc"] += v; out.lista.push(Object.assign({}, t, { marca: m }));
+    });
+    return out;
+  }
+  function cnEstrelas(n) { var r = Math.round((n || 0) * 2) / 2, s = ""; for (var i = 1; i <= 5; i++) s += '<i class="' + (r >= i ? "on" : r >= i - 0.5 ? "meia" : "") + '">★</i>'; return '<span class="cn-stars" aria-label="' + cnFmt(n, "dec") + ' de 5">' + s + "</span>"; }
+  function cnGbpPerfil(per) {
+    var p = per.perfil; if (!p) return "";
+    return '<section class="card cn-perfil cn-gbp-perfil"><span class="cn-av cn-pin" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7Zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5Z"/></svg></span>' +
+      '<div class="cn-perfil-n"><b>' + esc(p.nome) + "</b><span>" + esc([p.categoria, p.endereco].filter(Boolean).join(" · ")) + "</span></div>" +
+      '<div class="cn-perfil-s">' + (p.nota != null ? '<div><b>' + cnFmt(p.nota, "dec") + " " + cnEstrelas(p.nota) + "</b><span>nota geral</span></div><div><b>" + cnFmt(p.avaliacoes, "int") + "</b><span>avaliações</span></div>" : "") +
+      '<div class="cn-gbp-links">' + (p.maps ? '<a class="btn ghost small" href="' + esc(p.maps) + '" target="_blank" rel="noopener">Abrir no Maps</a>' : "") + (p.pedirAvaliacao ? '<button class="btn small" id="cnLinkAval" data-link="' + esc(p.pedirAvaliacao) + '">Copiar link de avaliação</button>' : "") + "</div></div></section>";
+  }
+  function cnGbpUnidades(per) {
+    var us = per.unidades || []; if (!us.length) return "";
+    var mx = Math.max.apply(null, us.map(function (u) { return u.acoes || 0; })) || 1;
+    return '<section class="card pad ind-box"><div class="ind-box-h"><h3>Unidade por unidade</h3><span class="muted small">ordenado por ações de clientes · escolha a unidade no seletor Cliente para ver o detalhe</span></div><div class="tbl-wrap"><table class="tbl ind-tbl cn-tbl"><thead><tr><th>Unidade</th><th class="r">Visualizações</th><th class="r">Ações</th><th class="r">Rotas</th><th class="r">Ligações</th><th class="r">Site</th><th class="r">Taxa de ação</th><th class="r">Nota</th><th class="r">Sem resposta</th></tr></thead><tbody>' +
+      us.slice().sort(function (a, b) { return (b.acoes || 0) - (a.acoes || 0); }).map(function (u) {
+        if (u.erro) return "<tr><td><b class=\"cn-cn\">" + esc(u.nome) + '</b><small class="cn-sub c-late">' + esc(u.erro) + '</small></td><td colspan="8"></td></tr>';
+        var q = cnVarN(u.acoes, u.acoesAnt), tx = u.visualizacoes ? u.acoes / u.visualizacoes * 100 : null;
+        return '<tr><td><b class="cn-cn">' + esc(u.nome) + '</b></td><td class="r num">' + cnFmt(u.visualizacoes, "int") + '</td><td class="r num">' + cnFmt(u.acoes, "int") + '<div class="cn-mini"><i style="width:' + Math.max(2, (u.acoes || 0) / mx * 100) + '%"></i></div>' + (q != null ? '<small class="cn-sub ' + (q >= 0 ? "c-ok" : "c-late") + '">' + (q >= 0 ? "▲ " : "▼ ") + cnFmt(Math.abs(q), "pct0") + "</small>" : "") + '</td><td class="r num">' + cnFmt(u.rotas, "int") + '</td><td class="r num">' + cnFmt(u.ligacoes, "int") + '</td><td class="r num">' + cnFmt(u.site, "int") + '</td><td class="r num">' + cnFmt(tx, "pct") + '</td><td class="r num' + (u.nota != null && u.nota < 4.5 ? " c-warn" : "") + '">' + (u.nota != null ? cnFmt(u.nota, "dec") + " ★" : "—") + '<small class="cn-sub">' + cnFmt(u.avaliacoes, "int") + ' aval.</small></td><td class="r num' + (u.semRespostaRuins ? " c-late" : "") + '">' + cnFmt(u.semResposta, "int") + "</td></tr>";
+      }).join("") + "</tbody></table></div></section>";
+  }
+  function cnGbpBlocos(per) {
+    var A = per.atual, v = A.visualizacoes || 0, ac = A.acoes || 0, pc = function (x, t) { return t ? Math.round(x / t * 100) + "%" : ""; };
+    var onde = cnRank("Onde encontraram o perfil", "visualizações no período", [["Busca · celular", A.buscaMobile], ["Busca · computador", A.buscaDesktop], ["Maps · celular", A.mapsMobile], ["Maps · computador", A.mapsDesktop]].map(function (x) { return { nome: x[0], v: x[1] || 0, pc: pc(x[1] || 0, v) }; }).sort(function (a, b) { return b.v - a.v; }).map(function (x, i) { x.on = i === 0; return x; }), "int");
+    var fez = cnRank("O que os clientes fizeram", "ações no período", [["Pedidos de rota", A.rotas], ["Ligações", A.ligacoes], ["Cliques no site", A.site], ["Conversas", A.conversas], ["Reservas", A.reservas]].filter(function (x) { return x[1] > 0 || /rota|Liga|site/.test(x[0]); }).map(function (x) { return { nome: x[0], v: x[1] || 0, pc: pc(x[1] || 0, ac) }; }).sort(function (a, b) { return b.v - a.v; }).map(function (x, i) { x.on = i === 0; return x; }), "int");
+    var av = per.avaliacoes || {}, lid = av.lidas || 0;
+    var notas = av.erro ? '<section class="card pad ind-box"><h3>Avaliações</h3><p class="muted small">' + esc(av.erro) + "</p></section>" : lid ? cnRank("Avaliações por nota", "nas " + lid + " mais recentes", (av.dist || []).map(function (d) { return { nome: d.n + (d.n === 1 ? " estrela" : " estrelas"), v: d.q, on: d.n >= 4, pc: pc(d.q, lid) }; }), "int") : "";
+    var tm = cnGbpTermos(per), tl = tm.lista.slice(0, 15);
+    var termos = tl.length ? '<section class="card pad ind-box"><div class="ind-box-h"><h3>O que pesquisaram para achar o perfil</h3><span class="muted small">' + esc(per.termosMeses || "") + ' · buscas por mês · o Google arredonda termos pequenos</span></div><div class="tbl-wrap"><table class="tbl ind-tbl cn-tbl cn-tbl-curta"><thead><tr><th>Termo</th><th class="r">Buscas</th><th class="r">Mês anterior</th><th>Tipo</th></tr></thead><tbody>' +
+      tl.map(function (t) { var x = t.v != null && t.antes ? cnVarN(t.v, t.antes) : null; return "<tr><td>" + esc(t.termo) + '</td><td class="r num">' + (t.v != null ? cnFmt(t.v, "int") : "menos de " + cnFmt(t.menosDe, "int")) + '</td><td class="r num">' + (t.antes != null ? cnFmt(t.antes, "int") : "—") + (x != null ? '<small class="cn-sub ' + (x >= 0 ? "c-ok" : "c-late") + '">' + (x >= 0 ? "▲ " : "▼ ") + cnFmt(Math.abs(x), "pct0") + "</small>" : "") + "</td><td>" + (t.marca ? '<span class="cn-pill off">nome da loja</span>' : '<span class="cn-pill ok">cliente novo</span>') + "</td></tr>"; }).join("") +
+      '</tbody></table></div><p class="hint"><b>Cliente novo</b> é quem buscou pelo produto ou serviço, sem citar o nome da loja. É o termo que mostra o quanto o perfil traz gente que ainda não conhecia.</p></section>' : "";
+    var ult = (av.ultimas || []);
+    var revs = ult.length ? '<section class="card pad ind-box"><div class="ind-box-h"><h3>Últimas avaliações</h3><span class="muted small">' + (av.semResposta ? '<span class="c-warn">' + av.semResposta + " sem resposta</span> · " : "") + 'responda pelo <a href="https://business.google.com/reviews" target="_blank" rel="noopener">Perfil da Empresa</a></span></div><div class="cn-revs">' +
+      ult.map(function (r) { return '<article class="cn-rev' + (!r.respondida && r.nota && r.nota <= 3 ? " ruim" : "") + '"><header>' + cnEstrelas(r.nota) + "<b>" + esc(r.autor) + "</b><small>" + (r.data ? esc(cnData(r.data)) : "") + (r.unidade ? " · " + esc(r.unidade) : "") + "</small>" + (r.respondida ? '<span class="cn-pill ok">respondida</span>' : '<span class="cn-pill ' + (r.nota && r.nota <= 3 ? "late" : "warn") + '">sem resposta</span>') + "</header><p>" + (r.texto ? esc(r.texto.length > 260 ? r.texto.slice(0, 257) + "…" : r.texto) : '<span class="muted">Só a nota, sem comentário.</span>') + "</p></article>"; }).join("") + "</div></section>" : "";
+    return cnGbpUnidades(per) + '<div class="ga-trio">' + onde + fez + notas + "</div>" + termos + revs;
+  }
   function cnSetupHTML(sec, e) {
     var passos = {
       insta: ["No <b>Meta Business Suite</b> da agência, crie um <b>Usuário do sistema</b> (Configurações do negócio › Usuários › Usuários do sistema).", "Atribua a ele as <b>Páginas</b> e as <b>contas do Instagram</b> da Alvorada e da Golden, com acesso total ou de visualização.", "Gere o token do usuário do sistema com as permissões <code>instagram_basic</code>, <code>instagram_manage_insights</code>, <code>pages_show_list</code>, <code>pages_read_engagement</code>, <code>ads_read</code> e <code>business_management</code>, sem validade.", "Na Netlify, em Variáveis de ambiente, crie <code>META_TOKEN</code> com esse token (marque como secret) e faça um novo deploy."],
-      gads: ["No Google Cloud (projeto dashboard-alvorada), ative a <b>Google Ads API</b> e, em <b>Google Ads API › Visão geral</b>, peça o nível de acesso <b>Explorer</b>.", "Ainda no Google Cloud, crie um <b>ID do cliente OAuth</b> do tipo App da Web e publique o app na tela de permissão.", "No <b>OAuth Playground</b>, entre com o Google que acessa o MCC e gere o <b>refresh token</b> do escopo <code>adwords</code>.", "Na Netlify, crie <code>GADS_CLIENT_ID</code>, <code>GADS_CLIENT_SECRET</code>, <code>GADS_REFRESH_TOKEN</code> (todos secret) e <code>GADS_LOGIN_CUSTOMER_ID</code> com o ID do MCC. Faça um novo deploy."]
+      gads: ["No Google Cloud (projeto dashboard-alvorada), ative a <b>Google Ads API</b> e, em <b>Google Ads API › Visão geral</b>, peça o nível de acesso <b>Explorer</b>.", "Ainda no Google Cloud, crie um <b>ID do cliente OAuth</b> do tipo App da Web e publique o app na tela de permissão.", "No <b>OAuth Playground</b>, entre com o Google que acessa o MCC e gere o <b>refresh token</b> do escopo <code>adwords</code>.", "Na Netlify, crie <code>GADS_CLIENT_ID</code>, <code>GADS_CLIENT_SECRET</code>, <code>GADS_REFRESH_TOKEN</code> (todos secret) e <code>GADS_LOGIN_CUSTOMER_ID</code> com o ID do MCC. Faça um novo deploy."],
+      gbp: ["No perfil da empresa no Google, adicione o e-mail da SCOPO como <b>administrador</b> (Perfil › Menu › Configurações do perfil › Pessoas e acesso).", "Peça o acesso às APIs do Perfil de Empresa para o projeto <b>scopo-dashboard</b> no formulário do Google e aguarde a aprovação.", "No Google Cloud, ative as APIs <b>My Business Account Management</b>, <b>My Business Business Information</b>, <b>Business Profile Performance</b> e <b>Google My Business</b>.", "No <b>OAuth Playground</b>, com o mesmo cliente do Google Ads, gere o refresh token do escopo <code>business.manage</code> e salve na Netlify como <code>GBP_REFRESH_TOKEN</code> (secret). Faça um novo deploy."]
     };
-    var p = passos[sec === "gads" ? "gads" : "insta"];
-    return '<section class="card pad ga-setup"><div class="eyebrow">Falta um passo</div><h3>Conectar o ' + (sec === "gads" ? "Google Ads" : "Meta (Instagram e anúncios)") + "</h3><ol>" + p.map(function (x) { return "<li>" + x + "</li>"; }).join("") + '</ol><p class="hint" style="margin-top:12px">O passo a passo completo, com cada clique, está no guia que a SCOPO recebeu. ' + (e && e.msg ? esc(e.msg) : "") + "</p></section>";
+    var p = passos[passos[sec] ? sec : "insta"];
+    return '<section class="card pad ga-setup"><div class="eyebrow">Falta um passo</div><h3>Conectar o ' + ({ gads: "Google Ads", gbp: "Perfil de Empresa no Google" }[sec] || "Meta (Instagram e anúncios)") + "</h3><ol>" + p.map(function (x) { return "<li>" + x + "</li>"; }).join("") + '</ol><p class="hint" style="margin-top:12px">O passo a passo completo, com cada clique, está no guia que a SCOPO recebeu. ' + (e && e.msg ? esc(e.msg) : "") + "</p></section>";
   }
   function cnErroHTML(sec, e) {
     if (e.erro === "config") return cnSetupHTML(sec, e);
@@ -4963,16 +5085,16 @@
     var sel = lista && lista.length > 1 ? '<label class="cn-cli"><span>Cliente</span><select id="cnConta" aria-label="Cliente">' + lista.map(function (c) { return '<option value="' + esc(c.id) + '"' + (conta && c.id === conta.id ? " selected" : "") + ">" + esc(c.nome) + "</option>"; }).join("") + "</select></label>" : "";
     var nome = per ? C.titulo(per) : conta ? conta.nome : "";
     var head = '<div class="view-head"><div><div class="eyebrow">Indicadores</div><h2>' + esc(C.nome) + (nome ? ' · <span class="hl">' + esc(nome) + "</span>" : "") + '</h2><p class="muted">' + esc(C.desc) + "</p></div>" +
-      '<div class="row">' + sel + '<div class="seg" role="group" aria-label="Período">' + [7, 28, 90].map(function (n) { return '<button data-cndias="' + n + '" aria-pressed="' + (cnF.dias === n) + '">' + n + " dias</button>"; }).join("") + '</div><button class="btn ghost small" id="cnAtualizar">Atualizar</button></div></div>' +
+      '<div class="row">' + sel + '<div class="seg" role="group" aria-label="Período">' + [7, 28, 90].map(function (n) { return '<button data-cndias="' + n + '" aria-pressed="' + (cnF.dias === n) + '">' + n + " dias</button>"; }).join("") + '</div><button class="btn ghost small" id="cnAtualizar">Atualizar</button>' + (per ? '<button class="btn small" id="cnPdf">PDF de apresentação</button>' : "") + '</div></div>' +
       '<div class="ind-bar">' + segHTML + '<span class="ga-stamp">' + (per ? "Atualizado às " + new Date(per.em).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "") + "</span></div>";
     var body;
     if (e && (e.erro === "config" || e.erro === "acesso" || e.erro === "modo")) body = cnErroHTML(sec, e);
-    else if (lista && !lista.length) body = '<section class="card pad ga-setup"><div class="eyebrow">Nenhuma conta</div><h3>O token não enxerga nenhuma conta de ' + esc(C.nome) + '</h3><p class="muted">Confira se as contas dos clientes foram atribuídas ao usuário que gerou o token' + (sec === "gads" ? " e se estão ligadas à conta de administrador (MCC)." : " (Configurações do negócio › Usuários do sistema › Atribuir ativos).") + "</p></section>";
+    else if (lista && !lista.length) body = '<section class="card pad ga-setup"><div class="eyebrow">Nenhuma conta</div><h3>O token não enxerga nenhuma conta de ' + esc(C.nome) + '</h3><p class="muted">Confira se as contas dos clientes foram atribuídas ao usuário que gerou o token' + (sec === "gads" ? " e se estão ligadas à conta de administrador (MCC)." : sec === "gbp" ? ", como proprietário ou administrador do perfil da empresa." : " (Configurações do negócio › Usuários do sistema › Atribuir ativos).") + "</p></section>";
     else {
       body = (e ? cnErroHTML(sec, e) : "");
       if (per) {
-        body += cnResumoHTML(sec, per) + (sec === "insta" ? cnPerfil(per) : "") + cnCards(sec, per) + cnEvolucao(sec, per) +
-          (sec === "insta" ? cnInstaBlocos(per) : sec === "metaads" ? cnMetaBlocos(per) : cnGadsBlocos(per, cnRegras(sec)));
+        body += cnResumoHTML(sec, per) + (sec === "insta" ? cnPerfil(per) : sec === "gbp" ? cnGbpPerfil(per) : "") + cnCards(sec, per) + cnEvolucao(sec, per) +
+          (sec === "insta" ? cnInstaBlocos(per) : sec === "metaads" ? cnMetaBlocos(per) : sec === "gbp" ? cnGbpBlocos(per) : cnGadsBlocos(per, cnRegras(sec)));
       } else if (!e) body += '<div class="empty">' + (lista ? "Carregando os últimos " + cnF.dias + " dias de " + esc(conta ? conta.nome : C.nome) + "…" : "Buscando as contas conectadas…") + "</div>";
     }
     el.innerHTML = head + body;
@@ -4987,12 +5109,170 @@
     if ($("#cnAtualizar")) $("#cnAtualizar").onclick = function () { cnF.err[sec] = null; if (!lista) cnLoadContas(sec, true); else cnLoad(sec, true); toast("Atualizando…"); };
     if ($("#cnRetry")) $("#cnRetry").onclick = function () { cnF.err[sec] = null; if (!lista) cnLoadContas(sec, true); else cnLoad(sec, true); renderIndicadores(); };
     if ($("#cnRegras")) $("#cnRegras").onclick = function () { cnRegrasModal(sec); };
+    if ($("#cnPdf")) $("#cnPdf").onclick = function () { cnApres(sec, per); };
+    if ($("#cnLinkAval")) $("#cnLinkAval").onclick = function () { var l = this.dataset.link; (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(function () { toast("Link copiado. Mande para o cliente pelo WhatsApp ou vire QR code."); }, function () { window.prompt("Copie o link:", l); }); };
     if ($("#cnCopiar")) $("#cnCopiar").onclick = function () {
       var t = cnResumoTexto(sec, per, cnResumo(sec, per));
       (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast("Resumo copiado"); }, function () { toast("Não deu para copiar"); });
     };
     if (e) return; // depois de um erro, só tenta de novo pelo botão
     if (!lista) cnLoadContas(sec); else cnLoad(sec);
+  }
+
+
+  /* ================================================================
+     PDF DE APRESENTAÇÃO · Site, Instagram, Meta Ads, Google Ads e Perfil no Google
+     Uma página por assunto, em A4 deitado, para mostrar ao cliente:
+     capa · números · evolução · leitura · plano de ação · detalhes do canal.
+     ================================================================ */
+  var APRES_CSS =
+    "@page{size:A4 landscape;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+    "body{margin:0;font-family:'Work Sans',Arial,sans-serif;color:#141414;font-size:12px;line-height:1.45;background:#e9e9e9}" +
+    "h1,h2,h3,.big{font-family:'Poppins',Arial,sans-serif;margin:0}" +
+    ".pg{width:297mm;height:209mm;padding:14mm 16mm 12mm;background:#fff;position:relative;overflow:hidden;display:flex;flex-direction:column;page-break-after:always;break-after:page}" +
+    ".pg:last-child{page-break-after:auto;break-after:auto}" +
+    "@media screen{.pg{margin:18px auto;box-shadow:0 4px 24px rgba(0,0,0,.12)}}" +
+    ".tip{max-width:297mm;margin:16px auto 0;background:#fff8c6;border:1px solid #f0dc50;padding:8px 12px;border-radius:6px;font-size:12px}@media print{.tip{display:none}body{background:#fff}}" +
+    ".hd{display:flex;justify-content:space-between;align-items:baseline;gap:20px;padding-bottom:9px;margin-bottom:18px;border-bottom:1px solid #e5e5e5}" +
+    ".hd .k{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#8a8a8a}.hd h2{font-size:22px;font-weight:800;letter-spacing:-.3px;margin-top:2px}" +
+    ".hd .n{font-family:'Poppins',Arial,sans-serif;font-weight:800;font-size:12px;color:#141414;background:#F5DF00;border-radius:4px;padding:2px 8px}" +
+    ".ft{margin-top:auto;padding-top:10px;display:flex;justify-content:space-between;font-size:9.5px;color:#9a9a9a;letter-spacing:.4px}" +
+    ".cover{background:#0a0a0a;color:#fff;padding:18mm 20mm}.cover .lg{height:30px;align-self:flex-start}" +
+    ".cover .mid{margin-top:auto}.cover .ch{display:inline-block;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#0a0a0a;background:#F5DF00;padding:4px 10px;border-radius:3px}" +
+    ".cover h1{font-size:54px;font-weight:800;line-height:1.02;letter-spacing:-1.5px;margin:16px 0 10px}.cover .per{font-size:16px;color:#cfcfcf}" +
+    ".cover .bar{height:6px;background:#F5DF00;width:120px;margin:28px 0 0}.cover .bt{margin-top:22px;display:flex;justify-content:space-between;align-items:flex-end;color:#9a9a9a;font-size:11px}" +
+    ".cover .bt b{color:#fff;font-weight:600}" +
+    ".manch{font-family:'Poppins',Arial,sans-serif;font-size:19px;font-weight:700;line-height:1.3;margin:0 0 18px;max-width:230mm}.manch em{font-style:normal;background:linear-gradient(transparent 60%,#F5DF00 60%)}" +
+    ".kp{display:grid;grid-template-columns:repeat(var(--c,4),1fr);grid-auto-rows:1fr;gap:14px;flex:1;min-height:0;margin-bottom:6px}" +
+    ".kc{border:1px solid #e6e6e6;border-radius:12px;padding:18px 20px;display:flex;flex-direction:column;gap:6px;position:relative}" +
+    ".kc.ok{border-top:4px solid #1f9d57}.kc.bad{border-top:4px solid #d64545}.kc.neu{border-top:4px solid #d0d0d0}" +
+    ".kc span{font-size:10px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:#7a7a7a}.kc .big{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1;margin-top:auto}" +
+    ".kc .mini{width:100%;height:46px;margin-top:auto;display:block}.kc .mini+.big{margin-top:10px}.kc small{font-size:11.5px;color:#7a7a7a}.kc small b{font-weight:700}.up{color:#11804a}.dn{color:#c03434}" +
+    ".chart{border:1px solid #ececec;border-radius:10px;padding:14px 16px 6px}.chart h3{font-size:13px;font-weight:700;margin-bottom:2px}.chart p{margin:0 0 6px;font-size:10.5px;color:#8a8a8a}" +
+    ".chart svg{width:100%;height:auto;display:block}.chart .g{stroke:#eee}.chart .ax{fill:#9a9a9a;font-size:11px;font-family:'Work Sans',Arial}.chart .ln{fill:none;stroke:#141414;stroke-width:2.6;stroke-linejoin:round}.chart .ar{fill:#F5DF00;opacity:.32}.chart .md{stroke:#141414;stroke-dasharray:5 5;opacity:.45}.chart .pk{font-family:'Poppins',Arial,sans-serif;font-weight:700;font-size:13px;fill:#141414}.chart .dt{fill:#141414}" +
+    ".duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}" +
+    ".cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;flex:1;min-height:0}.col{border-radius:10px;padding:14px 16px;background:#f7f7f7;overflow:hidden}" +
+    ".col h3{font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;display:flex;align-items:center;gap:8px;margin-bottom:10px}.col h3 i{width:10px;height:10px;border-radius:50%;display:inline-block}" +
+    ".col.at h3 i{background:#d64545}.col.ok h3 i{background:#1f9d57}.col.id h3 i{background:#F5DF00;box-shadow:0 0 0 1px #c9b600}" +
+    ".col ul{margin:0;padding:0;list-style:none;display:grid;gap:9px}.col li{font-size:12.5px;line-height:1.45;padding-left:12px;border-left:2px solid #dcdcdc}.col.at li{border-left-color:#e8a3a3}.col.ok li{border-left-color:#9fd6b6}.col.id li{border-left-color:#eadb5a}.col .vz{color:#9a9a9a;font-size:11px}" +
+    ".pl{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:14px 26px;counter-reset:p}" +
+    ".pl li{counter-increment:p;display:grid;grid-template-columns:44px 1fr;column-gap:14px;align-items:start;break-inside:avoid}" +
+    ".pl li::before{content:counter(p);grid-row:span 2;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-family:'Poppins',Arial,sans-serif;font-weight:800;font-size:19px;background:#F5DF00;color:#141414}" +
+    ".pl li.leve::before{background:#fff;box-shadow:inset 0 0 0 2.5px #141414}" +
+    ".pl b{font-family:'Poppins',Arial,sans-serif;font-size:14px;font-weight:700;line-height:1.25;padding-top:3px}.pl p{margin:4px 0 0;font-size:11.5px;line-height:1.5;color:#3a3a3a}" +
+    ".pl .por{display:block;font-size:10.5px;color:#8a8a8a;margin-top:4px}" +
+    "table{width:100%;border-collapse:collapse;font-size:11px}th,td{border-bottom:1px solid #ececec;padding:6px 8px;text-align:left;vertical-align:middle}" +
+    "th{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#7a7a7a;font-weight:600;border-bottom:2px solid #141414}td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}" +
+    ".tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:1px 7px;border-radius:9px;border:1px solid currentColor;margin-left:4px}.tag.ok{color:#11804a}.tag.late{color:#c03434}.tag.warn{color:#9a6a00}.tag.off{color:#8a8a8a}" +
+    ".rk{display:grid;gap:7px}.rk div{display:grid;grid-template-columns:minmax(70px,1.1fr) minmax(40px,1fr) 58px 36px;gap:10px;align-items:center;font-size:11px}.rk .t{height:9px;background:#f0f0f0;border-radius:5px;overflow:hidden}.rk .t i{display:block;height:100%;background:#141414;border-radius:5px}.rk div:first-child .t i{background:#F5DF00}.rk b{text-align:right;font-variant-numeric:tabular-nums}.rk em{font-style:normal;color:#8a8a8a;text-align:right}" +
+    ".box{border:1px solid #ececec;border-radius:10px;padding:13px 15px}.box h3{font-size:13px;font-weight:700;margin-bottom:9px}" +
+    ".grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-content:start}" +
+    ".rv{border:1px solid #ececec;border-radius:8px;padding:9px 11px;font-size:11px;break-inside:avoid}.rv header{display:flex;gap:8px;align-items:center;margin-bottom:4px}.rv header small{color:#8a8a8a;margin-left:auto}.st{color:#e2c800;letter-spacing:1px}.st s{color:#ddd;text-decoration:none}" +
+    ".nota{font-size:10px;color:#8a8a8a;margin-top:8px}";
+
+  function apresMini(v) {
+    if (!v || v.length < 2) return "";
+    var W = 200, H = 46, mn = Math.min.apply(null, v), mx = Math.max.apply(null, v); if (mx === mn) { mx += 1; mn -= 1; }
+    var X = function (i) { return i * W / (v.length - 1); }, Y = function (x) { return 4 + (1 - (x - mn) / (mx - mn)) * (H - 8); };
+    var l = v.map(function (x, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(x).toFixed(1); }).join(" ");
+    return '<svg class="mini" viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none"><path d="' + l + " L" + W + " " + H + " L0 " + H + ' Z" fill="#F5DF00" opacity=".3"/><path d="' + l + '" fill="none" stroke="#141414" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg>';
+  }
+  function apresSvg(pts, f) {
+    if (!pts || pts.length < 2) return '<p style="color:#8a8a8a">Poucos dias com dados para desenhar a evolução.</p>';
+    var vals = pts.map(function (x) { return x.v || 0; }), n = vals.length, W = 1000, H = 290, L = 62, R = 16, T = 26, B = 28;
+    var ticks = indNice(0, Math.max.apply(null, vals) || 1), mn = ticks[0], mx = ticks[ticks.length - 1];
+    var X = function (i) { return L + i * (W - L - R) / (n - 1); }, Y = function (v) { return T + (1 - (v - mn) / (mx - mn)) * (H - T - B); };
+    var fx = f === "brl" ? "brlK" : "k", dia = function (s) { return s.slice(6, 8) + "/" + s.slice(4, 6); };
+    var every = Math.ceil(n / 12), media = vals.reduce(function (t, v) { return t + v; }, 0) / n, iMax = vals.indexOf(Math.max.apply(null, vals));
+    var line = vals.map(function (v, i) { return (i ? "L" : "M") + X(i).toFixed(1) + " " + Y(v).toFixed(1); }).join(" ");
+    return '<svg viewBox="0 0 ' + W + " " + H + '">' + ticks.map(function (t) { return '<line class="g" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(t) + '" y2="' + Y(t) + '"/><text class="ax" x="' + (L - 8) + '" y="' + (Y(t) + 4) + '" text-anchor="end">' + esc(cnFmt(t, fx)) + "</text>"; }).join("") +
+      pts.map(function (x, i) { return i % every && i !== n - 1 ? "" : '<text class="ax" x="' + X(i) + '" y="' + (H - 6) + '" text-anchor="middle">' + dia(x.d) + "</text>"; }).join("") +
+      '<path class="ar" d="' + line + " L" + X(n - 1) + " " + Y(mn) + " L" + X(0) + " " + Y(mn) + ' Z"/><line class="md" x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(media) + '" y2="' + Y(media) + '"/><path class="ln" d="' + line + '"/>' +
+      '<circle class="dt" cx="' + X(iMax) + '" cy="' + Y(vals[iMax]) + '" r="5"/><text class="pk" x="' + Math.min(Math.max(X(iMax), L + 40), W - R - 40) + '" y="' + (Y(vals[iMax]) - 11) + '" text-anchor="middle">pico ' + esc(cnFmt(vals[iMax], f === "int" ? "int" : f)) + "</text></svg>";
+  }
+  function apresAbrir(o) {
+    var w = window.open("", "_blank");
+    if (!w) { toast("O navegador bloqueou a janela. Libere pop-ups para este site."); return; }
+    var logo = new URL("logo.png", location.href).href, total = 0, pgs = [];
+    var hoje = fmt(new Date()) + "/" + new Date().getFullYear();
+    var pg = function (kicker, titulo, corpo) { total++; return { k: kicker, t: titulo, c: corpo }; };
+    pgs.push(pg("Números do período", o.tituloNumeros || "Resumo dos números", '<p class="manch">' + o.manchete + "</p>" + '<div class="kp" style="--c:' + (o.kpis.length <= 4 ? o.kpis.length : o.kpis.length === 6 || o.kpis.length === 9 ? 3 : 4) + '">' + o.kpis.map(function (k) { return '<div class="kc ' + (k.bom === true ? "ok" : k.bom === false ? "bad" : "neu") + '"><span>' + esc(k.l) + "</span>" + apresMini(k.pts) + '<b class="big">' + esc(k.v) + "</b><small>" + (k.d ? '<b class="' + (k.bom === true ? "up" : k.bom === false ? "dn" : "") + '">' + esc(k.d) + "</b> vs " + o.dias + " dias antes" : "sem comparação") + "</small></div>"; }).join("") + "</div>"));
+    if (o.series && o.series.length) pgs.push(pg("Evolução", "Como foi dia a dia", '<div class="chart"><h3>' + esc(o.series[0].l) + ' por dia</h3><p>Linha tracejada: média do período</p>' + apresSvg(o.series[0].pts, o.series[0].f) + "</div>" + (o.series.length > 1 ? '<div class="duo">' + o.series.slice(1, 3).map(function (s) { return '<div class="chart"><h3>' + esc(s.l) + " por dia</h3>" + apresSvg(s.pts, s.f) + "</div>"; }).join("") + "</div>" : "")));
+    var L = o.leitura, li = function (arr, vz) { return arr.length ? "<ul>" + arr.slice(0, 7).map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>" : '<p class="vz">' + vz + "</p>"; };
+    pgs.push(pg("Leitura", "O que os números dizem", '<div class="cols"><div class="col at"><h3><i></i>Precisa de atenção</h3>' + li(L.at, "Nada abaixo do limite nem com queda relevante.") + '</div><div class="col ok"><h3><i></i>Indo bem</h3>' + li(L.ok, "Sem altas acima do limite de destaque.") + '</div><div class="col id"><h3><i></i>Oportunidades</h3>' + li(L.id, "Sem oportunidades claras neste período.") + "</div></div>"));
+    if (o.plano && o.plano.length) pgs.push(pg("Próximos passos", "Plano de ação", '<ol class="pl">' + o.plano.map(function (p) { return '<li class="' + (p.st === "late" ? "" : "leve") + '"><b>' + esc(p.tema) + "</b><p>" + esc(p.acao) + (p.por ? '<span class="por">Por quê: ' + esc(p.por) + "</span>" : "") + "</p></li>"; }).join("") + '</ol><p class="nota" style="margin-top:18px">Em ordem de prioridade, para os próximos 7 dias. Círculo cheio: urgente.</p>'));
+    (o.detalhes || []).forEach(function (d) { pgs.push(pg(d.k || "Detalhes", d.t, d.c)); });
+    var html = '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>' + esc(o.canal + " · " + o.cliente + " · " + o.periodo) + '</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Work+Sans:wght@400;500;600&display=swap"><style>' + APRES_CSS + "</style></head><body>" +
+      '<div class="tip">Na janela de impressão, escolha <b>Salvar como PDF</b>, papel <b>A4</b>, orientação <b>paisagem</b> e marque <b>Gráficos de plano de fundo</b>.</div>' +
+      '<section class="pg cover"><img class="lg" src="' + esc(logo) + '" alt="SCOPO"><div class="mid"><span class="ch">' + esc(o.canal) + "</span><h1>" + esc(o.cliente) + '</h1><div class="per">' + esc(o.periodo) + '</div><div class="bar"></div></div><div class="bt"><span>Relatório de desempenho preparado pela <b>SCOPO Marketing</b></span><span>Gerado em ' + hoje + "</span></div></section>" +
+      pgs.map(function (p, i) { return '<section class="pg"><div class="hd"><div><div class="k">' + esc(p.k) + "</div><h2>" + esc(p.t) + '</h2></div><span class="n">' + String(i + 2).padStart(2, "0") + "</span></div>" + p.c + '<div class="ft"><span>' + esc(o.canal + " · " + o.cliente) + "</span><span>" + esc(o.periodo) + " · SCOPO Marketing</span></div></section>"; }).join("") +
+      "</body></html>";
+    w.document.open(); w.document.write(html); w.document.close();
+    var feito = false, fin = function () { if (!feito) { feito = true; setTimeout(function () { try { w.focus(); w.print(); } catch (e) {} }, 400); } };
+    var pend = 1 + w.document.images.length, um = function () { if (--pend <= 0) setTimeout(fin, 300); };
+    Array.prototype.forEach.call(w.document.images, function (im) { if (im.complete) um(); else im.onload = im.onerror = um; });
+    if (w.document.fonts && w.document.fonts.ready) w.document.fonts.ready.then(um); else um();
+    setTimeout(fin, 4000);
+  }
+  function apresPeriodo(per) {
+    var p = per.periodo, br = function (s) { return s.split("-").reverse().join("/"); };
+    return p && p.de ? br(p.de) + " a " + br(p.ate) : "Últimos " + per.dias + " dias";
+  }
+  function apresRk(titulo, arr, fmtv) {
+    if (!arr.length) return "";
+    var top = Math.max.apply(null, arr.map(function (x) { return x.v; })) || 1, tot = arr.reduce(function (t, x) { return t + x.v; }, 0) || 1;
+    return '<div class="box"><h3>' + esc(titulo) + '</h3><div class="rk">' + arr.map(function (x) { return "<div><span>" + esc(x.nome) + '</span><span class="t"><i style="width:' + Math.max(2, x.v / top * 100) + '%"></i></span><b>' + esc(cnFmt(x.v, fmtv || "int")) + "</b><em>" + (x.pc != null ? x.pc : Math.round(x.v / tot * 100) + "%") + "</em></div>"; }).join("") + "</div></div>";
+  }
+  function apresEst(n) { var r = Math.round(n || 0), s = ""; for (var i = 1; i <= 5; i++) s += i <= r ? "★" : "<s>★</s>"; return '<span class="st">' + s + "</span>"; }
+
+  // canais (Instagram, Meta Ads, Google Ads, Perfil no Google)
+  function cnApres(sec, per) {
+    var C = CN[sec], R = cnRegras(sec), itens = cnResumo(sec, per);
+    var at = itens.filter(function (i) { return i.st === "late" || i.st === "warn"; }), ok = itens.filter(function (i) { return i.st === "ok"; }), id = itens.filter(function (i) { return i.st === "idea"; });
+    var kpis = cnMets(sec, per).filter(function (m) { return m.card !== false; }).slice(0, 8).map(function (m) {
+      var v = cnVal(per, m, "atual"), p = cnVal(per, m, "anterior"), x = cnVar(v, p, m), bom = x && x.n !== 0 && m.dir !== "neutro" ? (m.dir === "down" ? x.n < 0 : x.n > 0) : null;
+      return { l: m.l, v: cnFmt(v, m.f), d: x ? (x.n > 0 ? "▲ " : x.n < 0 ? "▼ " : "= ") + gaVarTxt(x) : "", bom: bom, pts: m.serie ? (per.diario || []).map(function (d) { return d[m.serie] || 0; }) : null };
+    });
+    var man = !itens.length ? "Período estável: todos os indicadores dentro do esperado." : at.length ? "<em>" + (at.length === 1 ? "1 ponto pede atenção" : at.length + " pontos pedem atenção") + "</em>" + (ok.length ? ", " + ok.length + " indo bem" : "") + (id.length ? " e " + id.length + (id.length === 1 ? " oportunidade" : " oportunidades") + " para crescer" : "") + "." : "<em>Período positivo</em>: " + ok.length + (ok.length === 1 ? " destaque" : " destaques") + (id.length ? " e " + id.length + (id.length === 1 ? " oportunidade" : " oportunidades") : "") + ".";
+    var series = C.series.slice(0, 3).map(function (s) { return { l: s.l, f: s.f, pts: (per.diario || []).map(function (d) { return { d: d.data, v: d[s.k] || 0 }; }) }; }).filter(function (s) { return s.pts.some(function (x) { return x.v; }); });
+    var det = [];
+    if (sec === "insta") {
+      var ps = (per.posts || []).slice().sort(function (a, b) { return (b.interacoes || 0) - (a.interacoes || 0); }).slice(0, 8), fm = cnFormatos(per.posts || []).filter(function (f) { return f.alc != null; });
+      if (ps.length) det.push({ t: "Posts que mais engajaram", c: '<table><thead><tr><th>#</th><th>Data</th><th>Formato</th><th>Legenda</th><th class="r">Alcance</th><th class="r">Interações</th><th class="r">Engaj.</th></tr></thead><tbody>' + ps.map(function (p, i) { return "<tr><td><b>" + (i + 1) + "º</b></td><td>" + esc(cnData(p.data)) + "</td><td>" + esc(CN_TIPO[p.tipo] || p.tipo) + "</td><td>" + esc((p.legenda || "").slice(0, 70)) + '</td><td class="r">' + cnFmt(p.alcance, "int") + '</td><td class="r">' + cnFmt(p.interacoes, "int") + '</td><td class="r">' + cnFmt(p.alcance ? p.interacoes / p.alcance * 100 : null, "pct") + "</td></tr>"; }).join("") + "</tbody></table>" + (fm.length ? '<div class="grid2" style="margin-top:14px">' + apresRk("Alcance médio por formato", fm.map(function (f) { return { nome: CN_TIPO[f.tipo] || f.tipo, v: f.alc, pc: f.n + (f.n === 1 ? " post" : " posts") }; })) + "</div>" : "") });
+    } else if (sec === "metaads") {
+      var cs = (per.campanhas || []).slice(0, 10);
+      if (cs.length) det.push({ t: "Campanhas", c: '<table><thead><tr><th>Campanha</th><th class="r">Investimento</th><th class="r">Resultados</th><th class="r">Custo por resultado</th><th class="r">CTR</th><th class="r">Frequência</th></tr></thead><tbody>' + cs.map(function (c) { return "<tr><td><b>" + esc(c.nome) + "</b>" + (c.objetivo ? '<br><small style="color:#8a8a8a">' + esc(c.objetivo) + "</small>" : "") + '</td><td class="r">' + cnFmt(c.investimento, "brl") + '</td><td class="r">' + cnFmt(c.resultados, "int") + " " + esc(c.resultadoNome || "") + '</td><td class="r">' + cnFmt(c.custoRes, "brl") + '</td><td class="r">' + cnFmt(c.impressoes ? c.cliques / c.impressoes * 100 : null, "pct2") + '</td><td class="r">' + cnFmt(c.frequencia, "dec") + "</td></tr>"; }).join("") + "</tbody></table>" + ((per.plataformas || []).length ? '<div class="grid2" style="margin-top:14px">' + apresRk("Investimento por plataforma", per.plataformas.slice().sort(function (a, b) { return b.investimento - a.investimento; }).map(function (p) { return { nome: CN_PLAT[p.nome] || p.nome, v: p.investimento }; }), "brl") + "</div>" : "") });
+    } else if (sec === "gads") {
+      var gc = (per.campanhas || []).slice(0, 10), ts = (per.termos || []).slice(0, 12);
+      if (gc.length) det.push({ t: "Campanhas", c: '<table><thead><tr><th>Campanha</th><th class="r">Investimento</th><th class="r">Cliques</th><th class="r">Conversões</th><th class="r">Custo por conversão</th><th class="r">Parcela de impressões</th></tr></thead><tbody>' + gc.map(function (c) { return "<tr><td><b>" + esc(c.nome) + '</b><br><small style="color:#8a8a8a">' + esc(c.tipo || "") + '</small></td><td class="r">' + cnFmt(c.custo, "brl") + '</td><td class="r">' + cnFmt(c.cliques, "int") + '</td><td class="r">' + cnFmt(c.conversoes, "conv") + '</td><td class="r">' + cnFmt(cnDiv(c.custo, c.conversoes), "brl") + '</td><td class="r">' + (c.parcela != null ? cnFmt(c.parcela, "pct0") + (c.perdaOrc >= (R._perdaOrc || 20) ? ' <span class="tag warn">−' + cnFmt(c.perdaOrc, "pct0") + " orçamento</span>" : "") : "—") + "</td></tr>"; }).join("") + "</tbody></table>" });
+      if (ts.length) det.push({ t: "Termos de pesquisa", c: '<table><thead><tr><th>Termo</th><th class="r">Cliques</th><th class="r">Investimento</th><th class="r">Conversões</th><th class="r">Custo por conversão</th></tr></thead><tbody>' + ts.map(function (t) { var ruim = !t.conversoes && t.custo >= (R._termoCusto || 30); return "<tr><td>" + esc(t.termo) + (ruim ? ' <span class="tag late">sem conversão</span>' : "") + '</td><td class="r">' + cnFmt(t.cliques, "int") + '</td><td class="r">' + cnFmt(t.custo, "brl") + '</td><td class="r">' + cnFmt(t.conversoes, "conv") + '</td><td class="r">' + cnFmt(cnDiv(t.custo, t.conversoes), "brl") + "</td></tr>"; }).join("") + "</tbody></table>" });
+    } else if (sec === "gbp") {
+      var A = per.atual, av = per.avaliacoes || {}, tm = cnGbpTermos(per);
+      var us = (per.unidades || []).filter(function (u) { return !u.erro; }).sort(function (x, y) { return (y.acoes || 0) - (x.acoes || 0); });
+      if (us.length) det.push({ t: "Unidade por unidade", c: '<table><thead><tr><th>Unidade</th><th class="r">Visualizações</th><th class="r">Ações</th><th class="r">vs antes</th><th class="r">Rotas</th><th class="r">Ligações</th><th class="r">Site</th><th class="r">Taxa de ação</th><th class="r">Nota</th><th class="r">Sem resposta</th></tr></thead><tbody>' + us.map(function (u) { var q = cnVarN(u.acoes, u.acoesAnt); return "<tr><td><b>" + esc(u.nome) + '</b></td><td class="r">' + cnFmt(u.visualizacoes, "int") + '</td><td class="r"><b>' + cnFmt(u.acoes, "int") + '</b></td><td class="r ' + (q == null ? "" : q >= 0 ? "up" : "dn") + '">' + (q == null ? "—" : (q >= 0 ? "▲ " : "▼ ") + cnFmt(Math.abs(q), "pct0")) + '</td><td class="r">' + cnFmt(u.rotas, "int") + '</td><td class="r">' + cnFmt(u.ligacoes, "int") + '</td><td class="r">' + cnFmt(u.site, "int") + '</td><td class="r">' + cnFmt(u.visualizacoes ? u.acoes / u.visualizacoes * 100 : null, "pct") + '</td><td class="r">' + (u.nota != null ? cnFmt(u.nota, "dec") + " ★" : "—") + '</td><td class="r">' + cnFmt(u.semResposta, "int") + "</td></tr>"; }).join("") + "</tbody></table>" + apresRk("Ações de clientes por unidade", us.map(function (u) { return { nome: u.nome, v: u.acoes || 0 }; })).replace('class="box"', 'class="box" style="margin-top:14px"') });
+      det.push({ t: "Onde encontraram e o que fizeram", c: '<div class="grid2">' + apresRk("Onde o perfil apareceu", [["Busca · celular", A.buscaMobile], ["Busca · computador", A.buscaDesktop], ["Maps · celular", A.mapsMobile], ["Maps · computador", A.mapsDesktop]].map(function (x) { return { nome: x[0], v: x[1] || 0 }; }).sort(function (a, b) { return b.v - a.v; })) + apresRk("O que os clientes fizeram", [["Pedidos de rota", A.rotas], ["Ligações", A.ligacoes], ["Cliques no site", A.site], ["Conversas", A.conversas], ["Reservas", A.reservas]].filter(function (x) { return x[1] > 0; }).map(function (x) { return { nome: x[0], v: x[1] }; }).sort(function (a, b) { return b.v - a.v; })) + "</div>" + (av.dist && av.lidas ? '<div class="grid2" style="margin-top:14px">' + apresRk("Avaliações por nota (" + av.lidas + " mais recentes)", av.dist.map(function (d) { return { nome: d.n + (d.n === 1 ? " estrela" : " estrelas"), v: d.q }; })) + '<div class="box"><h3>Reputação</h3><p class="big" style="font-size:40px;font-weight:800;margin:4px 0">' + cnFmt(av.media, "dec") + " " + apresEst(av.media) + '</p><p style="margin:0;color:#5a5a5a">' + cnFmt(av.total, "int") + " avaliações no total · " + (av.semResposta ? av.semResposta + " das mais recentes sem resposta" : "todas as recentes respondidas") + "</p></div></div>" : "") });
+      if (tm.lista.length) det.push({ t: "O que pesquisaram para achar o perfil", c: '<table><thead><tr><th>Termo</th><th class="r">Buscas</th><th class="r">Mês anterior</th><th>Tipo</th></tr></thead><tbody>' + tm.lista.slice(0, 14).map(function (t) { return "<tr><td>" + esc(t.termo) + '</td><td class="r">' + (t.v != null ? cnFmt(t.v, "int") : "menos de " + cnFmt(t.menosDe, "int")) + '</td><td class="r">' + (t.antes != null ? cnFmt(t.antes, "int") : "—") + "</td><td>" + (t.marca ? '<span class="tag off">nome da loja</span>' : '<span class="tag ok">cliente novo</span>') + "</td></tr>"; }).join("") + '</tbody></table><p class="nota">' + esc(per.termosMeses || "") + ". “Cliente novo” é quem buscou pelo produto ou serviço sem citar o nome da loja.</p>" });
+      if ((av.ultimas || []).length) det.push({ t: "Últimas avaliações", c: '<div class="grid2">' + av.ultimas.slice(0, 8).map(function (r) { return '<div class="rv"><header>' + apresEst(r.nota) + "<b>" + esc(r.autor) + "</b>" + (r.unidade ? '<span style="color:#8a8a8a">' + esc(r.unidade) + "</span>" : "") + (r.respondida ? '<span class="tag ok">respondida</span>' : '<span class="tag ' + (r.nota <= 3 ? "late" : "warn") + '">sem resposta</span>') + "<small>" + (r.data ? esc(cnData(r.data)) : "") + "</small></header>" + esc(r.texto ? (r.texto.length > 200 ? r.texto.slice(0, 197) + "…" : r.texto) : "Só a nota, sem comentário.") + "</div>"; }).join("") + "</div>" });
+    }
+    apresAbrir({ canal: C.nome, cliente: C.titulo(per) || "", periodo: apresPeriodo(per), dias: per.dias, kpis: kpis, manchete: man, series: series,
+      leitura: { at: at.map(function (i) { return i.txt; }), ok: ok.map(function (i) { return i.txt; }), id: id.map(function (i) { return i.txt; }) },
+      plano: cnPlano(itens).map(function (i) { return { tema: i.tema, acao: i.acao, st: i.st, por: i.txt }; }), detalhes: det });
+  }
+  // Site (Google Analytics)
+  function gaApres(per) {
+    var R = gaRegras(), itens = gaResumo(per), ruins = itens.filter(function (i) { return i.st !== "ok"; }), bons = itens.filter(function (i) { return i.st === "ok"; });
+    var kpis = GA_MET.map(function (m) { var v = gaVal(per, m, "atual"), p = gaVal(per, m, "anterior"), x = gaVar(v, p, m); return { l: m.l, v: gaFmt(v, m.f), d: x ? (x.n > 0 ? "▲ " : x.n < 0 ? "▼ " : "= ") + gaVarTxt(x) : "", bom: x && x.n !== 0 ? x.n > 0 : null, pts: m.serie ? (per.diario || []).map(function (d) { return d[m.serie] || 0; }) : null }; });
+    var man = !itens.length ? "Período estável: todos os indicadores dentro do esperado." : ruins.length ? "<em>" + (ruins.length === 1 ? "1 ponto pede atenção" : ruins.length + " pontos pedem atenção") + "</em>" + (bons.length ? " e " + bons.length + " indo bem" : "") + "." : "<em>Período positivo</em>: " + bons.length + (bons.length === 1 ? " destaque" : " destaques") + ".";
+    var series = GA_MET.filter(function (m) { return m.serie; }).map(function (m) { return { l: m.l, f: "int", pts: (per.diario || []).map(function (d) { return { d: d.data, v: d[m.serie] || 0 }; }) }; });
+    var rk = function (arr, nm) { return (arr || []).slice(0, 8).map(function (x) { return { nome: nm ? nm(x.nome) : x.nome, v: x.v }; }); };
+    var ideias = [], planoExtra = [], A = per.atual || {};
+    if (A.keyEvents === 0) { ideias.push("O site não registrou nenhum evento-chave: cliques no WhatsApp, ligações e formulários não estão sendo medidos como resultado."); planoExtra.push({ tema: "Medir os contatos do site", acao: "Marcar como evento-chave no GA4 os cliques no WhatsApp, no telefone e o envio de formulários. Assim dá para saber quantos clientes o site gera e quanto custa cada um.", st: "warn", por: "Nenhum evento-chave registrado no período." }); }
+    var cn = (per.canais || [])[0], tc = (per.canais || []).reduce(function (t, c) { return t + c.v; }, 0);
+    if (cn && tc && cn.v / tc >= 0.45) ideias.push((GA_CANAL[cn.nome] || cn.nome) + " responde por " + Math.round(cn.v / tc * 100) + "% das sessões. Vale fortalecer os outros canais para não depender de uma única fonte.");
+    var det = [{ t: "De onde vêm e o que acessam", c: '<div class="grid3">' + apresRk("Canais (sessões)", rk(per.canais, function (n) { return GA_CANAL[n] || n; })) + apresRk("Páginas mais vistas", rk(per.paginas)) + apresRk("Cidades (usuários)", rk(per.cidades)) + "</div>" }];
+    apresAbrir({ canal: "Site", cliente: per.site || "Site", periodo: apresPeriodo(per), dias: per.dias, kpis: kpis, manchete: man, series: series,
+      leitura: { at: ruins.map(function (i) { return i.txt; }), ok: bons.map(function (i) { return i.txt; }), id: ideias },
+      plano: ruins.filter(function (i) { return i.acao; }).map(function (i) { var m = GA_MET.find(function (x) { return i.txt.indexOf(x.l) === 0; }); return { tema: m ? m.l : (i.txt.match(/^O canal ([^ ]+(?: [a-zà-ú]+)?)/) ? "Canal " + i.txt.match(/^O canal (.+?) trouxe/)[1] : "Ponto de atenção"), acao: i.acao, st: i.st, por: i.txt }; }).concat(planoExtra).slice(0, 5), detalhes: det });
   }
 
   function indBind(el) {

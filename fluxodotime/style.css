@@ -1119,3 +1119,21 @@ body:not(.is-admin) .tabs button.admin-only.perm-on{display:inline-block!importa
   .cn-row{grid-template-columns:minmax(0,1fr) 84px 48px}
   .view-head .row{width:100%}.cn-cli{flex:1}.cn-cli select{flex:1}
 }
+
+/* Indicadores · Perfil no Google */
+.cn-pin{display:grid;place-items:center;background:var(--panel-2)}
+.cn-pin svg{width:26px;height:26px;fill:var(--brand)}
+.cn-stars{display:inline-flex;gap:1px;font-size:13px;line-height:1;vertical-align:2px;letter-spacing:0}
+.cn-stars i{font-style:normal;color:var(--panel-3)}
+.cn-stars i.on{color:var(--brand)}
+.cn-stars i.meia{background:linear-gradient(90deg,var(--brand) 50%,var(--panel-3) 50%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cn-perfil-s .cn-stars{font-size:14px;margin-left:4px}
+.cn-gbp-links{display:flex!important;flex-wrap:wrap;gap:8px;align-items:center}
+.cn-tbl-curta{min-width:520px}
+.cn-revs{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.cn-rev{display:grid;gap:8px;align-content:start;padding:12px 14px;border-radius:8px;background:var(--panel-2);border:1px solid var(--line)}
+.cn-rev.ruim{border-color:rgba(255,92,92,.45)}
+.cn-rev header{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.cn-rev header b{font-size:13px;font-weight:600}
+.cn-rev header small{font-size:11.5px;color:var(--ink-3);text-transform:capitalize;margin-right:auto}
+.cn-rev p{margin:0;font-size:13px;line-height:1.5;color:var(--ink-2)}
