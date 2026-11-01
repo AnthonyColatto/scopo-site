@@ -56,11 +56,26 @@ async function chama(url) {
 }
 
 /* ---------- perfis ---------- */
+// marca do perfil: a primeira palavra que não é genérica ("Ferragem Alvorada · Centro" → alvorada)
+const GENERICAS = /^(loja|lojas|casa|grupo|ferragem|ferragens|materiais|material|comercio|comércio|construcao|construção|de|da|do|das|dos|e|unidade|filial|matriz|ltda|me)$/i;
+const norm = (t) => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function marca(titulo) {
+  const w = String(titulo || "").split(/[\s·\-|,/]+/).find((x) => x.length >= 4 && !GENERICAS.test(norm(x)));
+  return w ? { k: norm(w).replace(/[^a-z0-9]/g, ""), nome: w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() } : null;
+}
+// junta as unidades da mesma marca numa opção "todas as unidades", que vem primeiro
+function comGrupos(locais) {
+  const g = new Map();
+  locais.forEach((l) => { const m = marca(l.titulo || l.nome); if (!m) return; l.grupo = m.k; if (!g.has(m.k)) g.set(m.k, { nome: m.nome, n: 0 }); g.get(m.k).n++; });
+  const out = [];
+  g.forEach((v, k) => { if (v.n >= 2) out.push({ id: "g_" + k, nome: v.nome + " · todas as unidades (" + v.n + ")", todas: true }); });
+  return { locais: out.concat(locais.map((l) => ({ id: l.id, nome: l.nome, grupo: l.grupo }))) };
+}
 const MASK = "name,title,storefrontAddress,metadata,websiteUri,categories";
 const idDe = (conta, local) => conta.split("/")[1] + "_" + local.split("/").pop();
 async function contas() {
   const fixas = String(process.env.GBP_LOCAIS || "").split(/\r?\n|;/).map((l) => l.split("|").map((s) => s.trim())).filter((p) => p[0] && /accounts\/\d+\/locations\/\d+/.test(p[1] || ""));
-  if (fixas.length) return { locais: fixas.map(([nome, c]) => { const m = c.match(/accounts\/(\d+)\/locations\/(\d+)/); return { id: m[1] + "_" + m[2], nome }; }) };
+  if (fixas.length) return comGrupos(fixas.map(([nome, c]) => { const m = c.match(/accounts\/(\d+)\/locations\/(\d+)/); return { id: m[1] + "_" + m[2], nome }; }));
   const acs = [];
   let pt = "";
   do {
@@ -76,12 +91,12 @@ async function contas() {
         if (vistos.has(l.name)) continue;
         vistos.add(l.name);
         const cidade = l.storefrontAddress && l.storefrontAddress.locality;
-        locais.push({ id: idDe(a.name, l.name), nome: l.title + (cidade ? " · " + cidade : "") });
+        locais.push({ id: idDe(a.name, l.name), titulo: l.title, nome: l.title + (cidade ? " · " + cidade : "") + (l.storefrontAddress && l.storefrontAddress.sublocality ? " · " + l.storefrontAddress.sublocality : "") });
       }
       p = d.nextPageToken;
     } while (p && locais.length < 200);
   }
-  return { locais };
+  return comGrupos(locais);
 }
 
 /* ---------- desempenho ---------- */
@@ -192,18 +207,75 @@ async function dados(id, dias) {
   };
 }
 
+/* ---------- todas as unidades de uma marca ---------- */
+async function emLotes(itens, n, fn) { const out = []; for (let i = 0; i < itens.length; i += n) out.push(...(await Promise.all(itens.slice(i, i + n).map(fn)))); return out; }
+async function grupo(chave, nome, unidades, dias) {
+  const res = await emLotes(unidades, 4, (u) => dados(u.id, dias).then((d) => Object.assign(d, { _nome: u.nome }), (e) => ({ _nome: u.nome, _erro: String(e.message || e) })));
+  const ok = res.filter((r) => !r._erro);
+  if (!ok.length) throw new Error(res[0] ? res[0]._erro : "Nenhuma unidade respondeu.");
+  const somaT = (q) => {
+    const t = {};
+    ok.forEach((r) => Object.keys(r[q]).forEach((k) => { if (k !== "notaPeriodo" && typeof r[q][k] === "number") t[k] = (t[k] || 0) + r[q][k]; }));
+    const c = ok.filter((r) => r[q].novasAval > 0 && r[q].notaPeriodo != null);
+    if (ok.some((r) => r[q].novasAval != null)) t.notaPeriodo = c.length ? c.reduce((s, r) => s + r[q].notaPeriodo * r[q].novasAval, 0) / c.reduce((s, r) => s + r[q].novasAval, 0) : null;
+    return t;
+  };
+  const dia = new Map();
+  ok.forEach((r) => r.diario.forEach((d) => { const x = dia.get(d.data) || { data: d.data }; Object.keys(d).forEach((k) => { if (k !== "data") x[k] = (x[k] || 0) + d[k]; }); dia.set(d.data, x); }));
+  const tm = new Map();
+  ok.forEach((r) => r.termos.forEach((t) => {
+    const x = tm.get(t.termo) || { termo: t.termo, v: null, menosDe: null, antes: undefined };
+    if (t.v != null) x.v = (x.v || 0) + t.v; else if (t.menosDe != null && x.v == null) x.menosDe = Math.max(x.menosDe || 0, t.menosDe);
+    if (t.antes != null) x.antes = (x.antes || 0) + t.antes;
+    tm.set(t.termo, x);
+  }));
+  const avs = ok.map((r) => r.avaliacoes).filter((a) => a && !a.erro);
+  const totAv = avs.reduce((s, a) => s + (a.total || 0), 0);
+  const avaliacoes = avs.length ? {
+    media: totAv ? avs.reduce((s, a) => s + (a.media || 0) * (a.total || 0), 0) / totAv : null, total: totAv,
+    semResposta: avs.reduce((s, a) => s + a.semResposta, 0), semRespostaRuins: avs.reduce((s, a) => s + a.semRespostaRuins, 0),
+    dist: [5, 4, 3, 2, 1].map((n) => ({ n, q: avs.reduce((s, a) => s + (a.dist.find((d) => d.n === n) || { q: 0 }).q, 0) })),
+    lidas: avs.reduce((s, a) => s + a.lidas, 0),
+    ultimas: ok.flatMap((r) => (r.avaliacoes && r.avaliacoes.ultimas ? r.avaliacoes.ultimas.map((u) => Object.assign({ unidade: r._nome }, u)) : [])).sort((a, b) => String(b.data).localeCompare(String(a.data))).slice(0, 10)
+  } : { erro: "Não deu para ler as avaliações das unidades." };
+  const p0 = ok[0];
+  return {
+    dias, periodo: p0.periodo, atraso: p0.atraso, todas: true,
+    perfil: { id: "g_" + chave, nome: nome + " · todas as unidades", categoria: p0.perfil.categoria, endereco: ok.length + " unidades" + (res.length > ok.length ? " (" + (res.length - ok.length) + " sem dados)" : ""), nota: avaliacoes.media, avaliacoes: avaliacoes.total },
+    atual: somaT("atual"), anterior: somaT("anterior"),
+    diario: [...dia.values()].sort((a, b) => a.data.localeCompare(b.data)),
+    termos: [...tm.values()].sort((a, b) => (b.v || b.menosDe || 0) - (a.v || a.menosDe || 0)).slice(0, 40),
+    termosMeses: p0.termosMeses,
+    avaliacoes,
+    unidades: res.map((r) => r._erro ? { nome: r._nome, erro: r._erro } : {
+      nome: r._nome, id: r.perfil.id, visualizacoes: r.atual.visualizacoes, acoes: r.atual.acoes, acoesAnt: r.anterior.acoes,
+      rotas: r.atual.rotas, ligacoes: r.atual.ligacoes, site: r.atual.site,
+      nota: r.avaliacoes && r.avaliacoes.media, avaliacoes: r.avaliacoes && r.avaliacoes.total, novasAval: r.atual.novasAval,
+      semResposta: r.avaliacoes && r.avaliacoes.semResposta, semRespostaRuins: r.avaliacoes && r.avaliacoes.semRespostaRuins
+    })
+  };
+}
+
 const FALTA = ["GADS_CLIENT_ID", "GADS_CLIENT_SECRET"].filter((k) => !process.env[k]).concat(REFRESH ? [] : ["GBP_REFRESH_TOKEN"]);
 const cache = new Map();
 export default (req) => portaria(req, FALTA.length ? "Faltam nas variáveis da Netlify: " + FALTA.join(", ") + "." : null, async (url) => {
   const parte = url.searchParams.get("parte"), dias = DIAS_OK(url.searchParams.get("dias")), id = String(url.searchParams.get("conta") || "").replace(/[^\d_]/g, "");
-  const chave = parte === "contas" ? "contas" : id + "|" + dias, c = cache.get(chave);
+  const chave = parte === "contas" ? "contas" : String(url.searchParams.get("conta") || "") + "|" + dias, c = cache.get(chave);
   if (c && Date.now() - c.t < (parte === "contas" ? 30 : 10) * 60e3) return c.v;
   let v;
   if (parte === "contas") v = await contas();
   else {
     if (!cache.get("contas")) cache.set("contas", { t: Date.now(), v: await contas() });
-    if (!cache.get("contas").v.locais.some((x) => x.id === id)) throw new Error("Escolha um perfil da lista.");
-    v = await dados(id, dias);
+    const lista = cache.get("contas").v.locais;
+    const esc = String(url.searchParams.get("conta") || "");
+    if (/^g_[a-z0-9]+$/.test(esc)) {
+      const g = lista.find((x) => x.id === esc), un = lista.filter((x) => !x.todas && "g_" + x.grupo === esc);
+      if (!g || !un.length) throw new Error("Escolha um perfil da lista.");
+      v = await grupo(esc.slice(2), g.nome.split(" · ")[0], un, dias);
+    } else {
+      if (!lista.some((x) => x.id === id)) throw new Error("Escolha um perfil da lista.");
+      v = await dados(id, dias);
+    }
   }
   cache.set(chave, { t: Date.now(), v });
   return v;
