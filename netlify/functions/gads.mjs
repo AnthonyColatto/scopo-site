@@ -1,8 +1,10 @@
 /* Indicadores · Google Ads
    Ponte entre o Fluxo do Time e a API do Google Ads.
 
+   O nível de acesso à API (Teste, Explorer, Básico) vem do projeto do Google Cloud dono do
+   cliente OAuth. Desde 9/9/2026 o Google não usa mais o token de desenvolvedor.
+
    Variáveis de ambiente na Netlify (todas como secret, menos as duas últimas):
-     GADS_DEVELOPER_TOKEN     token de desenvolvedor (Central de API da conta de administrador)
      GADS_CLIENT_ID           ID do cliente OAuth (Google Cloud)
      GADS_CLIENT_SECRET       chave secreta do cliente OAuth
      GADS_REFRESH_TOKEN       token de atualização gerado no OAuth Playground
@@ -38,13 +40,14 @@ async function token() {
 function erroAds(d, status) {
   const det = d && d.error && d.error.details && d.error.details[0] && d.error.details[0].errors && d.error.details[0].errors[0];
   const cod = det && det.errorCode ? Object.values(det.errorCode)[0] : "";
-  if (cod === "DEVELOPER_TOKEN_NOT_APPROVED") return "O token de desenvolvedor ainda está em modo de teste. Peça o Acesso básico na Central de API do Google Ads.";
+  if (cod === "CLOUD_PROJECT_NOT_APPROVED_FOR_PRODUCTION" || cod === "DEVELOPER_TOKEN_NOT_APPROVED" || cod === "ACTION_NOT_PERMITTED") return "O projeto do Google Cloud ainda está em acesso de Teste. Em Google Ads API › Visão geral, peça o nível Explorer.";
   if (cod === "USER_PERMISSION_DENIED") return "Este login não tem acesso a esta conta. Confira o GADS_LOGIN_CUSTOMER_ID (a conta de administrador) e se a conta do cliente está ligada a ela.";
   if (cod === "CUSTOMER_NOT_ENABLED") return "Esta conta do Google Ads está desativada ou cancelada.";
   return (det && det.message) || (d && d.error && d.error.message) || "Google Ads respondeu " + status;
 }
 async function chama(caminho, corpo, cid) {
-  const h = { authorization: "Bearer " + (await token()), "developer-token": process.env.GADS_DEVELOPER_TOKEN, "content-type": "application/json" };
+  const h = { authorization: "Bearer " + (await token()), "content-type": "application/json" };
+  if (process.env.GADS_DEVELOPER_TOKEN) h["developer-token"] = process.env.GADS_DEVELOPER_TOKEN; // opcional: o Google ignora desde set/2026
   if (MCC && cid !== MCC) h["login-customer-id"] = MCC;
   for (const v of versao ? [versao] : VERSOES) {
     const r = await fetch("https://googleads.googleapis.com/" + v + "/" + caminho, { method: corpo ? "POST" : "GET", headers: h, body: corpo ? JSON.stringify(corpo) : undefined });
@@ -118,7 +121,7 @@ async function dados(cid, dias) {
   };
 }
 
-const FALTA = ["GADS_DEVELOPER_TOKEN", "GADS_CLIENT_ID", "GADS_CLIENT_SECRET", "GADS_REFRESH_TOKEN"].filter((k) => !process.env[k]);
+const FALTA = ["GADS_CLIENT_ID", "GADS_CLIENT_SECRET", "GADS_REFRESH_TOKEN"].filter((k) => !process.env[k]);
 const cache = new Map();
 export default (req) => portaria(req, FALTA.length ? "Faltam nas variáveis da Netlify: " + FALTA.join(", ") + "." : null, async (url) => {
   const parte = url.searchParams.get("parte"), dias = DIAS_OK(url.searchParams.get("dias")), cid = soNum(url.searchParams.get("conta"));
