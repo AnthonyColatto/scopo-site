@@ -187,6 +187,9 @@ button,input,select,textarea{font:inherit;color:inherit}
 .grid.sombra .card{border-radius:var(--r);box-shadow:0 2px 10px rgba(0,0,0,.12)}
 .card{position:relative;display:grid;grid-template-columns:var(--cw,44%) minmax(0,1fr);grid-template-rows:auto 1fr auto;column-gap:.55em;row-gap:.25em;padding:.7em .8em .6em;background:var(--cbg);color:var(--tx);font-size:var(--b,13px);min-width:0;min-height:0;overflow:hidden}
 .card.s2{grid-column:span 2}
+.card.banner{display:block;padding:0;overflow:hidden;background:var(--bnbg,transparent)}
+.card.banner .bn-im{position:absolute;inset:0;background-position:center;background-repeat:no-repeat}
+.card.banner .bn-ph{position:absolute;inset:.4em;border:1.5px dashed rgba(127,127,127,.5);border-radius:4px;display:flex;align-items:center;justify-content:center;text-align:center;font:600 .7em/1.25 var(--fb);color:rgba(127,127,127,.85);text-transform:uppercase}
 .card.dest{background:var(--dbg);color:var(--dfg)}
 .card.dest .big,.card.dest .rs{color:var(--dfg)}
 .c-imgcol{grid-row:1/4;grid-column:1;display:flex;flex-direction:column;gap:.25em;min-height:0;min-width:0}
@@ -218,7 +221,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .fitting .c-img .im{transform:none!important}
 .card .c-info{grid-column:2;grid-row:1;display:flex;flex-direction:column;gap:.18em;min-width:0}
 .c-cod{font-size:.52em;font-weight:700;letter-spacing:.04em;opacity:.85}
-.c-desc{font-family:var(--fd);font-weight:900;font-size:calc(.98em*var(--ds,1));line-height:1.02;overflow-wrap:anywhere}
+.c-desc{font-family:var(--fd);font-weight:900;font-size:calc(.98em*var(--ds,1));line-height:1.02;overflow-wrap:anywhere;white-space:pre-line}
 .c-marca{font-size:.62em;font-weight:700;text-transform:uppercase;opacity:.8}
 .c-tag{background:var(--p);color:#fff;font-size:.56em;font-weight:800;padding:.2em .5em;text-transform:uppercase;letter-spacing:.04em;margin-top:.1em}
 .card.dest .c-tag{background:var(--dfg);color:var(--dbg)}
@@ -563,7 +566,14 @@ function seloHTML(o,ed,v){const s=o.selo;if(!s||!s.on)return '';
   const f=s.shape==='circulo'?v.ss*Math.min(.3,1.25/L,.62/Math.max(1,words.length)):v.ss*Math.min(.32,1.45/Math.max(3,txt.length));
   return `<div class="sl sl-${s.shape}${ed?' ed':''}" data-sl="${o.id}" style="${pos};background:${s.bg};color:${s.fg}"><span style="font-size:${f.toFixed(2)}cqw">${esc(txt)}</span>${h}</div>`;
 }
+function bannerCardHTML(it,ed){
+  const o=it.o,sp=it.sp||1,rs=it.rs||1,sel=ed&&UI.open===o.id;
+  let st=it.r?`grid-area:${it.r}/${it.c}/span ${rs}/span ${sp};`:`grid-column:span ${sp};`;if(o.bnBg)st+=`--bnbg:${o.bnBg};`;
+  const im=o.img?`<div class="bn-im" style="background-image:url(${o.img});background-size:${o.bnFit==='contain'?'contain':'cover'}"></div>`:(ed?`<div class="bn-ph">Banner ${sp} × ${rs}<br>solte a imagem aqui</div>`:'');
+  return `<div class="card banner${ed?' ed':''}${sel?' sel':''}" data-oid="${o.id}" data-cs="${sp}" data-rs="${rs}" style="${st}">${ed?`<span class="num">${it.n}</span>`:''}${im}</div>`;
+}
 function cardHTML(it,ed,opt={}){
+  if(it.o&&it.o.banner)return bannerCardHTML(it,ed);
   const ctx=opt.ctx||'tab',o=it.o,v=V(o,ctx),t=S.theme,up=t.upper?' up':'',al=v.align||t.align||'dir',sp=it.sp||1,rs=it.rs||1;
   const base=sp>1?50:44,is=(v.is||100)/100,cw=Math.min(74,base*is),ish=Math.max(1,base*is/cw);
   let st=`--cw:${cw.toFixed(1)}%;--ish:${ish.toFixed(3)};--isv:${is};--ps:${v.ps/100};--ds:${v.ds/100};--os:${v.os/100};`;
@@ -659,11 +669,11 @@ function buildNodes(ed){
   }else if(UI.mode==='soc'){
     const fk=S.soc.fmt,[cols,rows]=SOCGRID[S.soc.per]||[2,2],per=cols*rows;
     const sel=S.soc.sel.trim()?parseSel(S.soc.sel,S.offers.length):S.offers.map((_,i)=>i+1);
-    const items=sel.map(n=>({o:S.offers[n-1],n}));const tot=Math.ceil(items.length/per);
+    const items=sel.map(n=>({o:S.offers[n-1],n})).filter(x=>!x.o.banner);const tot=Math.ceil(items.length/per);
     for(let i=0;i<tot;i++){const ch=items.slice(i*per,i*per+per);
       out.push({html:artPage('soc-'+fk,fk,ch,cols,rows,S.soc.title,ed,{ctx:'soc'}),fmt:fk,name:`${fk}-${i+1}`,label:`${FMT[fk].name} ${i+1} de ${tot}`,info:`oferta${ch.length>1?'s':''} ${ch.map(x=>x.n).join(', ')}`})}
   }else{
-    parseSel(S.pc.sel,S.offers.length).forEach(n=>{const o=S.offers[n-1],tp=S.pc.type,useTag=!!(S.pc.tagOver&&o.tag);
+    parseSel(S.pc.sel,S.offers.length).forEach(n=>{const o=S.offers[n-1];if(o.banner)return;const tp=S.pc.type,useTag=!!(S.pc.tagOver&&o.tag);
       out.push({html:artPage('pc-'+tp,tp,[{o,n}],1,1,useTag?o.tag:S.pc.kick,ed,{noTag:useTag,ctx:'pc'}),fmt:tp,name:`${tp==='a4'?'cartaz-a4':tp}-oferta-${n}-${codKey(o.cod)||'sem-codigo'}`,label:`${tp==='a4'?'Cartaz A4':FMT[tp].name} · oferta ${n}`,info:o.desc.slice(0,38)})});
   }
   return out;
@@ -676,7 +686,7 @@ function fitGrids(root){
     const gx=parseFloat(cs.columnGap)||0,gy=parseFloat(cs.rowGap)||0;
     const w=(g.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)-gx*(cols-1))/cols;
     const h=(g.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom)-gy*(rows-1))/rows;
-    $$('.card:not(.empty)',g).forEach(c=>{
+    $$('.card:not(.empty):not(.banner)',g).forEach(c=>{
       const sp=+c.dataset.cs||1,rs=+c.dataset.rs||1,cw=w*sp+gx*(sp-1),ch=h*rs+gy*(rs-1),pref=c.dataset.lay;
       const v=pref==='v'||(pref!=='h'&&ch/cw>.85);c.classList.toggle('v',v);
       const b=Math.max(7,v?Math.min(cw*.068,ch*.056):Math.min(Math.min(cw,w*1.3)*.052,ch*.058));
@@ -723,14 +733,27 @@ const mm2px=mm=>Math.round(mm/25.4*300);
 function panelOfertas(){
   const {pages}=paginate();const pos={};pages.forEach((p,i)=>p.items.forEach(it=>pos[it.o.id]=i));
   return `<div class="sec"><h3>Entrada de dados</h3>
-    <div class="toolbar"><button class="btn sm pri" data-act="importSheet">Importar planilha</button><button class="btn sm" data-act="bulkImgs">Imagens em lote</button><button class="btn sm" data-act="modelSheet">Baixar modelo</button><button class="btn sm" data-act="addOffer">+ Oferta</button></div>
+    <div class="toolbar"><button class="btn sm pri" data-act="importSheet">Importar planilha</button><button class="btn sm" data-act="bulkImgs">Imagens em lote</button><button class="btn sm" data-act="modelSheet">Baixar modelo</button><button class="btn sm" data-act="addOffer">+ Oferta</button><button class="btn sm" data-act="addBanner">+ Banner</button></div>
     <label class="chk"><input type="checkbox" id="k-theme.autoCrop" data-k="theme.autoCrop"${S.theme.autoCrop?' checked':''}> Cortar sobras de margem das imagens ao enviar</label>
     <div class="toolbar"><button class="btn sm" data-act="cropAll">Cortar margens das imagens atuais</button><button class="btn sm" data-act="semFundoTodas">Remover fundo de todas</button></div>
     <p class="hint">Planilha .xlsx ou .csv exportada do sistema. Imagens em lote: nomeie cada arquivo com o código do produto (ex.: 221729.png) que ela entra na oferta certa e fica guardada para as próximas campanhas.</p></div>
     <div class="sec"><h3>${S.offers.length} ofertas</h3><div class="olist">${S.offers.map((o,i)=>{const op=UI.open===o.id;const lam=pos[o.id];
-      return `<div class="oi${op?' sel':''}" data-oid="${o.id}" id="oi-${o.id}"><div class="oh" data-act="toggle"><span class="n">${i+1}</span><span class="t" style="${o.img?`background-image:url(${o.img})`:''}"></span><span class="d"><b>${esc(o.desc)||'Sem descrição'}</b><small>${o.cod?esc(o.cod)+' · ':''}R$ ${fmt(o.por)||'--'}${lam!=null&&UI.mode==='tab'?` · lâmina ${lam+1}`:''}</small></span><span class="flags">${o.dest?'<span class="pillui hl">destaque</span>':''}${o.span>1||o.rspan>1?`<span class="pillui">${o.span>1&&o.rspan>1?'2×2':o.span>1?'largo':'alto'}</span>`:''}</span></div>${op?offerEditor(o,i):''}</div>`}).join('')}</div></div>`;
+      return `<div class="oi${op?' sel':''}" data-oid="${o.id}" id="oi-${o.id}"><div class="oh" data-act="toggle"><span class="n">${i+1}</span><span class="t" style="${o.img?`background-image:url(${o.img})`:''}"></span><span class="d"><b>${esc(o.desc)||'Sem descrição'}</b><small>${o.banner?`banner ${o.span||1} coluna${(o.span||1)>1?'s':''} × ${o.rspan||1} fileira${(o.rspan||1)>1?'s':''}`:`${o.cod?esc(o.cod)+' · ':''}R$ ${fmt(o.por)||'--'}`}${lam!=null&&UI.mode==='tab'?` · lâmina ${lam+1}`:''}</small></span><span class="flags">${o.dest?'<span class="pillui hl">destaque</span>':''}${o.span>1||o.rspan>1?`<span class="pillui">${o.span>1&&o.rspan>1?'2×2':o.span>1?'largo':'alto'}</span>`:''}</span></div>${op?offerEditor(o,i):''}</div>`}).join('')}</div></div>`;
+}
+function bannerEditor(o){
+  const g=S.grid,mx=Math.max(g.capa.cols,g.interna.cols),my=Math.max(g.capa.rows,g.interna.rows);
+  const seg=(k,lbl,max)=>`<div class="f"><span>${lbl}</span><div class="seg" style="align-self:flex-start">${[1,2,3].map(n=>`<button type="button" data-act="bnSize" data-k="${k}" data-v="${n}" aria-pressed="${(o[k]||1)===n}"${n>max?' disabled title="A grade do tabloide tem menos que isso"':''}>${n}</button>`).join('')}</div></div>`;
+  return `<div class="oe">
+   <div class="f"><span>Imagem do banner</span><label class="drop"><span class="th" style="${o.img?`background-image:url(${o.img})`:''}"></span><span style="flex:1;font-size:12.5px">${o.img?'Trocar banner':'Enviar banner'} <br><small style="color:var(--ui-mute)">JPG ou PNG. Para não cortar, use a proporção do espaço escolhido.</small></span><input type="file" accept="image/*" data-oimg="banner">${o.img?`<button type="button" class="btn sm ghost" data-act="rmImg">Remover</button>`:''}</label></div>
+   <div class="row">${seg('span','Colunas',mx)}${seg('rspan','Fileiras',my)}</div>
+   <div class="f"><span>Encaixe da imagem</span><div class="seg" style="align-self:flex-start">${[['cover','Preencher o espaço'],['contain','Imagem inteira']].map(([v,l])=>`<button type="button" data-act="bnFit" data-v="${v}" aria-pressed="${(o.bnFit||'cover')===v}">${l}</button>`).join('')}</div></div>
+   ${(o.bnFit==='contain')?`<div class="row">${F_('Cor atrás do banner',`<span class="col"><input type="color" id="o-${o.id}-bnBg" data-of="bnBg" value="${o.bnBg||'#ffffff'}"><code>${o.bnBg||'sem cor'}</code></span>`)}<span></span></div>`:''}
+   <p class="hint">O banner entra na grade como uma oferta: use Subir e Descer para mudar a posição. Ele aparece só no tabloide A3, não nas redes nem nas peças individuais.</p>
+   <div class="oacts"><button class="btn sm" data-act="up">Subir</button><button class="btn sm" data-act="down">Descer</button><button class="btn sm" data-act="moveTo">Mover para nº…</button><button class="btn sm" data-act="dup">Duplicar</button><button class="btn sm danger" data-act="del">Excluir</button></div>
+  </div>`;
 }
 function offerEditor(o,i){
+  if(o.banner)return bannerEditor(o);
   const f=(k,l,type='text')=>F_(l,`<input type="${type}" id="o-${o.id}-${k}" data-of="${k}" value="${esc(k==='de'||k==='por'?fmt(o[k]):o[k])}">`);
   return `<div class="oe">
    <div class="row">${f('cod','Código')}${f('marca','Marca')}</div>
@@ -929,6 +952,7 @@ document.addEventListener('change',async e=>{
   if(el.dataset.img&&el.files[0]){try{setP(S,el.dataset.img,await readImg(el.files[0],+el.dataset.max||2000));refresh()}catch{toast('Não consegui ler essa imagem. Tente PNG ou JPG.')}}
   if(el.dataset.oimg&&el.files[0]){const o=S.offers.find(x=>x.id===el.closest('[data-oid]').dataset.oid);try{
     if(el.dataset.oimg==='img2'){o.img2=await readImg(el.files[0],1400,S.theme.autoCrop);o.img2Base=null;if(o.sombra){o.img2Base=o.img2;o.img2=await sombraImg(o.img2,o.sombra)}refresh();return}
+    if(el.dataset.oimg==='banner'){o.img=await readImg(el.files[0],2400,false);o.imgBase=null;refresh();return}
     if(el.dataset.oimg==='dest'){o.destImg=await readImg(el.files[0],1600,false);refresh();return}
     if(el.dataset.oimg==='selo'){const d=await readImg(el.files[0],900);o.selo.img=d;if(!S.selos.includes(d))S.selos.push(d);refresh()}
     else{let d=await readImg(el.files[0],1400,S.theme.autoCrop);o.imgBase=null;if(o.sombra){o.imgBase=d;d=await sombraImg(d,o.sombra)}setOfferImg(o,d);refresh()}}catch{toast('Não consegui ler essa imagem. Tente PNG ou JPG.')}}
@@ -1006,6 +1030,9 @@ document.addEventListener('click',e=>{
     copyTab(){const o=S.offers[i];o.v[UI.mode]=clone(V(o,'tab'));refresh();toast('Ajustes do tabloide copiados.')},
     seloPick(){S.offers[i].selo.img=S.selos[+t.dataset.i];refresh()},
     seloAll(){const o=S.offers[i],v=V(o,UI.mode);S.offers.forEach(x=>{if(x!==o){x.selo=clone(o.selo);Object.assign(V(x,UI.mode),{sx:v.sx,sy:v.sy,ss:v.ss,srot:v.srot})}});refresh();toast('Selo copiado para todas as ofertas.')},
+    addBanner(){const o=O('','Banner','',null,null,'',{banner:true,span:2,rspan:1,bnFit:'cover',bnBg:''});const k=UI.open?S.offers.findIndex(x=>x.id===UI.open):-1;if(k>=0)S.offers.splice(k+1,0,o);else S.offers.push(o);UI.open=o.id;refresh();setTimeout(()=>$('#oi-'+o.id)?.scrollIntoView({block:'nearest'}),30)},
+    bnSize(){const o=S.offers[i];o[t.dataset.k]=+t.dataset.v;refresh()},
+    bnFit(){S.offers[i].bnFit=t.dataset.v;refresh()},
     addOffer(){const o=O('','Nova oferta','',null,null);S.offers.push(o);UI.open=o.id;refresh();setTimeout(()=>$('#oi-'+o.id)?.scrollIntoView({block:'nearest'}),30)},
     addStore(){S.footer.stores.push({city:'',name:'Nova loja',addr:'',phone:''});refresh()},
     rmStore(){S.footer.stores.splice(+t.dataset.i,1);refresh()},
@@ -1023,6 +1050,7 @@ document.addEventListener('dragover',e=>{const c=e.target.closest('.card.ed[data
 document.addEventListener('dragleave',e=>{const c=e.target.closest('.card.ed[data-oid]');if(c)c.classList.remove('dragov')});
 document.addEventListener('drop',async e=>{const c=e.target.closest('.card.ed[data-oid]');if(!c)return;e.preventDefault();
   const f=e.dataTransfer.files[0];if(!f||!f.type.startsWith('image'))return;const o=S.offers.find(x=>x.id===c.dataset.oid);
+  if(o.banner){o.img=await readImg(f,2400,false);refresh();return}
   setOfferImg(o,await readImg(f,1400,S.theme.autoCrop));refresh()});
 $('#zoom').addEventListener('change',e=>{UI.zoom=+e.target.value;renderPreview()});
 new ResizeObserver(()=>renderPreview()).observe($('#main'));
