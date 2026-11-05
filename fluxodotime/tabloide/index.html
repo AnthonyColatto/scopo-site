@@ -499,11 +499,13 @@ function trimCanvas(c){
 function hasAlpha(c){const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height).data;for(let i=3;i<d.length;i+=16)if(d[i]<250)return true;return false}
 function imgToData(src,max,trim){
   return new Promise((res,rej)=>{const im=new Image();im.onload=()=>{
-    const k=Math.min(1,max/Math.max(im.width,im.height));
-    let c=document.createElement('canvas');c.width=Math.max(1,Math.round(im.width*k));c.height=Math.max(1,Math.round(im.height*k));
-    c.getContext('2d').drawImage(im,0,0,c.width,c.height);
-    if(trim)c=trimCanvas(c);
-    res(hasAlpha(c)?c.toDataURL('image/png'):c.toDataURL('image/jpeg',.9));
+    // corta as sobras na resolução original e só depois reduz: o produto não perde definição
+    let c=document.createElement('canvas');
+    if(trim){const k0=Math.min(1,6000/Math.max(im.width,im.height));c.width=Math.max(1,Math.round(im.width*k0));c.height=Math.max(1,Math.round(im.height*k0));c.getContext('2d').drawImage(im,0,0,c.width,c.height);c=trimCanvas(c)}
+    else{c.width=im.width;c.height=im.height;c.getContext('2d').drawImage(im,0,0)}
+    const k=Math.min(1,max/Math.max(c.width,c.height));
+    if(k<1){const o=document.createElement('canvas');o.width=Math.max(1,Math.round(c.width*k));o.height=Math.max(1,Math.round(c.height*k));const g=o.getContext('2d');g.imageSmoothingQuality='high';g.drawImage(c,0,0,o.width,o.height);c=o}
+    res(hasAlpha(c)?c.toDataURL('image/png'):c.toDataURL('image/jpeg',.92));
   };im.onerror=rej;im.src=src});
 }
 function readImg(file,max,trim=false){
@@ -951,11 +953,11 @@ document.addEventListener('change',async e=>{
     refresh();if(msg.length)toast(`Código ${o.cod}: ${msg.join(' e ')} salvo${msg.length>1?'s':''} carregado${msg.length>1?'s':''}.`)}
   if(el.dataset.img&&el.files[0]){try{setP(S,el.dataset.img,await readImg(el.files[0],+el.dataset.max||2000));refresh()}catch{toast('Não consegui ler essa imagem. Tente PNG ou JPG.')}}
   if(el.dataset.oimg&&el.files[0]){const o=S.offers.find(x=>x.id===el.closest('[data-oid]').dataset.oid);try{
-    if(el.dataset.oimg==='img2'){o.img2=await readImg(el.files[0],1400,S.theme.autoCrop);o.img2Base=null;if(o.sombra){o.img2Base=o.img2;o.img2=await sombraImg(o.img2,o.sombra)}refresh();return}
+    if(el.dataset.oimg==='img2'){o.img2=await readImg(el.files[0],1800,S.theme.autoCrop);o.img2Base=null;if(o.sombra){o.img2Base=o.img2;o.img2=await sombraImg(o.img2,o.sombra)}refresh();return}
     if(el.dataset.oimg==='banner'){o.img=await readImg(el.files[0],2400,false);o.imgBase=null;refresh();return}
     if(el.dataset.oimg==='dest'){o.destImg=await readImg(el.files[0],1600,false);refresh();return}
     if(el.dataset.oimg==='selo'){const d=await readImg(el.files[0],900);o.selo.img=d;if(!S.selos.includes(d))S.selos.push(d);refresh()}
-    else{let d=await readImg(el.files[0],1400,S.theme.autoCrop);o.imgBase=null;if(o.sombra){o.imgBase=d;d=await sombraImg(d,o.sombra)}setOfferImg(o,d);refresh()}}catch{toast('Não consegui ler essa imagem. Tente PNG ou JPG.')}}
+    else{let d=await readImg(el.files[0],1800,S.theme.autoCrop);o.imgBase=null;if(o.sombra){o.imgBase=d;d=await sombraImg(d,o.sombra)}setOfferImg(o,d);refresh()}}catch{toast('Não consegui ler essa imagem. Tente PNG ou JPG.')}}
 });
 let dragS=null,noClick=false;
 const BLK={img:['ix','iy','is'],info:['dx','dy','ds'],price:['px','py','ps'],obs:['ox','oy','os']};
@@ -1051,7 +1053,7 @@ document.addEventListener('dragleave',e=>{const c=e.target.closest('.card.ed[dat
 document.addEventListener('drop',async e=>{const c=e.target.closest('.card.ed[data-oid]');if(!c)return;e.preventDefault();
   const f=e.dataTransfer.files[0];if(!f||!f.type.startsWith('image'))return;const o=S.offers.find(x=>x.id===c.dataset.oid);
   if(o.banner){o.img=await readImg(f,2400,false);refresh();return}
-  setOfferImg(o,await readImg(f,1400,S.theme.autoCrop));refresh()});
+  setOfferImg(o,await readImg(f,1800,S.theme.autoCrop));refresh()});
 $('#zoom').addEventListener('change',e=>{UI.zoom=+e.target.value;renderPreview()});
 new ResizeObserver(()=>renderPreview()).observe($('#main'));
 
@@ -1142,7 +1144,7 @@ async function importSheet(file){
   $('#imRep',m).onclick=()=>go(true);$('#imAdd',m).onclick=()=>go(false);
 }
 async function bulkImgs(files){let hit=0,miss=[];
-  for(const f of files){const k=codKey(f.name.replace(/\.[^.]+$/,''));let data;try{data=await readImg(f,1400,S.theme.autoCrop)}catch{miss.push(f.name);continue}
+  for(const f of files){const k=codKey(f.name.replace(/\.[^.]+$/,''));let data;try{data=await readImg(f,1800,S.theme.autoCrop)}catch{miss.push(f.name);continue}
     if(k){BANK.lib[k]=data;bankDirty=true}const os=S.offers.filter(o=>k&&codKey(o.cod)===k);os.forEach(o=>o.img=data);if(os.length)hit++;else miss.push(f.name)}
   refresh();toast(`${hit} de ${files.length} imagens encaixadas pelo código${miss.length?`. Sem oferta correspondente: ${miss.slice(0,3).join(', ')}${miss.length>3?'…':''} (ficaram guardadas no banco)`:''}.`)}
 function modelSheet(){
@@ -1175,7 +1177,7 @@ function exportDlg(){
    <div class="acts"><button class="btn" data-close>Fechar</button></div>`);
   const prefs=()=>{S.printPrefs={bleed:+($('#xBleed',m)?.value||0),marks:!!$('#xMarks',m)?.checked,dpi:+($('#dpi',m)?.value||300)};persist();return S.printPrefs};
   $('#xPdf',m)&&($('#xPdf',m).onclick=()=>{const p=prefs();m.remove();doExport('pdf',p.dpi,p)});
-  $('#xWeb',m)&&($('#xWeb',m).onclick=()=>{m.remove();doExport('pdf',110,{bleed:0,marks:false,web:true})});
+  $('#xWeb',m)&&($('#xWeb',m).onclick=()=>{m.remove();doExport('pdf',150,{bleed:0,marks:false,web:true})});
   $('#xPng',m).onclick=()=>{m.remove();doExport('png',print?+($('#dpi',m)?.value||300):300)};
   $('#xJson',m).onclick=()=>{m.remove();syncMem();saveFile(slug(S.name)+'.json',new Blob([JSON.stringify({...S,bank:BANK})],{type:'application/json'}))};
 }
@@ -1206,7 +1208,7 @@ async function doExport(kind,dpi,opt){syncMem();
   const nodes=buildNodes(false);if(!nodes.length){toast('Nada para exportar.');return}
   const busy=document.createElement('div');busy.className='busy';document.body.append(busy);
   try{
-    if(kind==='pdf'){const {jsPDF}=window.jspdf;let pdf=null;const o=opt||{bleed:0,marks:false},bl=o.bleed||0,slugMm=o.marks?10:0,q=o.web?.8:.95;
+    if(kind==='pdf'){const {jsPDF}=window.jspdf;let pdf=null;const o=opt||{bleed:0,marks:false},bl=o.bleed||0,slugMm=o.marks?10:0,q=o.web?.86:.95;
       for(let i=0;i<nodes.length;i++){busy.textContent=`Gerando página ${i+1} de ${nodes.length}…`;const n=nodes[i],F=FMT[n.fmt];
         let c=await renderCanvas(n,dpi);const bpx=Math.round(bl/F.mm[0]*c.width);c=bleedCanvas(c,bpx);const img=c.toDataURL('image/jpeg',q);
         const pw=F.mm[0]+2*(bl+slugMm),ph=F.mm[1]+2*(bl+slugMm),ox=slugMm,oy=slugMm;
