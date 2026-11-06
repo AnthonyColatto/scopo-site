@@ -1211,9 +1211,16 @@ async function bgParaImg(root){
       else{const p=bs.split(' '),pv=(v,ref)=>!v||v==='auto'?null:v.endsWith('%')?parseFloat(v)/100*ref:parseFloat(v);w=pv(p[0],W);h=pv(p[1],H);
         if(w==null&&h==null){w=iw;h=ih}else if(w==null)w=h*iw/ih;else if(h==null)h=w*ih/iw}
       const ps=(cs.backgroundPosition||'50% 50%').split(' '),pp=(v,free)=>!v?free/2:v.endsWith('%')?parseFloat(v)/100*free:parseFloat(v)||0;
-      const x=pp(ps[0],W-w),y=pp(ps[1],H-h),img=document.createElement('img');img.src=src;img.alt='';
+      let x=pp(ps[0],W-w),y=pp(ps[1],H-h);
+      // aumento da imagem (transform: scale) vira tamanho de verdade, para o html2canvas não cortar nem perder nitidez
+      const tm=/^matrix\(([^)]+)\)$/.exec(cs.transform||''),cover=w>W+1||h>H+1;
+      if(tm){const v=tm[1].split(',').map(Number);if(Math.abs(v[1])>1e-6||Math.abs(v[2])>1e-6||cover)return;
+        const o=(cs.transformOrigin||'').split(' ').map(parseFloat),ox=isNaN(o[0])?W/2:o[0],oy=isNaN(o[1])?H/2:o[1];
+        x=ox+(x-ox)*v[0]+v[4];y=oy+(y-oy)*v[3]+v[5];w*=v[0];h*=v[3];e.style.transform='none'}
+      else if(cs.transform&&cs.transform!=='none')return;
+      const img=document.createElement('img');img.src=src;img.alt='';
       img.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;max-width:none;max-height:none;margin:0;padding:0;border:0`;
-      if(cs.position==='static')e.style.position='relative';e.style.overflow='hidden';e.style.backgroundImage='none';e.appendChild(img)}).catch(()=>{}))});
+      if(cs.position==='static')e.style.position='relative';if(cover)e.style.overflow='hidden';e.style.backgroundImage='none';e.appendChild(img)}).catch(()=>{}))});
   await Promise.all(jobs);
 }
 async function renderCanvas(n,dpi){
