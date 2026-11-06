@@ -1197,9 +1197,28 @@ function cropMarks(pdf,x0,y0,w,h,bleed,info){
     pdf.line(x+sx*off,y,x+sx*(off+len),y);pdf.line(x,y+sy*off,x,y+sy*(off+len))});
   if(info){pdf.setFontSize(6);pdf.setTextColor(60,60,60);pdf.text(info,x0,y0+h+bleed+6)}
 }
+/* O html2canvas reduz toda imagem de fundo (background-image) ao tamanho da tela antes de ampliar para 300 dpi,
+   e por isso a foto do produto saía estourada no PDF. Antes de exportar, cada imagem de fundo vira um <img>
+   no mesmo lugar e tamanho, que ele desenha na resolução original. */
+function carregaImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src})}
+async function bgParaImg(root){
+  const jobs=[];
+  root.querySelectorAll('*').forEach(e=>{if(e.children.length)return;const cs=getComputedStyle(e),m=/^url\("?(.*?)"?\)$/.exec(cs.backgroundImage||'');
+    if(!m||cs.backgroundRepeat!=='no-repeat')return;const W=e.clientWidth,H=e.clientHeight;if(W<2||H<2)return;const src=m[1];
+    jobs.push(carregaImg(src).then(im=>{const iw=im.naturalWidth,ih=im.naturalHeight;if(!iw||!ih)return;const bs=cs.backgroundSize;let w,h;
+      if(bs==='contain'){const k=Math.min(W/iw,H/ih);w=iw*k;h=ih*k}
+      else if(bs==='cover'){const k=Math.max(W/iw,H/ih);w=iw*k;h=ih*k}
+      else{const p=bs.split(' '),pv=(v,ref)=>!v||v==='auto'?null:v.endsWith('%')?parseFloat(v)/100*ref:parseFloat(v);w=pv(p[0],W);h=pv(p[1],H);
+        if(w==null&&h==null){w=iw;h=ih}else if(w==null)w=h*iw/ih;else if(h==null)h=w*ih/iw}
+      const ps=(cs.backgroundPosition||'50% 50%').split(' '),pp=(v,free)=>!v?free/2:v.endsWith('%')?parseFloat(v)/100*free:parseFloat(v)||0;
+      const x=pp(ps[0],W-w),y=pp(ps[1],H-h),img=document.createElement('img');img.src=src;img.alt='';
+      img.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;max-width:none;max-height:none;margin:0;padding:0;border:0`;
+      if(cs.position==='static')e.style.position='relative';e.style.overflow='hidden';e.style.backgroundImage='none';e.appendChild(img)}).catch(()=>{}))});
+  await Promise.all(jobs);
+}
 async function renderCanvas(n,dpi){
   const F=FMT[n.fmt];const t=S.theme;await Promise.all([t.fontDisplay,t.fontBody].flatMap(f=>[900,700,400].map(w=>document.fonts.load(`${w} 40px "${f}"`).catch(()=>{}))));await document.fonts.ready;
-  const stage=$('#stage');stage.innerHTML=n.html;const el=stage.firstElementChild;fitGrids(stage);
+  const stage=$('#stage');stage.innerHTML=n.html;const el=stage.firstElementChild;fitGrids(stage);await bgParaImg(el);
   const scale=F.mm?(F.mm[0]/25.4*dpi)/F.w:1;
   const c=await html2canvas(el,{scale,backgroundColor:'#ffffff',useCORS:true,logging:false,width:F.w,height:F.h,windowWidth:F.w,windowHeight:F.h});
   stage.innerHTML='';return c;
