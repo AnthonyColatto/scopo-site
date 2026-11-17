@@ -293,6 +293,7 @@ pre.code-blk{background:var(--ui-bg);border:1px solid var(--ui-line);border-radi
     <input class="pname" id="pname" aria-label="Nome do projeto">
     <div class="seg modesw" id="modesw" role="tablist"><button data-m="tab" class="on">Tabloide</button><button data-m="dd">Desdobres</button></div>
     <div class="sep"></div>
+    <button class="btn ghost tb-only" id="b-new" title="Começar um tabloide novo escolhendo tamanho e número de lâminas">Novo</button>
     <button class="btn tb-only" id="b-import" title="Importar planilha (.xlsx / .csv)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>Planilha</button>
     <button class="btn tb-only" id="b-imgs" title="Carregar imagens em lote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="m21 17-5-5-8 7"/></svg>Imagens em lote</button>
     <button class="btn tb-only" id="b-api" title="Puxar a foto de cada produto pelo código no sistema da Soldamaq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0 1 14.9-4M20 10a8 8 0 0 1-14.9 4"/><path d="M19 4v6h-6M5 20v-6h6"/></svg>Fotos do sistema</button>
@@ -361,10 +362,32 @@ const IMGS = {"serra": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQoAAAD5CA
    CONSTANTES
    ===================================================================== */
 const MM = 3;                    // px por mm na renderização base
-const PW = 210, PH = 297;        // A4
+let PW = 210, PH = 297;          // tamanho da página em mm (A4 por padrão; vem de P.size)
+/* P.size = {w,h} da PÁGINA em mm · P.pairing: 'capa' (capa sozinha, depois pares, como revista) ou 'pares' (cada lâmina = 2 páginas lado a lado) */
+const SIZES = [
+  { k:'50x35', label:'Lâmina 50 × 35 cm (2 páginas de 25 × 35)', w:250, h:350, pairing:'pares' },
+  { k:'a3a4',  label:'Lâmina A3 aberta (2 páginas A4)',         w:210, h:297, pairing:'pares' },
+  { k:'a4rev', label:'A4 em revista (capa sozinha, depois pares)', w:210, h:297, pairing:'capa' },
+  { k:'custom',label:'Personalizado (você define a lâmina)' }
+];
+function sizeKey(){ const z=SIZES.find(z=>z.w===PW&&z.h===PH&&z.pairing===(P.pairing||'capa')); return z?z.k:'custom'; }
+const cm = v => (Math.round(v)/10).toLocaleString('pt-BR');
+function pageLabel(){ return `${cm(PW)} × ${cm(PH)} cm`; }
+function laminaLabel(){ return (P.pairing==='pares'?`lâmina ${cm(2*PW)} × ${cm(PH)} cm`:`página ${pageLabel()}`); }
+function pgName(pi,low){ const t=P.pairing==='pares'?`Página ${pi+1}`:`Lâmina ${pi+1}`; return low?t.toLowerCase():t; }
+function perLam(){ return P.pairing==='pares'?2:1; }
+function lamCount(){ return P.pairing==='pares'?Math.ceil(P.pages.length/2):P.pages.length; }
+/* muda o tamanho da página; camadas livres acompanham na mesma proporção */
+function setPageSize(w,h){ w=Math.max(50,Math.min(1000,Math.round(w))); h=Math.max(50,Math.min(1000,Math.round(h))); const sx=w/PW, sy=h/PH, sf=Math.min(sx,sy);
+  if(sx!==1||sy!==1) (P.layers||[]).forEach(l=>{ l.x*=sx; l.w*=sx; l.y*=sy; l.h*=sy; if(l.size) l.size*=sf; if(l.pad) l.pad*=sf; });
+  P.size={w,h}; PW=w; PH=h; }
 let SPREADS = [[0],[1,2],[3,4],[5,6],[7,8],[9,10],[11]];
-function computeSpreads(){ const n=P.pages.length; SPREADS=[[0]]; let i=1; for(;i+1<n;i+=2) SPREADS.push([i,i+1]); if(i<n) SPREADS.push([i]); if(ui.spread>=SPREADS.length) ui.spread=SPREADS.length-1; }
-function setPageCount(n){ n=Math.max(2,Math.min(64,n|0)); while(P.pages.length<n) P.pages.push(blankPage(P.pages.length+1)); let moved=0; while(P.pages.length>n){ const pg=P.pages.pop(); moved+=pg.items.length; P.tray.push(...pg.items); } computeSpreads(); P.layers=P.layers.filter(l=>l.spread<SPREADS.length); return moved; }
+function computeSpreads(){ PW=(P.size&&P.size.w)||210; PH=(P.size&&P.size.h)||297; const n=P.pages.length;
+  if(P.pairing==='pares'){ SPREADS=[]; for(let i=0;i<n;i+=2) SPREADS.push(i+1<n?[i,i+1]:[i]); }
+  else if(P.pairing==='uma'){ SPREADS=P.pages.map((_,i)=>[i]); }
+  else { SPREADS=[[0]]; let i=1; for(;i+1<n;i+=2) SPREADS.push([i,i+1]); if(i<n) SPREADS.push([i]); }
+  thumbCache.clear(); if(ui.spread>=SPREADS.length) ui.spread=SPREADS.length-1; }
+function setPageCount(n){ n=Math.max(1,Math.min(64,n|0)); while(P.pages.length<n) P.pages.push(blankPage(P.pages.length+1)); let moved=0; while(P.pages.length>n){ const pg=P.pages.pop(); moved+=pg.items.length; P.tray.push(...pg.items); } computeSpreads(); P.layers=P.layers.filter(l=>l.spread<SPREADS.length); return moved; }
 const $ = s => document.querySelector(s);
 const el = (tag, attrs={}, ...kids) => { const e=document.createElement(tag); for(const k in attrs){ const v=attrs[k]; if(k==='style'&&typeof v==='object') Object.assign(e.style,v); else if(k.startsWith('on')) e.addEventListener(k.slice(2),v); else if(k==='html') e.innerHTML=v; else if(v!==false&&v!=null) e.setAttribute(k,v===true?'':v);} for(const c of kids.flat()){ if(c==null||c===false) continue; e.append(c.nodeType?c:document.createTextNode(c)); } return e; };
 const uid = () => Math.random().toString(36).slice(2,9);
@@ -837,22 +860,32 @@ function renderWS(){
   holder.append(sp); fitCards(sp);
   $('#z-val').textContent = Math.round(ui.zoom*100)+'%';
   const lab=$('#slabels'); lab.innerHTML='';
-  SPREADS[ui.spread].forEach(pi=>{ const pg=P.pages[pi]; lab.append(el('span',{class:SPREADS[ui.spread].length>1&&pi===curPi()?'on':'',title:'Editar esta lâmina',onclick:()=>{ ui.pg=pi; ui.sel=null; renderWS(); renderInsp(); }},el('b',{},`Lâmina ${pi+1}`), `${pg.items.length} bloco(s) · marcador ${pg.side==='left'?'à esquerda':'à direita'}`)); });
+  SPREADS[ui.spread].forEach(pi=>{ const pg=P.pages[pi]; lab.append(el('span',{class:SPREADS[ui.spread].length>1&&pi===curPi()?'on':'',title:'Editar esta lâmina',onclick:()=>{ ui.pg=pi; ui.sel=null; renderWS(); renderInsp(); }},el('b',{},pgName(pi)), `${pg.items.length} bloco(s) · marcador ${pg.side==='left'?'à esquerda':'à direita'}`)); });
 }
 let thumbT;
+/* miniaturas: cada lâmina só é redesenhada quando ela muda, e só quando aparece na lista.
+   Antes todas eram refeitas a cada alteração, o que travava projetos com muitas lâminas. */
+const thumbCache=new Map(); let thumbIO=null;
+function thumbKey(si){ return JSON.stringify([SPREADS[si].map(pi=>P.pages[pi]), P.layers.filter(l=>l.spread===si), P.grid, P.font, PW, PH, P.brands]); }
+function drawThumb(si, tw2, sc){ const key=thumbKey(si), c=thumbCache.get(si);
+  if(c && c.key===key){ tw2.innerHTML=''; tw2.append(c.node); return; }
+  const r=renderSpread(si,{mode:'thumb'}); r.style.transform=`scale(${sc})`; r.style.transformOrigin='0 0'; r.style.position='absolute';
+  tw2.innerHTML=''; tw2.append(r); setTimeout(()=>fitCards(r),0); thumbCache.set(si,{key,node:r}); }
 function renderThumbs(now){
   clearTimeout(thumbT);
   const go=()=>{
     const box=$('#thumbs'); box.innerHTML='';
+    if(thumbIO) thumbIO.disconnect();
+    thumbIO=('IntersectionObserver' in window)? new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting){ thumbIO.unobserve(e.target); const si=+e.target.dataset.si; drawThumb(si, e.target, +e.target.dataset.sc); } }),{root:null, rootMargin:'300px'}) : null;
     SPREADS.forEach((pages,si)=>{
       const sc = 84/(PW*MM); const w = pages.length*PW*MM*sc;
       const b = el('button',{class:'thumb'+(si===ui.spread?' on':''),onclick:()=>{ ui.spread=si; ui.sel=null; renderAll(); }});
-      const tw2 = el('div',{class:'tw',style:{width:w+'px',height:PH*MM*sc+'px'}});
-      const r=renderSpread(si,{mode:'thumb'}); r.style.transform=`scale(${sc})`; r.style.transformOrigin='0 0'; r.style.position='absolute';
-      tw2.append(r); setTimeout(()=>fitCards(r),0); b.append(tw2, el('div',{class:'tl'}, el('b',{}, pages.map(p=>p+1).join(' – ')), el('span',{}, `${pages.reduce((a,p)=>a+P.pages[p].items.filter(i=>i.type==='product').length,0)} produtos`)));
+      const tw2 = el('div',{class:'tw',style:{width:w+'px',height:PH*MM*sc+'px'}}); tw2.dataset.si=si; tw2.dataset.sc=sc;
+      if(thumbIO && si!==ui.spread) thumbIO.observe(tw2); else drawThumb(si, tw2, sc);
+      b.append(tw2, el('div',{class:'tl'}, el('b',{}, (P.pairing==='pares'?`Lâmina ${si+1} · `:'')+pages.map(p=>p+1).join(' – ')), el('span',{}, `${pages.reduce((a,p)=>a+P.pages[p].items.filter(i=>i.type==='product').length,0)} produtos`)));
       box.append(b);
     });
-    $('#pcount').textContent = `${P.pages.length} · A4`;
+    $('#pcount').textContent = P.pairing==='pares' ? `${SPREADS.length} lâmina${SPREADS.length>1?'s':''} · ${cm(2*PW)}×${cm(PH)} cm` : `${P.pages.length} · ${pageLabel()}`;
   };
   if(now) go(); else thumbT=setTimeout(go,350);
 }
@@ -879,7 +912,7 @@ function renderSections(){ clearTimeout(secT); secT=setTimeout(()=>{
     if(!tree.has(top)) tree.set(top,new Map()); const t=tree.get(top); if(!t.has(sub)) t.set(sub,[]); t.get(sub).push({it,pi}); total++; }));
   $('#seccount').textContent = tree.size?`${tree.size} · ${total} itens`:'';
   if(!tree.size){ box.append(el('div',{class:'empty-note',style:{padding:'0 4px'}},'As seções da planilha aparecem aqui como pastas.')); return; }
-  const itemBtn=({it,pi})=>el('button',{class:'pi'+(ui.sel&&ui.sel.id===it.id?' on':''),title:`${it.desc} · lâmina ${pi+1}`,onclick:()=>{ ui.spread=spreadOf(pi); ui.sel={kind:'item',id:it.id}; renderAll(); }},`${pi+1} · ${it.desc}`);
+  const itemBtn=({it,pi})=>el('button',{class:'pi'+(ui.sel&&ui.sel.id===it.id?' on':''),title:`${it.desc} · ${pgName(pi,1)}`,onclick:()=>{ ui.spread=spreadOf(pi); ui.sel={kind:'item',id:it.id}; renderAll(); }},`${pi+1} · ${it.desc}`);
   for(const [top,subs] of tree){ const n=[...subs.values()].reduce((a,b)=>a+b.length,0);
     const d=el('details',{open:ui.open.has(top)}); d.addEventListener('toggle',()=>{ d.open?ui.open.add(top):ui.open.delete(top); });
     d.append(el('summary',{},el('b',{},top),el('span',{},n)));
@@ -1108,7 +1141,7 @@ function renderInsp(){
 }
 function inspProduct(box,it,pi){
   const st=it.style;
-  box.append(el('div',{class:'kind'},el('b'),`Produto · lâmina ${pi+1} · ${it.cs}×${it.rs} blocos`));
+  box.append(el('div',{class:'kind'},el('b'),`Produto · ${pgName(pi,1)} · ${it.cs}×${it.rs} blocos`));
   const c1=el('div',{class:'sec'}, H('Conteúdo'),
     F('Descrição', txt(it,'desc',{area:true,rows:2})),
     el('div',{class:'row2'}, F('Código', txt(it,'code')), F('Marca (texto)', txt(it,'brand'))),
@@ -1182,7 +1215,7 @@ function actions(it,pi){
 }
 function inspShape(box,it,pi){
   const b=blockMM(it,pi);
-  box.append(el('div',{class:'kind'},el('b',{style:{background:it.bg}}),`${it.pending||it.banner?'Banner':'Bloco de cor'} · lâmina ${pi+1} · ${it.cs}×${it.rs} blocos`));
+  box.append(el('div',{class:'kind'},el('b',{style:{background:it.bg}}),`${it.pending||it.banner?'Banner':'Bloco de cor'} · ${pgName(pi,1)} · ${it.cs}×${it.rs} blocos`));
   box.append(el('div',{class:'sec'}, H('Arte do banner / imagem de fundo'),
     spec('Tamanho da arte', `${dims(b.w,b.h)}. JPG ou PNG em RGB. Deixe textos a 3 mm da borda do bloco.`),
     el('div',{class:'acts'}, imgPick(id=>{it.bgImg=id; it.pending=false; changed({insp:true});},it.bgImg?'Trocar arte':'Subir arte',false), it.bgImg?el('button',{class:'btn sm ghost',onclick:()=>{it.bgImg=null;changed({insp:true});}},'Remover'):null),
@@ -1255,18 +1288,18 @@ function zonesBox(pg){
 const inZone=(pg,z)=>pg.items.filter(it=>it.type==='product' && it.r<=z.to && it.r+it.rs-1>=z.from && it.c<=z.c1 && it.c+it.cs-1>=z.c0);
 function inspPage(box){
   const pages=SPREADS[ui.spread], cp=curPi();
-  box.append(el('div',{class:'kind'},el('b',{style:{background:'#1d7a35'}}),`Prancheta · lâmina ${cp+1}`));
+  box.append(el('div',{class:'kind'},el('b',{style:{background:'#1d7a35'}}),(P.pairing==='pares'?`Lâmina ${ui.spread+1} · ${pgName(cp,1)}`:`Prancheta · lâmina ${cp+1}`)));
   if(pages.length>1){
-    const w=el('div',{class:'seg pg-tabs'}); pages.forEach(pi=>w.append(el('button',{class:pi===cp?'on':'',onclick:()=>{ ui.pg=pi; renderWS(); renderInsp(); }},`Lâmina ${pi+1}`)));
+    const w=el('div',{class:'seg pg-tabs'}); pages.forEach(pi=>w.append(el('button',{class:pi===cp?'on':'',onclick:()=>{ ui.pg=pi; renderWS(); renderInsp(); }},pgName(pi))));
     box.append(w);
   }
   box.append(el('div',{class:'hint',style:{paddingTop:'8px'}}, pages.length>1?'Escolha a lâmina acima ou clique no fundo dela na prancheta. Clique em um produto, bloco ou camada para editar o item.':'Clique em um produto, bloco ou camada para editar. Sem nada selecionado você ajusta a lâmina: marcadores de sessão, divisórias e rodapé.'));
   for(const pi of [cp]){
     const pg=P.pages[pi];
-    const s=el('div',{class:'sec'}, H(`Lâmina ${pi+1}`),
+    const s=el('div',{class:'sec'}, H(pgName(pi)),
       F('Marcador lateral', sel(pg,'side',[['left','Esquerda'],['right','Direita']])),
       el('div',{class:'acts',style:{paddingTop:0}}, el('button',{class:'btn sm ghost',onclick:()=>{ P.pages.forEach(o=>o.side=pg.side); changed({insp:true}); toast(`Marcador ${pg.side==='left'?'à esquerda':'à direita'} em todas as lâminas`); }},'Marcador igual em todas')),
-      H('Fundo da lâmina'), bgEditor(pg, `${dims(PW+6,PH+6)} (A4 com 3 mm de sangria). JPG em RGB; PNG só se tiver transparência.`),
+      H('Fundo da lâmina'), bgEditor(pg, `${dims(PW+6,PH+6)} (página com 3 mm de sangria). JPG em RGB; PNG só se tiver transparência.`),
       el('div',{class:'acts',style:{paddingTop:0}}, el('button',{class:'btn sm ghost',onclick:()=>{ const keys=['bg','bg2','bg3','mid','grad','gtype','angle','cx','cy','bgImg','fit','bmode','zones']; P.pages.forEach(o=>{ if(o!==pg) keys.forEach(k=>o[k]=k==='zones'?JSON.parse(JSON.stringify(pg.zones||[])):pg[k]); }); changed({insp:true}); toast('Fundo e zonas aplicados em todas as lâminas'); }},'Aplicar em todas as lâminas')),
       zonesBox(pg),
       el('div',{class:'row2'}, F('Divisórias', color(pg,'divider')), el('div',{style:{alignSelf:'end'}}, chk(pg,'lines','Mostrar'))),
@@ -1286,7 +1319,7 @@ function inspPage(box){
       const f=pg.footer; f.mode=f.mode||'texto';
       s.append(F('Tipo de rodapé', seg(f,'mode',[['texto','Montar aqui'],['inst','Institucional'],['arte','Arte pronta']],v=>{ if(v==='inst' && f.h<60){ f.h=136; changed(); } renderInsp(); })));
       if(f.mode==='arte'){
-        s.append(spec('Tamanho da arte do rodapé', `${dims(PW+6, f.h+3)} (210 mm + 3 mm de sangria em cada lado; altura ${f.h} mm + 3 mm de sangria embaixo). JPG ou PNG em RGB, textos a 5 mm do corte.`),
+        s.append(spec('Tamanho da arte do rodapé', `${dims(PW+6, f.h+3)} (${cm(PW)} cm + 3 mm de sangria em cada lado; altura ${f.h} mm + 3 mm de sangria embaixo). JPG ou PNG em RGB, textos a 5 mm do corte.`),
           el('div',{class:'row2'}, F('Altura (mm)', numIn(f,'h',{step:1,min:5})), F('Encaixe', sel(f,'fit',[['cover','Preencher'],['contain','Inteira']]))),
           el('div',{class:'acts'}, imgPick(id=>{f.img=id; changed({insp:true});},f.img?'Trocar arte do rodapé':'Subir arte do rodapé',false), f.img?el('button',{class:'btn sm ghost',onclick:()=>{f.img=null;changed({insp:true});}},'Remover'):null),
           chk(f,'artText','Escrever o texto por cima da arte'),
@@ -1311,10 +1344,57 @@ function inspPage(box){
   box.append(el('div',{class:'sec'}, H('Padrão do tabloide'),
     el('div',{class:'hint'},'Grade-base: blocos iguais. Mudar aqui recalcula todas as lâminas.'),
     el('div',{class:'row2'}, F('Colunas', gridIn('cols')), F('Linhas', gridIn('rows'))),
-    F('Páginas do tabloide', (()=>{ const i=el('input',{class:'inp',type:'number',min:2,max:64,value:P.pages.length,id:'f-pages'}); i.addEventListener('change',()=>{ const m=setPageCount(Number(i.value)); if(m) toast(`<b>${m}</b> bloco(s) das páginas removidas foram para a bandeja`); renderAll(); commit(true); }); return i; })()),
+    (()=>{ const cfg=cfgFromProject(); const wrap=el('div',{});
+      const lam=el('input',{class:'inp',type:'number',min:1,max:64,value:lamCount()});
+      const aplicar=el('button',{class:'btn sm',onclick:()=>{ applyCfg(cfg); const m=setPageCount(perLam()*Math.max(1,Number(lam.value)||1)); computeSpreads(); renderAll(); toast(`Tamanho: ${laminaLabel()}${m?` · <b>${m}</b> bloco(s) foram para a bandeja`:''}`); }},'Aplicar tamanho');
+      lam.addEventListener('change',()=>{ const m=setPageCount(perLam()*Math.max(1,Number(lam.value)||1)); if(m) toast(`<b>${m}</b> bloco(s) das lâminas removidas foram para a bandeja`); renderAll(); });
+      wrap.append(sizeForm(cfg), el('div',{class:'acts',style:{paddingTop:0}},aplicar), F(P.pairing==='pares'?'Lâminas (2 páginas cada)':'Páginas',lam), el('div',{class:'hint'},'Os produtos se reorganizam sozinhos na grade; textos e PNGs livres acompanham a nova proporção.'));
+      return wrap; })(),
     fontSel(P,'font','Fonte padrão do tabloide'),
     (P.fonts&&P.fonts.length)? el('div',{class:'hint'}, 'Fontes instaladas: '+P.fonts.map(f=>f.name).join(', ')) : el('div',{class:'hint'},'Instale as fontes da marca em .ttf, .otf ou .woff2 (confira a licença de uso impresso). Elas vão junto no projeto salvo.'),
   ));
+}
+/* Tamanho e lâminas. cfg = {k, lw, lh, per, n} em cm; devolve o elemento e um getter */
+function sizeForm(cfg, onChange){
+  const box=el('div',{});
+  const draw=()=>{ box.innerHTML='';
+    const s1=el('select',{class:'inp'}); SIZES.forEach(z=>s1.append(el('option',{value:z.k},z.label))); s1.value=cfg.k;
+    s1.onchange=()=>{ cfg.k=s1.value; const z=SIZES.find(z=>z.k===cfg.k); if(z&&z.w){ cfg.per=z.pairing==='pares'?2:1; cfg.lw=(z.pairing==='pares'?2*z.w:z.w)/10; cfg.lh=z.h/10; cfg.capa=z.pairing==='capa'; } draw(); onChange&&onChange(); };
+    box.append(F('Tamanho',s1));
+    if(cfg.k==='custom'){
+      const n=(k,st)=>{ const i=el('input',{class:'inp',type:'number',step:st||'0.1',min:'5',value:cfg[k]}); i.addEventListener('change',()=>{ cfg[k]=Number(i.value)||cfg[k]; draw(); onChange&&onChange(); }); return i; };
+      const per=el('select',{class:'inp'},el('option',{value:2},'2 páginas lado a lado'),el('option',{value:1},'1 página')); per.value=String(cfg.per);
+      per.onchange=()=>{ cfg.per=Number(per.value); draw(); onChange&&onChange(); };
+      box.append(el('div',{class:'row2'}, F('Largura da lâmina (cm)',n('lw')), F('Altura (cm)',n('lh'))), F('Cada lâmina tem',per));
+    }
+    const pw=cfg.lw/cfg.per;
+    box.append(el('div',{class:'hint'}, cfg.per===2?`Cada página: ${cm(pw*10)} × ${cm(cfg.lh*10)} cm.`:`Página de ${cm(cfg.lw*10)} × ${cm(cfg.lh*10)} cm.`));
+  };
+  draw(); return box;
+}
+function cfgFromProject(){ const k=sizeKey(), per=P.pairing==='pares'?2:1; return { k, per, capa:P.pairing!=='pares'&&P.pairing!=='uma', lw:per*PW/10, lh:PH/10, n:lamCount() }; }
+function applyCfg(cfg){ const per=cfg.per, pw=cfg.lw*10/per, ph=cfg.lh*10; setPageSize(pw,ph); P.pairing = per===2?'pares':(cfg.capa?'capa':'uma'); }
+function newProjectDlg(){
+  const cfg={ k:'50x35', per:2, lw:50, lh:35, n:2, capa:false };
+  const nome=el('input',{class:'inp',value:'Tabloide '+new Date().toLocaleDateString('pt-BR',{month:'long',year:'numeric'})});
+  const lams=el('input',{class:'inp',type:'number',min:1,max:32,value:2});
+  const keep=el('input',{type:'checkbox',checked:true});
+  const m=modal('Novo tabloide', el('div',{},
+    F('Nome do projeto',nome),
+    sizeForm(cfg),
+    F('Quantas lâminas',lams),
+    el('label',{class:'chk',style:{padding:'4px 0 10px'}},keep,'Manter marcas, fontes, grade e lojas do projeto atual'),
+    el('p',{class:'hint',style:{padding:0}},'Dica: para um tabloide grande, comece com poucas lâminas e vá acrescentando em “Padrão do tabloide”. Só a lâmina aberta fica desenhada na tela, então o projeto continua leve.'),
+    el('div',{class:'acts',style:{paddingTop:'8px'}}, el('button',{class:'btn pri',onclick:()=>{
+      if(P && !confirm('Começar um projeto novo? O projeto atual sai da tela (salve no FLUXO antes, se ainda não salvou).')) return;
+      const n=Math.max(1,Math.min(32,Number(lams.value)||1));
+      const old=P||{}; const base={ name:nome.value.trim()||'Novo tabloide', grid: keep.checked&&old.grid?clone(old.grid):{cols:3,rows:8}, pages:[], layers:[], tray:[], lib: keep.checked?(old.lib||[]):[],
+        brands: keep.checked?(old.brands||{}):{}, fonts: keep.checked?(old.fonts||[]):[], font: keep.checked?(old.font||''):'', inst: keep.checked?old.inst:undefined };
+      P=base; PW=210; PH=297; applyCfg(cfg);
+      const pages = cfg.per===2 ? n*2 : n; for(let i=0;i<pages;i++) P.pages.push(blankPage(i+1));
+      ddEnsure(); instEnsure(); computeSpreads(); ui.spread=0; ui.pg=0; ui.sel=null; hist.stack=[]; hist.i=-1; commit(true); renderAll(); m.close();
+      toast(`Projeto <b>${esc(P.name)}</b> criado: ${n} lâmina(s) · ${laminaLabel()}`);
+    }},'Criar projeto'))));
 }
 function gridIn(k){ const i=el('input',{class:'inp',type:'number',min:1,max:12,value:P.grid[k]}); i.addEventListener('change',()=>{ P.grid[k]=Math.max(1,Math.min(12,Number(i.value)||1)); let n=0; P.pages.forEach((pg,pi)=>{ const keep=[]; pg.items.forEach(it=>{ it.cs=Math.min(it.cs,P.grid.cols); it.rs=Math.min(it.rs,P.grid.rows); if(it.c+it.cs<=P.grid.cols&&it.r+it.rs<=P.grid.rows) keep.push(it); else { n++; P.tray.push(it);} }); pg.items=keep; pg.sections.forEach(s=>{s.to=Math.min(s.to,P.grid.rows-1); s.from=Math.min(s.from,s.to);}); }); if(n) toast(`<b>${n}</b> bloco(s) foram para a bandeja`); changed({tray:true,insp:true,now:true}); }); return i; }
 
@@ -1818,6 +1898,44 @@ async function save(filename, blob){
   // fora do claude.ai (arquivo local)
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; document.body.append(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},2000); return true;
 }
+/* O html2canvas reduz toda imagem de fundo (background-image) ao tamanho da tela antes de ampliar
+   para 300 dpi: a foto do Sankhya saía com uns 76 dpi. Antes de exportar, cada imagem de fundo vira
+   um <img> no mesmo lugar e tamanho (com o zoom/deslocamento já aplicados), desenhado na resolução original. */
+function carregaImg(src){ return new Promise((ok,er)=>{ const im=new Image(); im.onload=()=>ok(im); im.onerror=er; im.src=src; }); }
+async function bgParaImg(root){
+  const jobs=[];
+  root.querySelectorAll('*').forEach(e=>{ if(e.children.length) return; const cs=getComputedStyle(e), m=/^url\("?(.*?)"?\)$/.exec(cs.backgroundImage||'');
+    if(!m||cs.backgroundRepeat!=='no-repeat') return; const W=e.clientWidth,H=e.clientHeight; if(W<2||H<2) return; const src=m[1];
+    jobs.push(carregaImg(src).then(im=>{ const iw=im.naturalWidth, ih=im.naturalHeight; if(!iw||!ih) return; const bs=cs.backgroundSize; let w,h;
+      if(bs==='contain'){ const k=Math.min(W/iw,H/ih); w=iw*k; h=ih*k; }
+      else if(bs==='cover'){ const k=Math.max(W/iw,H/ih); w=iw*k; h=ih*k; }
+      else { const p=bs.split(' '), pv=(v,ref)=>!v||v==='auto'?null:v.endsWith('%')?parseFloat(v)/100*ref:parseFloat(v); w=pv(p[0],W); h=pv(p[1],H);
+        if(w==null&&h==null){ w=iw; h=ih; } else if(w==null) w=h*iw/ih; else if(h==null) h=w*ih/iw; }
+      const ps=(cs.backgroundPosition||'50% 50%').split(' '), pp=(v,free)=>!v?free/2:v.endsWith('%')?parseFloat(v)/100*free:parseFloat(v)||0;
+      let x=pp(ps[0],W-w), y=pp(ps[1],H-h); const cover=w>W+1||h>H+1;
+      const tm=/^matrix\(([^)]+)\)$/.exec(cs.transform||'');
+      if(tm){ const v=tm[1].split(',').map(Number); if(Math.abs(v[1])>1e-6||Math.abs(v[2])>1e-6||cover) return;
+        const o=(cs.transformOrigin||'').split(' ').map(parseFloat), ox=isNaN(o[0])?W/2:o[0], oy=isNaN(o[1])?H/2:o[1];
+        x=ox+(x-ox)*v[0]+v[4]; y=oy+(y-oy)*v[3]+v[5]; w*=v[0]; h*=v[3]; e.style.transform='none'; }
+      else if(cs.transform&&cs.transform!=='none') return;
+      const img=document.createElement('img'); img.src=src; img.alt='';
+      img.style.cssText=`position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;max-width:none;max-height:none;margin:0;padding:0;border:0`;
+      if(cs.position==='static') e.style.position='relative'; if(cover) e.style.overflow='hidden'; e.style.backgroundImage='none'; e.append(img); }).catch(()=>{})); });
+  await Promise.all(jobs);
+}
+/* lâmina inteira (as páginas lado a lado) em um canvas */
+async function renderSpreadCanvas(si, {bleed=0, dpi=150}={}){
+  const h2c=await needLib('html2canvas',LIB.h2c);
+  await document.fonts.ready;
+  const n=SPREADS[si].length, host=$('#rhost'); host.innerHTML='';
+  const box=el('div',{style:{position:'relative',width:(n*PW+2*bleed)*MM+'px',height:(PH+2*bleed)*MM+'px',overflow:'hidden',background:'#fff'}});
+  const r=renderSpread(si,{mode:'export',bleed});
+  r.style.position='absolute'; r.style.left=bleed*MM+'px'; r.style.top=bleed*MM+'px'; r.style.overflow='visible';
+  box.append(r); host.append(box); fitCards(box); await bgParaImg(box);
+  const scale=Math.min((dpi/25.4)/MM, 15000/((n*PW+2*bleed)*MM));
+  const cv=await h2c(box,{scale, backgroundColor:'#ffffff', useCORS:true, logging:false});
+  host.innerHTML=''; return cv;
+}
 async function renderPageCanvas(pi, {bleed=0, dpi=150, fmtType='png'}={}){
   const h2c=await needLib('html2canvas',LIB.h2c);
   await document.fonts.ready;
@@ -1826,7 +1944,7 @@ async function renderPageCanvas(pi, {bleed=0, dpi=150, fmtType='png'}={}){
   const box=el('div',{style:{position:'relative',width:(PW+2*bleed)*MM+'px',height:(PH+2*bleed)*MM+'px',overflow:'hidden',background:'#fff'}});
   const r=renderSpread(si,{mode:'export',only:pi,bleed});
   r.style.position='absolute'; r.style.left=(-(k*PW)+bleed)*MM+'px'; r.style.top=bleed*MM+'px'; r.style.overflow='visible';
-  box.append(r); host.append(box); fitCards(box);
+  box.append(r); host.append(box); fitCards(box); await bgParaImg(box);
   const scale = (dpi/25.4)/MM;
   const cv = await h2c(box,{scale, backgroundColor:'#ffffff', useCORS:true, logging:false});
   host.innerHTML='';
@@ -1863,18 +1981,19 @@ function openExport(){
   const bleed=el('select',{class:'inp',id:'f-bleed'},el('option',{value:0},'Sem sangria'),el('option',{value:3,selected:true},'3 mm'),el('option',{value:5},'5 mm'));
   const dpi=el('select',{class:'inp',id:'f-dpi'},el('option',{value:150},'150 dpi'),el('option',{value:300,selected:true},'300 dpi'));
   const marks=el('input',{type:'checkbox',id:'f-marks',checked:true});
-  const pag=el('select',{class:'inp',id:'f-pag'},el('option',{value:'leitura'},'Leitura · uma página A4 por vez (1, 2, 3…)'),el('option',{value:'caderno'},'Caderno cruzado · A3 frente e verso para grampo'));
+  const pag=el('select',{class:'inp',id:'f-pag'},el('option',{value:'lamina'},`Lâmina inteira · as páginas lado a lado (${P.pairing==='pares'?cm(2*PW):cm(PW)} × ${cm(PH)} cm)`),el('option',{value:'leitura'},`Leitura · uma página (${pageLabel()}) por vez`),el('option',{value:'caderno'},'Caderno cruzado · A3 frente e verso para grampo'));
   const creep=el('select',{class:'inp',id:'f-creep'},el('option',{value:0},'Sem deslocamento'),el('option',{value:.1},'0,1 mm por folha'),el('option',{value:.2},'0,2 mm por folha'),el('option',{value:.3},'0,3 mm por folha'));
   const mapa=el('div',{class:'impo-map'});
+  if(P.pairing!=='pares') pag.value='leitura';
   const drawMapa=()=>{ mapa.innerHTML=''; const cad=pag.value==='caderno'; creepF.hidden=!cad; mapa.hidden=!cad; if(!cad) return;
     const pl=impoPlan();
-    mapa.append(el('p',{class:'fine',style:{margin:'0 0 6px'}}, `${pl.sheets.length} folha(s) A3 frente e verso · ${pl.N} páginas`+(pl.blanks?` · ${pl.blanks} página(s) em branco entram antes da contracapa (o caderno precisa de múltiplo de 4)`:'')+'. Sempre sai o tabloide inteiro.'));
+    mapa.append(el('p',{class:'fine',style:{margin:'0 0 6px'}}, `${pl.sheets.length} folha(s) ${cm(2*PW)} × ${cm(PH)} cm frente e verso · ${pl.N} páginas`+(pl.blanks?` · ${pl.blanks} página(s) em branco entram antes da contracapa (o caderno precisa de múltiplo de 4)`:'')+'. Sempre sai o tabloide inteiro.'));
     const t=el('div',{class:'impo-grid'}, el('b',{},'Folha'), el('b',{},'Frente'), el('b',{},'Verso'));
     pl.sheets.forEach(sh=>t.append(el('span',{},String(sh.s+1)), el('span',{},sh.front.map(impoLab).join(' | ')), el('span',{},sh.back.map(impoLab).join(' | '))));
     mapa.append(t); };
   const creepF=F('Deslocamento no miolo (creep)',creep), pagF=F('Paginação',pag); creepF.style.padding=pagF.style.padding='0';
   pag.addEventListener('change',drawMapa);
-  const scope=el('select',{class:'inp',id:'f-scope',style:{width:'auto'}},el('option',{value:'todas'},`Todas as ${P.pages.length} lâminas`),el('option',{value:'atual'},'Só a prancheta aberta'));
+  const scope=el('select',{class:'inp',id:'f-scope',style:{width:'auto'}},el('option',{value:'todas'},P.pairing==='pares'?`Todas as ${SPREADS.length} lâminas`:`Todas as ${P.pages.length} páginas`),el('option',{value:'atual'},'Só a lâmina aberta'));
   const prog=el('div',{class:'prog'},el('i')); const status=el('p',{class:'fine',style:{marginTop:'8px'}},'');
   const run=async(kind)=>{
     const list=pagesFromScope(scope.value); const bar=prog.firstChild; status.textContent='Preparando…';
@@ -1891,11 +2010,32 @@ function openExport(){
           if(mk){ doc.setLineWidth(0.25); doc.setDrawColor(0); const x0=mk+b, y0=mk+b, x1=x0+2*PW, y1=y0+PH, xm=x0+PW, o=b+1.5, L=5;
             [[x0,y0,-1,-1],[x1,y0,1,-1],[x0,y1,-1,1],[x1,y1,1,1]].forEach(([x,y,sx,sy])=>{ doc.line(x+sx*o,y,x+sx*(o+L),y); doc.line(x,y+sy*o,x,y+sy*(o+L)); });
             doc.setLineDashPattern([1,1],0); doc.line(xm,y0-o,xm,y0-o-L); doc.line(xm,y1+o,xm,y1+o+L); doc.setLineDashPattern([],0);
-            doc.setFontSize(6); doc.text(`${P.name} · Folha ${sh.s+1}/${pl.sheets.length} ${lado} · páginas ${pair.map(impoLab).join(' | ')} · A3 420×297 mm · sangria ${b} mm${cr?` · creep ${(cr*sh.s).toFixed(1).replace('.',',')} mm`:''} · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3);
+            doc.setFontSize(6); doc.text(`${P.name} · Folha ${sh.s+1}/${pl.sheets.length} ${lado} · páginas ${pair.map(impoLab).join(' | ')} · ${2*PW}×${PH} mm · sangria ${b} mm${cr?` · creep ${(cr*sh.s).toFixed(1).replace('.',',')} mm`:''} · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3);
             doc.text('dobra', xm+1, y0-o-L+1.5); }
         }
         bar.style.width='100%'; status.textContent='Gerando arquivo…';
         await save(`${slugify(P.name)}-grafica-caderno.pdf`, doc.output('blob'));
+      } else if((kind==='print'||kind==='digital') && pag.value==='lamina'){
+        const {jsPDF}=(await needLib('jspdf',LIB.pdf)); const b= kind==='print'? Number(bleed.value):0; const mk= kind==='print'&&marks.checked? 9:0; const d= kind==='print'? Number(dpi.value):150;
+        const sis= scope.value==='atual'?[ui.spread]:SPREADS.map((_,i)=>i); let doc=null;
+        for(let i=0;i<sis.length;i++){ const si=sis[i], n=SPREADS[si].length, LW=n*PW, W=LW+2*b+2*mk, Hh=PH+2*b+2*mk, ori=W>Hh?'landscape':'portrait';
+          status.textContent=`Renderizando lâmina ${si+1} (${i+1}/${sis.length})…`; bar.style.width=(i/sis.length*100)+'%';
+          const cv=await renderSpreadCanvas(si,{bleed:b,dpi:d});
+          if(!doc) doc=new jsPDF({unit:'mm',format:[W,Hh],orientation:ori,compress:true}); else doc.addPage([W,Hh],ori);
+          doc.addImage(cv.toDataURL('image/jpeg', kind==='print'?0.95:0.82),'JPEG',mk,mk,LW+2*b,PH+2*b,undefined,'FAST');
+          if(mk){ doc.setLineWidth(0.25); doc.setDrawColor(0); const x0=mk+b, y0=mk+b, x1=x0+LW, y1=y0+PH, o=b+1.5, L=5;
+            [[x0,y0,-1,-1],[x1,y0,1,-1],[x0,y1,-1,1],[x1,y1,1,1]].forEach(([x,y,sx,sy])=>{ doc.line(x+sx*o,y,x+sx*(o+L),y); doc.line(x,y+sy*o,x,y+sy*(o+L)); });
+            if(n===2){ const xm=x0+PW; doc.setLineDashPattern([1,1],0); doc.line(xm,y0-o,xm,y0-o-L); doc.line(xm,y1+o,xm,y1+o+L); doc.setLineDashPattern([],0); }
+            doc.setFontSize(6); doc.text(`${P.name} · Lâmina ${si+1}/${SPREADS.length} · ${LW}×${PH} mm · sangria ${b} mm · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3); }
+        }
+        bar.style.width='100%'; status.textContent='Gerando arquivo…';
+        await save(`${slugify(P.name)}-${kind==='print'?'grafica':'digital'}-laminas.pdf`, doc.output('blob'));
+      } else if((kind==='png'||kind==='jpeg') && P.pairing==='pares'){
+        const JSZip=await needLib('JSZip',LIB.zip); const zip=new JSZip(); const type= kind==='png'?'image/png':'image/jpeg';
+        const sis= scope.value==='atual'?[ui.spread]:SPREADS.map((_,i)=>i);
+        for(let i=0;i<sis.length;i++){ status.textContent=`Renderizando lâmina ${sis[i]+1} (${i+1}/${sis.length})…`; bar.style.width=(i/sis.length*100)+'%'; const cv=await renderSpreadCanvas(sis[i],{dpi:150}); zip.file(`lamina-${String(sis[i]+1).padStart(2,'0')}.${kind==='png'?'png':'jpg'}`, await toBlob(cv,type,0.9)); }
+        bar.style.width='100%'; status.textContent='Compactando…';
+        await save(`${slugify(P.name)}-${kind}.zip`, await zip.generateAsync({type:'blob'}));
       } else if(kind==='print'||kind==='digital'){
         const {jsPDF}=(await needLib('jspdf',LIB.pdf)); const b= kind==='print'? Number(bleed.value):0; const mk= kind==='print'&&marks.checked? 9:0; const d= kind==='print'? Number(dpi.value):150;
         const W=PW+2*b+2*mk, Hh=PH+2*b+2*mk; const doc=new jsPDF({unit:'mm',format:[W,Hh],orientation:'portrait',compress:true});
@@ -1905,7 +2045,7 @@ function openExport(){
           doc.addImage(cv.toDataURL('image/jpeg', kind==='print'?0.95:0.82),'JPEG',mk,mk,PW+2*b,PH+2*b,undefined,'FAST');
           if(mk){ doc.setLineWidth(0.25); doc.setDrawColor(0); const x0=mk+b, y0=mk+b, x1=x0+PW, y1=y0+PH, o=b+1.5, L=5;
             [[x0,y0,-1,-1],[x1,y0,1,-1],[x0,y1,-1,1],[x1,y1,1,1]].forEach(([x,y,sx,sy])=>{ doc.line(x+sx*o,y,x+sx*(o+L),y); doc.line(x,y+sy*o,x,y+sy*(o+L)); });
-            doc.setFontSize(6); doc.text(`${P.name} · Lâmina ${list[i]+1}/${P.pages.length} · A4 210×297 mm · sangria ${b} mm · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3); }
+            doc.setFontSize(6); doc.text(`${P.name} · Lâmina ${list[i]+1}/${P.pages.length} · ${PW}×${PH} mm · sangria ${b} mm · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3); }
         }
         bar.style.width='100%'; status.textContent='Gerando arquivo…';
         await save(`${slugify(P.name)}-${kind==='print'?'grafica':'digital'}.pdf`, doc.output('blob'));
@@ -1920,10 +2060,10 @@ function openExport(){
   };
   const ecard=(title,desc,extra,btn,cls)=>el('div',{class:'ecard'+(cls?' '+cls:'')},el('h5',{},title),el('p',{},desc),extra,btn);
   setTimeout(drawMapa,0);
-  modal(`Exportar ${P.pages.length} lâminas A4`, el('div',{},
+  modal(P.pairing==='pares'?`Exportar ${SPREADS.length} lâminas · ${cm(2*PW)} × ${cm(PH)} cm`:`Exportar ${P.pages.length} páginas · ${pageLabel()}`, el('div',{},
     el('div',{class:'acts',style:{padding:'0 0 12px'}}, scope),
     el('div',{class:'cards'},
-      ecard('PDF para gráfica','Página a página em 210 × 297 mm, ou caderno cruzado em A3 já na ordem de dobra. Com sangria e marcas para a gráfica refilar. Imagens em alta.', el('div',{style:{display:'grid',gap:'8px'}}, el('div',{class:'row2',style:{padding:0}}, F('Sangria',bleed), F('Resolução',dpi)), pagF, creepF, mapa, el('label',{class:'chk',style:{padding:0}},marks,'Marcas de corte, dobra e informações da página')), el('button',{class:'btn pri',onclick:()=>run('print')},'Gerar PDF para gráfica'),'main'),
+      ecard('PDF para gráfica',`Lâmina inteira, página a página (${pageLabel()}) ou caderno cruzado já na ordem de dobra.`+' Com sangria e marcas para a gráfica refilar. Imagens em alta.', el('div',{style:{display:'grid',gap:'8px'}}, el('div',{class:'row2',style:{padding:0}}, F('Sangria',bleed), F('Resolução',dpi)), pagF, creepF, mapa, el('label',{class:'chk',style:{padding:0}},marks,'Marcas de corte, dobra e informações da página')), el('button',{class:'btn pri',onclick:()=>run('print')},'Gerar PDF para gráfica'),'main'),
       ecard('PDF digital','Para mandar no WhatsApp, e-mail ou site. Sem sangria nem marcas, arquivo leve.', null, el('button',{class:'btn',onclick:()=>run('digital')},'Gerar PDF digital')),
       ecard('PNG','Um .zip com uma imagem por lâmina, fundo sólido, ideal para redes sociais.', null, el('button',{class:'btn',onclick:()=>run('png')},'Gerar PNG')),
       ecard('JPEG','Um .zip com uma imagem por lâmina, mais leve que o PNG para web e status.', null, el('button',{class:'btn',onclick:()=>run('jpeg')},'Gerar JPEG')),
@@ -1966,6 +2106,7 @@ $('#z-in').onclick=()=>{ if(ui.mode==='dd'){ DD.fit=false; DD.zoom=Math.min(3,DD
 $('#z-out').onclick=()=>{ if(ui.mode==='dd'){ DD.fit=false; DD.zoom=Math.max(0.03,DD.zoom/1.2); return ddRenderStage(); } ui.fit=false; ui.zoom=Math.max(0.15,ui.zoom/1.2); renderWS(); };
 $('#z-fit').onclick=()=>{ if(ui.mode==='dd'){ DD.fit=true; return ddRenderStage(); } ui.fit=true; renderWS(); };
 $('#c-guides').onchange=e=>{ ui.guides=e.target.checked; renderWS(); };
+$('#b-new').onclick=newProjectDlg;
 $('#b-undo').onclick=undo; $('#b-redo').onclick=redo;
 $('#pname').addEventListener('input',e=>{ P.name=e.target.value; commit(); });
 function firstFreeAny(cs,rs){ for(const pi of SPREADS[ui.spread].concat(P.pages.map((_,i)=>i))){ const f=firstFree(P.pages[pi],cs,rs); if(f) return {pi,...f}; } return null; }
@@ -2450,7 +2591,7 @@ async function renderPieceCanvas(p,{bleed=0, dpi=300}={}){
   const host=$('#rhost'); host.innerHTML='';
   const box=el('div',{style:{position:'relative',width:(W+2*b)*MM+'px',height:(H+2*b)*MM+'px',overflow:'hidden',background:'#fff'}});
   const r=renderPiece(p,{mode:'export',bleed:b}); Object.assign(r.style,{position:'absolute',left:b*MM+'px',top:b*MM+'px',overflow:'visible'});
-  box.append(r); host.append(box); fitCards(box); fitTexts(box);
+  box.append(r); host.append(box); fitCards(box); fitTexts(box); await bgParaImg(box);
   let pxW = p.unit==='px' ? p.w : (p.w+2*bleed)/25.4*dpi;
   const pxH = pxW*(H+2*b)/(W+2*b); const lim=Math.min(1, 16000/Math.max(pxW,pxH), Math.sqrt(160e6/(pxW*pxH))); pxW*=lim;
   const cv=await h2c(box,{scale:pxW/((W+2*b)*MM), backgroundColor:'#ffffff', useCORS:true, logging:false});
