@@ -154,6 +154,15 @@ details.grp[open]{padding-bottom:10px}
 .pend{position:absolute;inset:6px;border:2px dashed #9aa79d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#5f6e63;font:600 11px/1.3 var(--f-ui);text-align:center;background:repeating-linear-gradient(135deg,#0000 0 10px,#00000008 10px 20px)}
 .pend b{font:800 15px/1.1 var(--f-print);text-transform:uppercase;color:#3d4c41}
 .simg-on{outline:1.5px dashed #2f8cff;cursor:move}
+.fpart{position:absolute;box-sizing:border-box}
+.fpart .img{position:absolute;inset:0;background:center/contain no-repeat}
+.ffit{width:100%;height:100%;display:flex;flex-direction:column;overflow:hidden}
+.fpart-on{outline:1.5px dashed #2f8cff;cursor:move}
+.fpart-on.fon{outline:2px solid #2f8cff;background:rgba(47,140,255,.06)}
+.fh{position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;background:#2f8cff;border:2px solid #fff;border-radius:2px;cursor:nwse-resize;z-index:5}
+.vcol{display:flex;flex-wrap:wrap;gap:.3em .45em;align-items:center;justify-content:flex-end;align-content:center;height:100%}
+.vcol .vl{display:flex;flex-direction:column;gap:.25em;align-items:flex-end}
+.vrowl{display:flex;flex-direction:column;align-items:flex-end;gap:.2em;padding:.35em 0}
 .shandle{position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;background:#2f8cff;border:2px solid #fff;border-radius:2px;cursor:nwse-resize}
 .sectree{padding:0 8px 10px;font-size:12px}
 .sectree details{border-radius:6px}
@@ -653,6 +662,67 @@ function vHTML(v,s,vit,big,cw){
   const narrow = cw < 34*MM; if(narrow) vit={...vit,de:null};
   return `<div class="vhead">${v.label?`<span class="tag" style="background:${s.tagBg};color:${s.tagFg}">${esc(v.label)}</span>`:''}${v.code?`<span class="code">CÓD. ${esc(v.code)}</span>`:''}</div>${priceBlock(vit,s,{big})}`;
 }
+/* ---------- variações: layouts prontos e diagramação livre ---------- */
+function vitOf(v){ return { mode: v.parc? 'parc':'avista', avista:v.avista, de:v.de, x:v.x, parc:v.parc, total:v.total }; }
+function pillsHTML(v,s){ return `${v.label?`<span class="tag" style="background:${s.tagBg};color:${s.tagFg}">${esc(v.label)}</span>`:''}${v.code?`<span class="code">CÓD. ${esc(v.code)}</span>`:''}`; }
+function logoHTML(it,s,w,h){ const logo=logoOf(it); return logo?`<span class="blogo" style="background-image:url(${logo});width:${w}em;height:${h}em"></span>`:(it.brand?`<span class="btxt" style="color:${s.title};font-size:1.4em">${esc(it.brand)}</span>`:''); }
+function imgPart(url, mode){ return url?`<div class="img" style="background-image:url(${url})"></div>`:(mode==='edit'?`<div class="ph-img" style="inset:0">Foto pendente</div>`:''); }
+/* posições padrão do modo livre, em % do bloco */
+function freeDefaults(it){
+  const fl=it.fl||(it.fl={}); const n=it.variants.length;
+  const def=(k,o)=>{ if(!fl[k]) fl[k]=Object.assign({s:1,z:1},o); };
+  def('img',{x:2,y:8,w:38,h:86}); def('logo',{x:2,y:2,w:24,h:11,z:2}); def('ttl',{x:42,y:3,w:56,h:20}); if(it.tags) def('tags',{x:42,y:24,w:56,h:10});
+  (it.imgs||[]).forEach((id,k)=>def('img_'+k,{x:8+k*8,y:18+k*4,w:30,h:66,z:2}));
+  if(n){ const cols=(it.cs>=it.rs && n>1)?2:1, rows=Math.ceil(n/cols), top=it.tags?36:26, H=97-top;
+    it.variants.forEach((v,i)=>def('v'+i,{x:42+(i%cols)*(56/cols),y:top+Math.floor(i/cols)*(H/rows),w:56/cols-1,h:H/rows-1})); }
+  else def('preco',{x:42,y:56,w:56,h:40});
+  return fl;
+}
+function freeKeys(it){ const ks=['img','logo','ttl']; if(it.tags) ks.push('tags'); (it.imgs||[]).forEach((_,k)=>ks.push('img_'+k)); if(it.variants.length) it.variants.forEach((_,i)=>ks.push('v'+i)); else ks.push('preco'); return ks; }
+const FREE_NOME = k => k==='img'?'Foto principal':k==='logo'?'Logo / marca':k==='ttl'?'Título':k==='tags'?'Tags':k==='preco'?'Preço':k.startsWith('img_')?`Foto extra ${+k.slice(4)+1}`:k.startsWith('v')?'Variação '+(+k.slice(1)+1):k;
+function renderFree(it, card, wpx, hpx, mode, fs){
+  const s=it.style, fl=freeDefaults(it), on = mode==='edit' && ui.sel && ui.sel.id===it.id;
+  freeKeys(it).forEach(k=>{ const q=fl[k]; if(!q) return;
+    let html='', box=true;
+    if(k==='img'){ html=imgPart(asset(it.img),mode); box=false; }
+    else if(k.startsWith('img_')){ html=imgPart(asset((it.imgs||[])[+k.slice(4)]),mode); box=false; }
+    else if(k==='logo'){ html=`<div style="display:flex;align-items:center;justify-content:center;height:100%">${logoHTML(it,s,7,2.1)}</div>`; }
+    else if(k==='ttl'){ html=`<div class="ttl" style="color:${s.title};font-size:1.18em;text-align:right">${esc(it.desc)}</div>`; }
+    else if(k==='tags'){ html=tagsHTML(it,s); }
+    else if(k==='preco'){ html=`<div style="display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-end;height:100%">${brandHTML(it,s)}${priceBlock(it,s,{big:3.3})}</div>`; }
+    else { const v=it.variants[+k.slice(1)]; if(!v) return; html=`<div class="vrowl" style="height:100%;justify-content:center"><div class="vhead" style="justify-content:flex-end">${pillsHTML(v,s)}</div>${priceBlock(vitOf(v),s,{big:2.7})}</div>`; }
+    const d=el('div',{class:'fpart'+(box?' fbox':'')+(on?' fpart-on':'')+(on&&ui.fsel===k?' fon':''),style:{left:q.x+'%',top:q.y+'%',width:q.w+'%',height:q.h+'%',zIndex:q.z||1,fontSize:(q.s||1)+'em'}});
+    d.style.setProperty('--fs',(fs*(q.s||1))+'px'); d.dataset.k=k; d.innerHTML=box?`<div class="ffit">${html}</div>`:html; if(on) d.append(el('div',{class:'fh'})); card.append(d);
+  });
+}
+function renderVLayout(it, card, wpx, hpx, mode, pad){
+  const s=it.style, lay=s.vlay, imgURL=asset(it.img), n=it.variants.length, line=s.line;
+  const ladoOk = (wpx*0.7)/n >= 30*MM;
+  if(lay==='lado' && ladoOk){ // foto à esquerda; título e marca em cima; uma coluna de preço por variação
+    const iw=wpx*0.3, top=hpx*0.3;
+    card.append(el('div',{class:'fpart',style:{left:pad+'px',top:pad+'px',width:(iw-pad)+'px',bottom:pad+'px'},html:imgPart(imgURL,mode)}));
+    card.append(el('div',{class:'fitbox',style:{position:'absolute',left:iw+'px',right:pad+'px',top:pad+'px',height:(top-pad)+'px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'.6em'},html:`<div class="ttl" style="color:${s.title};font-size:1.25em">${esc(it.desc)}</div>${logoHTML(it,s,7,2)}`}));
+    const vg=el('div',{class:'vgrid',style:{left:iw+'px',right:pad+'px',top:top+'px',bottom:pad+'px',gridTemplateColumns:`repeat(${n},1fr)`,gridTemplateRows:'1fr'}});
+    it.variants.forEach((v,i)=>{ const c=el('div',{class:'vcell fitbox',style:{borderLeft:i?`.12em solid ${line}`:'0',padding:'0 .4em'}}); c.innerHTML=`<div class="vcol"><div class="vl">${pillsHTML(v,s)}</div>${priceBlock(vitOf(v),s,{big:2.7})}</div>`; vg.append(c); });
+    card.append(vg); return;
+  }
+  if(lay==='lista' || lay==='lado'){ // foto à esquerda; marca e título em cima à direita; variações empilhadas
+    const iw=wpx*0.5;
+    card.append(el('div',{class:'fpart',style:{left:pad+'px',top:pad+'px',width:(iw-pad)+'px',bottom:pad+'px'},html:imgPart(imgURL,mode)}));
+    const col=el('div',{class:'fitbox',style:{position:'absolute',left:iw+'px',right:pad+'px',top:pad+'px',bottom:pad+'px',display:'flex',flexDirection:'column',alignItems:'flex-end',textAlign:'right'}});
+    col.innerHTML=`<div style="display:flex;flex-direction:column;align-items:flex-end;gap:.3em;margin-bottom:.4em">${logoHTML(it,s,7,2)}<div class="ttl" style="color:${s.title};font-size:1.15em">${esc(it.desc)}</div>${tagsHTML(it,s)}</div>`+
+      it.variants.map((v,i)=>`<div class="vrowl" style="${i?`border-top:.12em solid ${line}`:''};width:100%"><div class="vhead" style="justify-content:flex-end">${pillsHTML(v,s)}</div>${priceBlock(vitOf(v),s,{big:2.6})}</div>`).join('');
+    card.append(col); return;
+  }
+  // grade: foto e título em cima, variações em quadrantes embaixo
+  const headH=hpx*0.48;
+  card.append(el('div',{class:'fpart',style:{left:pad+'px',top:pad+'px',width:(wpx*0.55-pad)+'px',height:(headH-pad*1.4)+'px'},html:imgPart(imgURL,mode)}));
+  card.append(el('div',{class:'fitbox',style:{position:'absolute',left:(wpx*0.56)+'px',right:pad+'px',top:pad+'px',height:(headH-pad*2)+'px',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'.5em',textAlign:'right'},html:`<div class="ttl" style="color:${s.title};font-size:1.2em">${esc(it.desc)}</div>${tagsHTML(it,s)}<div style="margin-top:auto">${logoHTML(it,s,8,2.2)}</div>`}));
+  const cols=Math.min(n,2), rows=Math.ceil(n/cols);
+  const vg=el('div',{class:'vgrid',style:{left:pad+'px',right:pad+'px',top:headH+'px',bottom:pad+'px',gridTemplateColumns:`repeat(${cols},1fr)`,gridTemplateRows:`repeat(${rows},1fr)`}});
+  it.variants.forEach((v,i)=>{ const c=el('div',{class:'vcell fitbox',style:{borderTop:`.12em solid ${line}`,borderLeft:i%cols?`.12em solid ${line}`:'0'}}); c.innerHTML=vHTML(v,s,vitOf(v),2.9,wpx/cols); vg.append(c); });
+  card.append(vg);
+}
 function renderProduct(it, wpx, hpx, mode){
   const s = it.style; const k = (it.scale||1) * Math.pow(Math.min(it.cs, it.rs), 0.55);
   const fs = 9.8*k;
@@ -662,6 +732,8 @@ function renderProduct(it, wpx, hpx, mode){
   const imgURL = asset(it.img);
   const hasV = it.variants && it.variants.length;
   let imgBox;
+  if(it.free){ renderFree(it, card, wpx, hpx, mode, fs); return card; }
+  if(hasV && s.vlay && s.vlay!=='auto'){ renderVLayout(it, card, wpx, hpx, mode, pad); return card; }
   const wideV = hasV && wpx > hpx*1.5;
   if(wideV){
     // bloco largo: foto e título à esquerda, variações em grade à direita
@@ -731,6 +803,9 @@ function fitCards(root){
     let fs=+card.dataset.fs; const boxes=[...card.querySelectorAll('.fitbox')];
     const over=()=>boxes.some(b=>b.scrollHeight>b.clientHeight+1.5||b.scrollWidth>b.clientWidth+1.5);
     let n=0; while(n<16 && over()){ fs*=0.95; card.style.fontSize=fs+'px'; n++; }
+    // modo livre: cada peça se ajusta sozinha ao próprio tamanho
+    card.querySelectorAll('.ffit').forEach(b=>{ let f=parseFloat(getComputedStyle(b).fontSize), k=0;
+      while(k<24 && (b.scrollHeight>b.clientHeight+1.5||b.scrollWidth>b.clientWidth+1.5)){ f*=0.93; b.style.fontSize=f+'px'; b.style.setProperty('--fs',f+'px'); k++; } });
   });
 }
 function renderShape(it,wpx,hpx,mode){
@@ -968,6 +1043,10 @@ $('#ws').addEventListener('pointerdown',e=>{
     const p=toMM(e); drag={kind:isHandle?'lresize':'lmove', l, sx:p.x, sy:p.y, ox:l.x, oy:l.y, ow:l.w, oh:l.h, moved:false};
     e.preventDefault(); return;
   }
+  const fp = e.target.closest('.fpart-on');
+  if(fp && itEl){ const f=findItem(itEl.dataset.id); if(f&&f.it.free){ const k=fp.dataset.k, q=f.it.fl[k], r=itEl.getBoundingClientRect();
+    if(ui.fsel!==k){ ui.fsel=k; fp.parentNode.querySelectorAll('.fpart').forEach(x=>x.classList.toggle('fon',x===fp)); renderInsp(); }
+    drag={kind:e.target.classList.contains('fh')?'fres':'fmove', it:f.it, key:k, sx:e.clientX, sy:e.clientY, o:Object.assign({},q), cw:r.width, ch:r.height, moved:false}; e.preventDefault(); return; } }
   const simg = e.target.closest('.simg-on');
   if(simg && itEl){ const f=findItem(itEl.dataset.id); const p=toMM(e); drag={kind:e.target.classList.contains('shandle')?'sres':'smove', it:f.it, sx:p.x, sy:p.y, ox:f.it.imgX||0, oy:f.it.imgY||0, os:f.it.imgS||1, wmm:f.it.cs*geom(P.pages[f.pi]).cw, moved:false}; e.preventDefault(); return; }
   if(itEl){
@@ -985,6 +1064,14 @@ $('#ws').addEventListener('pointerdown',e=>{
 window.addEventListener('pointermove',e=>{
   if(!drag) return;
   if(!drag.moved && Math.hypot(e.clientX-(drag.sx0??(drag.sx0=e.clientX)), e.clientY-(drag.sy0??(drag.sy0=e.clientY)))<1) {}
+  if(drag.kind==='fmove'||drag.kind==='fres'){
+    const dx=(e.clientX-drag.sx)/drag.cw*100, dy=(e.clientY-drag.sy)/drag.ch*100, q=drag.it.fl[drag.key], r2=v=>Math.round(v*2)/2;
+    if(Math.abs(dx)+Math.abs(dy)<0.3 && !drag.moved) return; drag.moved=true;
+    if(drag.kind==='fres'){ q.w=r2(Math.max(4,Math.min(130,drag.o.w+dx))); q.h=r2(Math.max(4,Math.min(130,drag.o.h+dy))); }
+    else { q.x=r2(Math.max(-40,Math.min(100,drag.o.x+dx))); q.y=r2(Math.max(-40,Math.min(100,drag.o.y+dy))); }
+    if(!drag.raf) drag.raf=requestAnimationFrame(()=>{ if(drag) drag.raf=0; renderWS(); });
+    return;
+  }
   if(drag.kind==='smove'||drag.kind==='sres'){
     const p=toMM(e), it=drag.it; drag.moved=true;
     if(drag.kind==='sres') it.imgS=Math.max(.15,Math.min(3, Math.round((drag.os+(p.x-drag.sx)/(drag.wmm*0.46))*100)/100));
@@ -1029,7 +1116,7 @@ function addGuide(o,v){ const r=$('#spread').firstChild; r.append(el('div',{clas
 window.addEventListener('pointerup',ev=>{
   if(!drag) return; const d=drag; drag=null; clearGhost(); document.querySelectorAll('.guide').forEach(g=>g.remove());
   if(!d.moved) return;
-  if(d.kind==='lmove'||d.kind==='lresize'||d.kind==='smove'||d.kind==='sres'){ changed({insp:true}); return; }
+  if(d.kind==='lmove'||d.kind==='lresize'||d.kind==='smove'||d.kind==='sres'||d.kind==='fmove'||d.kind==='fres'){ changed({insp:true}); return; }
   if(!d.target) return;
   const it=d.it, t=d.target; const old={c:it.c,r:it.r,cs:it.cs,rs:it.rs};
   if(t.pi===d.pi && t.c===it.c && t.r===it.r && t.cs===it.cs && t.rs===it.rs) return;
@@ -1173,7 +1260,28 @@ function inspProduct(box,it,pi){
     c2.append(el('div',{class:'vrow',style:{color:'var(--ui-mute)',fontSize:'11px'}},el('span',{},'Rótulo'),el('span',{},'Código'),el('span',{},'Só R$'),el('span')));
     it.variants.forEach((v,i)=>c2.append(el('div',{class:'vrow'}, txt(v,'label'), txt(v,'code'), money(v,'avista'), el('button',{class:'x',title:'Remover',onclick:()=>{ it.variants.splice(i,1); changed({insp:true}); }},'×'))));
   }
+  if(hasV && !it.free) c2.append(F('Como mostrar as variações', (st.vlay=st.vlay||'auto', seg)(st,'vlay',[['auto','Automático'],['lado','Lado a lado'],['grade','Grade'],['lista','Lista']],()=>renderInsp())));
   c2.append(el('div',{class:'acts'}, el('button',{class:'btn sm',onclick:()=>{ it.variants.push({label:'',code:'',avista:null}); if(it.variants.length===1&&it.cs*it.rs<4){ /* sugere 2x2 */ } changed({insp:true}); }},'+ Variação'), el('span',{class:'hint',style:{padding:0}},'Ex.: 500ml, 1,5L, 3L, 5L no mesmo bloco')));
+  const cF=el('div',{class:'sec'}, H('Diagramar à mão'));
+  if(!it.free){
+    cF.append(el('div',{class:'hint'},'Para casos especiais (variações, várias fotos): cada parte do bloco vira uma peça que você arrasta e redimensiona. O bloco continua no mesmo lugar da grade e os preços continuam ligados ao produto.'),
+      el('div',{class:'acts'}, el('button',{class:'btn sm pri',onclick:()=>{ it.free=true; it.fl=it.fl||{}; freeDefaults(it); ui.fsel=null; changed({insp:true,now:true}); toast('Diagramação livre: arraste as peças dentro do bloco. A bolinha azul muda o tamanho.'); }},'Diagramar à mão')));
+  } else {
+    freeDefaults(it);
+    cF.append(el('div',{class:'hint'},'Arraste cada peça dentro do bloco; a bolinha azul no canto muda o tamanho. Clique em uma peça para ajustar abaixo.'));
+    freeKeys(it).forEach(k=>{ const q=it.fl[k]; if(!q) return;
+      const lab=el('span',{style:{flex:1,fontSize:'12px',fontWeight:ui.fsel===k?'700':'400',color:ui.fsel===k?'var(--ui-accent)':''}},FREE_NOME(k));
+      const b=(t,tt,f)=>el('button',{class:'btn sm ghost',title:tt,onclick:()=>{ f(); changed({insp:true}); }},t);
+      cF.append(el('div',{class:'dd-orow',style:{display:'flex',gap:'4px',alignItems:'center',padding:'3px 0'}}, lab,
+        k.startsWith('img')?null:b('A−','Texto menor',()=>q.s=Math.max(.4,Math.round((q.s-.1)*10)/10)),
+        k.startsWith('img')?null:b('A+','Texto maior',()=>q.s=Math.min(3,Math.round((q.s+.1)*10)/10)),
+        b('Frente','Trazer para a frente',()=>{ const mx=Math.max(...freeKeys(it).map(x=>(it.fl[x]||{}).z||1)); q.z=mx+1; }),
+        k.startsWith('img_')?b('×','Tirar esta foto',()=>{ const i=+k.slice(4); it.imgs.splice(i,1); Object.keys(it.fl).filter(x=>x.startsWith('img_')).forEach(x=>delete it.fl[x]); }):null)); });
+    cF.append(el('div',{class:'acts'},
+      imgPick(id=>{ (it.imgs=it.imgs||[]).push(id); freeDefaults(it); changed({insp:true}); },'+ Foto extra'),
+      el('button',{class:'btn sm ghost',onclick:()=>{ it.fl={}; freeDefaults(it); changed({insp:true}); }},'Reorganizar'),
+      el('button',{class:'btn sm',onclick:()=>{ it.free=false; ui.fsel=null; changed({insp:true,now:true}); }},'Voltar ao automático')));
+  }
   const c3=el('div',{class:'sec'}, H('Tamanho e posição'),
     el('div',{class:'row2'}, F('Colunas (blocos)', sizeIn(it,pi,'cs')), F('Linhas (blocos)', sizeIn(it,pi,'rs'))),
     F('Escala do texto', range(it,'scale',0.7,1.6,0.05)),
@@ -1192,7 +1300,7 @@ function inspProduct(box,it,pi){
     st.bgImg? null : spec('Imagem de fundo do bloco', `JPG ou PNG em RGB, ${dims(blockMM(it,pi).w, blockMM(it,pi).h)}.`),
     el('div',{class:'acts'}, el('button',{class:'btn sm',onclick:()=>{ applyPreset(it,'branco'); }},'Padrão branco'), el('button',{class:'btn sm',onclick:()=>applyPreset(it,'verde')},'Oferta verde'), el('button',{class:'btn sm',onclick:()=>applyPreset(it,'azul')},'Destaque azul')),
   );
-  box.append(c1,c2,posBox(it,pi),c3,c4, actions(it,pi));
+  box.append(c1,c2,cF,posBox(it,pi),c3,c4, actions(it,pi));
 }
 function applyPreset(it,k){
   const pr={ branco:{bg:'#ffffff',bg2:'#ffffff',grad:false,title:'#111111',price:THEME.green,tagStyle:'faixa',tagFg:'#111111',totBg:THEME.navy},
