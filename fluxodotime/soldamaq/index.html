@@ -71,8 +71,10 @@ button{cursor:pointer}
 /* ---------- workspace ---------- */
 .ws{position:relative;overflow:auto;min-height:0;background:
   radial-gradient(circle at 1px 1px,#2a2f38 1px,transparent 1.2px) 0 0/22px 22px, #111418}
-.ws-in{min-width:100%;min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:56px 40px 60px}
+.ws-in{width:max-content;min-width:100%;min-height:100%;display:flex;align-items:flex-start;justify-content:center;padding:56px 40px 60px}
 .spread-holder{position:relative;flex:none}
+body.pan-ok .ws,body.pan-ok .ws *{cursor:grab!important}
+body.panning .ws,body.panning .ws *{cursor:grabbing!important;user-select:none!important}
 .spread-labels{position:absolute;top:-30px;left:0;right:0;display:flex;font-size:11.5px;color:var(--ui-mute)}
 .spread-labels span{flex:1;display:flex;gap:8px;align-items:center}
 .spread-labels b{color:var(--ui-fg);font-weight:600}
@@ -1255,7 +1257,8 @@ function inspProduct(box,it,pi){
       imgPick(id=>{it.img=id; changed({insp:true});},'Foto do produto'),
       it.img?el('button',{class:'btn sm',onclick:async()=>{ it.img=await reprocess(it.img); changed({insp:true}); toast('Fundo removido e recortado'); }},'Remover fundo'):null,
       apiCodes(it).length?el('button',{class:'btn sm',title:'Busca a foto pelo código no sistema da Soldamaq',onclick:()=>apiOne(it)},'Puxar do sistema'):null,
-      imgPick(id=>{it.logo=id; changed({insp:true});},'Logo fornecedor',false),
+      el('button',{class:'btn sm',title:'Com a opção ligada em Logos das marcas, o logo entra sem fundo, em preto 100% e recortado',onclick:()=>pickOne(async f=>{ it.logo=await logoFile(f); changed({insp:true}); })},'Logo fornecedor'),
+      it.logo?el('button',{class:'btn sm',title:'Tira o fundo, deixa o logo todo em preto 100% e recorta',onclick:async()=>{ it.logo=await logoPretoDe(it.logo); changed({insp:true}); toast('Logo em preto 100%, sem fundo e recortado'); }},'Logo preto 100%'):null,
       it.logo?el('button',{class:'btn sm ghost',onclick:()=>{it.logo=null; changed({insp:true});}},'Tirar logo'):null),
     (()=>{ const b=blockMM(it,pi); const fw = it.variants.length? b.w*0.45 : (b.h>b.w*1.05? b.w : b.w*0.42), fh = it.variants.length? b.h*0.45 : (b.h>b.w*1.05? b.h*0.45 : b.h); return spec('Formatos recomendados', `Foto: PNG com fundo transparente (ou JPG em fundo branco), no mínimo 1500 px no lado maior. Área da foto neste bloco ≈ ${dims(fw,fh)}. Nome do arquivo = código (${(it.code||'34543').split('/')[0].trim()}.png). Logo: PNG transparente ou SVG, 600 px de largura, arquivo com o nome da marca${it.brand?` (${it.brand}.png)`:''}.`); })(),
   );
@@ -1580,6 +1583,41 @@ async function removeBg(src, tol=46){
   const out=document.createElement('canvas'); out.width=x1-x0+1; out.height=y1-y0+1; out.getContext('2d').drawImage(cv,x0,y0,out.width,out.height,0,0,out.width,out.height);
   return out.toDataURL('image/png');
 }
+/* Logo padronizado: fundo fora, tudo em preto 100% (R0 G0 B0, que vira K100 no PDF CMYK) e recorte justo.
+   Mantém o desenho do logo: o que é cor vira preto, o que é fundo (ou branco) fica transparente,
+   inclusive o miolo das letras. Bordas suaves continuam suaves. */
+async function logoMono(src){
+  const im=await loadImg(src); const iw=im.naturalWidth||im.width||600, ih=im.naturalHeight||im.height||200;
+  const svg=/^data:image\/svg/.test(src), lado=Math.max(iw,ih);
+  const sc=svg? 1600/lado : Math.min(1, 2000/lado);
+  const w=Math.max(1,Math.round(iw*sc)), h=Math.max(1,Math.round(ih*sc));
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const cx=cv.getContext('2d'); cx.drawImage(im,0,0,w,h);
+  const d=cx.getImageData(0,0,w,h), px=d.data, n=w*h;
+  const bord=[]; for(let x=0;x<w;x++) bord.push(x*4, ((h-1)*w+x)*4); for(let y=0;y<h;y++) bord.push(y*w*4, (y*w+w-1)*4);
+  let transp=0; for(let i=3;i<px.length;i+=4) if(px[i]<250) transp++;
+  const jaAlfa = bord.filter(i=>px[i+3]<10).length > bord.length*0.3 || transp > n*0.05;
+  const a=new Float32Array(n); let antes=0, depois=0;
+  if(!jaAlfa){
+    // fundo = cor mediana da borda; distância até ela vira cobertura (global: o miolo das letras também sai)
+    const med=ch=>{ const v=bord.map(i=>px[i+ch]).sort((p,q)=>p-q); return v[v.length>>1]; };
+    const br=med(0), bg=med(1), bb=med(2);
+    for(let p=0,i=0;p<n;p++,i+=4){ const dr=px[i]-br, dg=px[i+1]-bg, db=px[i+2]-bb; const dist=Math.sqrt(dr*dr+dg*dg+db*db); a[p]=Math.max(0,Math.min(1,(dist-28)/62))*(px[i+3]/255); }
+  } else {
+    // já transparente: usa o alfa e tira também o branco de dentro (papel), se sobrar logo suficiente
+    const b=new Float32Array(n);
+    for(let p=0,i=0;p<n;p++,i+=4){ const al=px[i+3]/255; a[p]=al; antes+=al; const mn=Math.min(px[i],px[i+1],px[i+2]); b[p]=al*Math.max(0,Math.min(1,(238-mn)/38)); depois+=b[p]; }
+    if(antes>0 && depois>=antes*0.25) a.set(b);
+  }
+  let x0=w,y0=h,x1=-1,y1=-1;
+  for(let p=0,i=0;p<n;p++,i+=4){ const al=Math.round(a[p]*255); px[i]=0; px[i+1]=0; px[i+2]=0; px[i+3]=al; if(al>8){ const x=p%w, y=(p/w)|0; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+  if(x1<0) return src; // não achou logo: devolve o original
+  cx.putImageData(d,0,0);
+  const out=document.createElement('canvas'); out.width=x1-x0+1; out.height=y1-y0+1; out.getContext('2d').drawImage(cv,x0,y0,out.width,out.height,0,0,out.width,out.height);
+  return out.toDataURL('image/png');
+}
+function logoPretoPref(v){ try{ if(v!==undefined) localStorage.setItem('soldamaq-logo-preto', v?'1':'0'); return localStorage.getItem('soldamaq-logo-preto')!=='0'; }catch(e){ return v!==undefined?v:true; } }
+async function logoFile(file){ const src=await readURL(file); return addAsset(logoPretoPref()? await logoMono(src) : src); }
+async function logoPretoDe(id){ const src=asset(id); if(!src) return id; return addAsset(await logoMono(src)); }
 async function loadImageFile(file, rm){ const src=await readURL(file); return addAsset(rm? await removeBg(src): src); }
 async function reprocess(id){ const src=asset(id); if(!src) return id; return addAsset(await removeBg(src)); }
 function pickOne(cb){ const f=$('#f-one'); f.value=''; f.onchange=()=>{ if(f.files[0]) cb(f.files[0]); }; f.click(); }
@@ -2342,10 +2380,58 @@ document.addEventListener('keydown',e=>{
 });
 function nav(d){ ui.spread=Math.max(0,Math.min(SPREADS.length-1,ui.spread+d)); ui.sel=null; renderAll(); }
 $('#nav-prev').onclick=()=>nav(-1); $('#nav-next').onclick=()=>nav(1);
-$('#z-in').onclick=()=>{ if(ui.mode==='dd'){ DD.fit=false; DD.zoom=Math.min(3,DD.zoom*1.2); return ddRenderStage(); } ui.fit=false; ui.zoom=Math.min(3,ui.zoom*1.2); renderWS(); };
-$('#z-out').onclick=()=>{ if(ui.mode==='dd'){ DD.fit=false; DD.zoom=Math.max(0.03,DD.zoom/1.2); return ddRenderStage(); } ui.fit=false; ui.zoom=Math.max(0.15,ui.zoom/1.2); renderWS(); };
-$('#z-fit').onclick=()=>{ if(ui.mode==='dd'){ DD.fit=true; return ddRenderStage(); } ui.fit=true; renderWS(); };
+$('#z-in').onclick=()=>zoomTo(zCur()*1.25);
+$('#z-out').onclick=()=>zoomTo(zCur()/1.25);
+$('#z-fit').onclick=()=>{ document.querySelectorAll('.ws-in').forEach(n=>n.style.padding=''); if(ui.mode==='dd'){ DD.fit=true; return ddRenderStage(); } ui.fit=true; renderWS(); };
 $('#c-guides').onchange=e=>{ ui.guides=e.target.checked; renderWS(); };
+/* zoom no ponto do mouse (Ctrl + roda, pinça do trackpad, Ctrl + / − / 0 com o mouse na prancheta)
+   e mãozinha (segurar espaço e arrastar, ou arrastar com o botão do meio).
+   O zoom só troca a escala da prancheta, sem redesenhar os blocos, por isso fica leve. */
+const ZV={over:false, mx:0, my:0, space:false, pan:null};
+function zCur(){ return ui.mode==='dd'?DD.zoom:ui.zoom; }
+function zoomTo(z, cx, cy){
+  const dd=ui.mode==='dd', ws=dd?$('#dws'):$('#ws'), st=dd?$('#dstage'):$('#spread'), holder=dd?$('#dholder'):$('#holder');
+  const z0=zCur(); z=Math.max(dd?0.03:0.15, Math.min(6,z));
+  if(!st){ if(dd){ DD.fit=false; DD.zoom=z; ddRenderStage(); } else { ui.fit=false; ui.zoom=z; renderWS(); } return; }
+  if(Math.abs(z-z0)<1e-4) return;
+  const wr=ws.getBoundingClientRect(); if(cx==null){ cx=wr.left+ws.clientWidth/2; cy=wr.top+ws.clientHeight/2; }
+  const r=st.getBoundingClientRect(), ux=(cx-r.left)/z0, uy=(cy-r.top)/z0;
+  let W,Hh; if(dd){ const d=dsz(ddCur()); W=d.W*MM; Hh=d.H*MM; DD.fit=false; DD.zoom=z; } else { W=spreadW(ui.spread); Hh=PH*MM; ui.fit=false; ui.zoom=z; }
+  // fora do "Ajustar", sobra meia tela em volta: dá para levar qualquer canto para o meio, como numa prancheta de verdade
+  const inn=ws.querySelector('.ws-in'); if(inn) inn.style.padding=`${Math.round(ws.clientHeight/2)}px ${Math.round(ws.clientWidth/2)}px`;
+  st.style.transform=`scale(${z})`; holder.style.width=W*z+'px'; holder.style.height=Hh*z+'px';
+  $('#z-val').textContent=Math.round(z*100)+'%';
+  const r2=st.getBoundingClientRect(); ws.scrollLeft+=r2.left+ux*z-cx; ws.scrollTop+=r2.top+uy*z-cy;
+}
+const zTexto=t=>t&&t.closest&&t.closest('input,textarea,select,[contenteditable="true"]');
+addEventListener('pointermove',e=>{ ZV.mx=e.clientX; ZV.my=e.clientY; ZV.over=!!(e.target.closest&&e.target.closest('.ws')); },true);
+addEventListener('keydown',e=>{
+  const mod=e.ctrlKey||e.metaKey;
+  if(mod && !e.altKey && ZV.over && !document.querySelector('.modal-bg')){
+    const k=e.key; let f=0;
+    if(k==='+'||k==='='||e.code==='NumpadAdd') f=1.25; else if(k==='-'||k==='_'||e.code==='NumpadSubtract') f=0.8;
+    else if(k==='0'||e.code==='Numpad0'){ e.preventDefault(); e.stopPropagation(); $('#z-fit').click(); return; }
+    if(f){ e.preventDefault(); e.stopPropagation(); zoomTo(zCur()*f, ZV.mx, ZV.my); }
+    return;
+  }
+  if(e.code==='Space' && !zTexto(e.target) && !document.querySelector('.modal-bg')){
+    e.preventDefault(); e.stopPropagation();
+    if(document.activeElement && document.activeElement.matches('button,a,[tabindex]')) document.activeElement.blur();
+    if(!ZV.space){ ZV.space=true; document.body.classList.add('pan-ok'); }
+  }
+},true);
+addEventListener('keyup',e=>{ if(e.code==='Space'){ if(!zTexto(e.target)) e.preventDefault(); ZV.space=false; document.body.classList.remove('pan-ok'); } },true);
+addEventListener('blur',()=>{ ZV.space=false; ZV.pan=null; document.body.classList.remove('pan-ok','panning'); });
+['#ws','#dws'].forEach(sel=>{ const ws=$(sel);
+  ws.addEventListener('wheel',e=>{ if(!(e.ctrlKey||e.metaKey)) return; e.preventDefault(); const dy=e.deltaMode===1?e.deltaY*16:e.deltaY; zoomTo(zCur()*Math.exp(-Math.max(-60,Math.min(60,dy))*0.0025), e.clientX, e.clientY); },{passive:false});
+  ws.addEventListener('pointerdown',e=>{ if(!((ZV.space&&e.button===0)||e.button===1)) return; e.preventDefault(); e.stopPropagation();
+    ZV.pan={ws, x:e.clientX, y:e.clientY, sl:ws.scrollLeft, st:ws.scrollTop}; try{ ws.setPointerCapture(e.pointerId); }catch(x){} document.body.classList.add('panning'); },true);
+  ws.addEventListener('mousedown',e=>{ if(e.button===1||ZV.space) e.preventDefault(); },true);
+  ws.addEventListener('dragstart',e=>{ if(ZV.space||ZV.pan) e.preventDefault(); },true);
+  ws.addEventListener('pointermove',e=>{ const p=ZV.pan; if(!p||p.ws!==ws) return; ws.scrollLeft=p.sl-(e.clientX-p.x); ws.scrollTop=p.st-(e.clientY-p.y); });
+  const fim=()=>{ if(ZV.pan&&ZV.pan.ws===ws){ ZV.pan=null; document.body.classList.remove('panning'); } };
+  ws.addEventListener('pointerup',fim); ws.addEventListener('pointercancel',fim);
+});
 $('#b-new').onclick=newProjectDlg;
 $('#b-undo').onclick=undo; $('#b-redo').onclick=redo;
 $('#pname').addEventListener('input',e=>{ P.name=e.target.value; commit(); });
@@ -2368,16 +2454,19 @@ $('#b-addbanner').onclick=()=>{
 $('#b-brands').onclick=()=>openBrands();
 function brandsInUse(){ const m=new Map(); allProducts().concat(P.tray.map(it=>({it}))).forEach(({it})=>{ if(!it.brand) return; const k=bkey(it.brand); if(!m.has(k)) m.set(k,{name:it.brand.trim(),n:0}); m.get(k).n++; }); return [...m.entries()].sort((a,b)=>b[1].n-a[1].n); }
 async function uploadBrands(files){ let n=0; const used=brandsInUse().map(([k])=>k); const miss=[];
-  for(const f of files){ const k=bkey(f.name.replace(/\.[^.]+$/,'')); if(!k) continue; const id=addAsset(await readURL(f)); P.brands[k]=id; n++; if(!used.some(u=>u===k||u.startsWith(k)||k.startsWith(u))) miss.push(f.name); }
+  for(const f of files){ const k=bkey(f.name.replace(/\.[^.]+$/,'')); if(!k) continue; const id=await logoFile(f); P.brands[k]=id; n++; if(!used.some(u=>u===k||u.startsWith(k)||k.startsWith(u))) miss.push(f.name); }
   changed({insp:true,now:true}); toast(`<b>${n}</b> logo(s) carregado(s)${miss.length?` · sem produto com essa marca: ${esc(miss.slice(0,3).join(', '))}${miss.length>3?'…':''}`:''}`); }
 function openBrands(){
   const grid=el('div',{class:'brand-grid'});
-  const draw=()=>{ grid.innerHTML=''; brandsInUse().forEach(([k,b])=>{ const lg=P.brands[k]?asset(P.brands[k]):logoOf({brand:b.name}); grid.append(el('div',{class:'brand-c'}, el('div',{class:'lg',style:{backgroundImage:lg?`url(${lg})`:'none'}}, lg?'':'sem logo'), el('b',{title:b.name},b.name), el('small',{},`${b.n} produto(s)`), el('button',{class:'btn sm',onclick:()=>pickOne(async f=>{ P.brands[k]=addAsset(await readURL(f)); changed({now:true}); draw(); })}, lg?'Trocar':'Anexar logo'))); }); };
+  const draw=()=>{ grid.innerHTML=''; brandsInUse().forEach(([k,b])=>{ const lg=P.brands[k]?asset(P.brands[k]):logoOf({brand:b.name}); grid.append(el('div',{class:'brand-c'}, el('div',{class:'lg',style:{backgroundImage:lg?`url(${lg})`:'none'}}, lg?'':'sem logo'), el('b',{title:b.name},b.name), el('small',{},`${b.n} produto(s)`), el('div',{style:{display:'flex',gap:'4px',flexWrap:'wrap'}}, el('button',{class:'btn sm',onclick:()=>pickOne(async f=>{ P.brands[k]=await logoFile(f); changed({now:true}); draw(); })}, lg?'Trocar':'Anexar logo'), P.brands[k]?el('button',{class:'btn sm ghost',title:'Tira o fundo, deixa preto 100% e recorta',onclick:async()=>{ P.brands[k]=await logoPretoDe(P.brands[k]); changed({now:true}); draw(); }},'Preto 100%'):null))); }); };
   draw();
+  const pretoC=el('input',{type:'checkbox',checked:logoPretoPref(),onchange:e=>logoPretoPref(e.target.checked)});
+  const todos=async()=>{ const ks=Object.keys(P.brands).filter(k=>asset(P.brands[k])); const t=toast('Deixando os logos em preto 100%…',0); for(const k of ks) P.brands[k]=await logoPretoDe(P.brands[k]); t.remove(); changed({now:true}); draw(); toast(`<b>${ks.length}</b> logo(s) em preto 100%, sem fundo e recortados. Ctrl+Z desfaz.`); };
   modal('Logos das marcas', el('div',{},
     el('p',{class:'fine',style:{marginTop:0}},'Suba vários logos de uma vez: o nome do arquivo é o nome da marca, igual está na planilha (DEWALT.png, GEDORE red.png, VONIXX.svg). Todo produto daquela marca passa a usar o logo. Um logo anexado direto no produto continua valendo só para ele.'),
     spec('Formato recomendado','PNG com fundo transparente ou SVG, 600 px de largura, sem margem sobrando em volta.'),
-    el('div',{class:'acts',style:{padding:'4px 0 12px'}}, el('button',{class:'btn pri',onclick:()=>{ const f=$('#f-brands'); f.value=''; f.onchange=async()=>{ await uploadBrands([...f.files]); draw(); }; f.click(); }},'Subir logos em lote…')),
+    el('label',{class:'chk',style:{padding:'2px 0 8px'}},pretoC,'Remover fundo e deixar preto 100% (recortado) ao subir logos'),
+    el('div',{class:'acts',style:{padding:'4px 0 12px'}}, el('button',{class:'btn pri',onclick:()=>{ const f=$('#f-brands'); f.value=''; f.onchange=async()=>{ await uploadBrands([...f.files]); draw(); }; f.click(); }},'Subir logos em lote…'), Object.keys(P.brands).length?el('button',{class:'btn',onclick:todos},'Deixar todos em preto 100%'):null),
     grid));
 }
 
