@@ -566,11 +566,26 @@ function geom(page){
   const gl = side==='left'?10:5, gr = side==='right'?10:5;
   const top = 5, bot = page.footer.on ? page.footer.h + 3 : 5;
   const w = PW-gl-gr, h = PH-top-bot;
-  return { x:gl, y:top, w, h, cw:w/g.cols, ch:h/g.rows, cols:g.cols, rows:g.rows };
+  // rodapé grande come fileiras inteiras da grade em vez de achatar os blocos: conta quantas fileiras ele ocupa
+  // (arredondado) e as fileiras que sobram preenchem o espaço acima dele. Rodapé fino (menos de meia fileira) não come nenhuma.
+  const ch0 = (PH-top-5)/g.rows, fr = page.footer.on ? Math.max(0, Math.min(g.rows-1, Math.round(((page.footer.h||0)+3-5)/ch0))) : 0, free = g.rows-fr;
+  return { x:gl, y:top, w, h, cw:w/g.cols, ch:h/free, cols:g.cols, rows:g.rows, fr, free };
+}
+function footerFit(){
+  let moved=0, tray=0;
+  P.pages.forEach(pg=>{ const g=geom(pg); if(!g.fr) return;
+    const out=pg.items.filter(it=>it.r+it.rs>g.free); if(!out.length) return;
+    out.forEach(it=>{ pg.items.splice(pg.items.indexOf(it),1); });
+    out.forEach(it=>{ const sp=firstFree(pg,it.cs,Math.min(it.rs,g.free)); if(sp){ it.c=sp.c; it.r=sp.r; it.rs=Math.min(it.rs,g.free); pg.items.push(it); moved++; } else { P.tray.push(it); tray++; } });
+    pg.sections.forEach(s=>{ s.to=Math.min(s.to,g.free-1); s.from=Math.min(s.from,s.to); });
+  });
+  if(moved||tray) toast(`O rodapé ocupou as fileiras de baixo: ${moved?`<b>${moved}</b> produto(s) mudaram de lugar`:''}${moved&&tray?' e ':''}${tray?`<b>${tray}</b> foram para a bandeja`:''}.`,6000);
+  return moved+tray;
 }
 function spreadOf(pi){ return SPREADS.findIndex(s=>s.includes(pi)); }
 const RESERVED={reserved:true};
 function occupied(page, except, noReserve){ const g=P.grid; const m=Array.from({length:g.rows},()=>Array(g.cols).fill(null));
+  { const gf=geom(page); for(let r=gf.free;r<g.rows;r++) m[r].fill(RESERVED); }   // fileiras embaixo do rodapé
   if(!noReserve){ const pi=P.pages.indexOf(page), si=spreadOf(pi), k=SPREADS[si].indexOf(pi), gm=geom(page);
     for(const l of P.layers){ if(l.spread!==si||!l.reserve) continue;
       for(let r=0;r<g.rows;r++) for(let c=0;c<g.cols;c++){ const cx=k*PW+gm.x+(c+.5)*gm.cw, cy=gm.y+(r+.5)*gm.ch; if(cx>l.x&&cx<l.x+l.w&&cy>l.y&&cy<l.y+l.h) m[r][c]=RESERVED; } } }
@@ -858,7 +873,7 @@ function renderSpread(si, opts={}){
     const pg=P.pages[pi]; const g=geom(pg); const ox=offX(pi);
     // marcadores laterais
     for(const s of pg.sections){
-      const y=(g.y+s.from*g.ch)*MM, h=(s.to-s.from+1)*g.ch*MM; const w=7*MM;
+      const sto=Math.min(s.to,g.free-1); if(s.from>sto) continue; const y=(g.y+s.from*g.ch)*MM, h=(sto-s.from+1)*g.ch*MM; const w=7*MM;
       const left = pg.side==='left' ? ox-B : ox+PW*MM-w;
       const strip = el('div',{style:{position:'absolute',left:left+'px',top:y+'px',width:(w+B)+'px',height:h+'px',background:s.color,zIndex:5}});
       const lab = el('div',{style:{position:'absolute',left:(pg.side==='left'?B:0)+w/2+'px',top:h/2+'px',width:h+'px',transform:'translate(-50%,-50%) rotate(-90deg)',textAlign:'center',color:'#fff',font:`800 ${Math.min(2.5, (h/MM-4)/((s.label.length+3)*0.72))*MM}px/1 var(--f-print)`,textTransform:'uppercase',letterSpacing:'.04em',whiteSpace:'nowrap'}});
@@ -880,7 +895,7 @@ function renderSpread(si, opts={}){
       wrap.append(it.type==='shape'?renderShape(it,w,h,mode):renderProduct(it,w,h,mode));
       if(pg.lines && it.type==='product' && !it.style.grad && (it.style.bg==='#ffffff'||it.style.bg==='transparent')){
         if(it.c+it.cs<g.cols) wrap.append(el('div',{class:'ln-r',style:{background:pg.divider}}));
-        if(it.r+it.rs<g.rows) wrap.append(el('div',{class:'ln-b',style:{background:pg.divider}}));
+        if(it.r+it.rs<g.free) wrap.append(el('div',{class:'ln-b',style:{background:pg.divider}}));
       }
       if(mode==='edit' && ui.sel && ui.sel.id===it.id) wrap.append(el('div',{class:'handle',title:'Arraste para ocupar mais blocos'}));
       root.append(wrap);
@@ -1007,7 +1022,7 @@ function commit(immediate){
 }
 function undo(){ if(hist.i<=0) return; hist.i--; P=JSON.parse(hist.stack[hist.i]); computeSpreads(); ui.sel=null; renderAll(); toast('Desfeito'); }
 function redo(){ if(hist.i>=hist.stack.length-1) return; hist.i++; P=JSON.parse(hist.stack[hist.i]); computeSpreads(); ui.sel=null; renderAll(); }
-function changed(opts={}){ if(ui.mode==='dd'){ ddRenderStage(); ddRenderRail(); if(opts.insp) ddRenderInsp(); commit(opts.now); return; } renderWS(); renderThumbs(); renderSections(); if(opts.tray) renderTray(); if(opts.insp) renderInsp(); commit(opts.now); }
+function changed(opts={}){ if(ui.mode!=='dd' && footerFit()){ opts.tray=true; opts.insp=true; } if(ui.mode==='dd'){ ddRenderStage(); ddRenderRail(); if(opts.insp) ddRenderInsp(); commit(opts.now); return; } renderWS(); renderThumbs(); renderSections(); if(opts.tray) renderTray(); if(opts.insp) renderInsp(); commit(opts.now); }
 
 /* =====================================================================
    INTERAÇÃO NA PRANCHETA
@@ -2003,7 +2018,7 @@ $('#b-save').onclick=()=>{
   catch(e){ toast('O navegador não deixou salvar aqui (imagens muito pesadas ou janela anônima). Use Exportar › Projeto .json.'); }
 };
 function openSaved(){ try{ const raw=localStorage.getItem('soldamaq-tabloide'); if(!raw) return false; loadJSON(raw); return true; }catch(e){ return false; } }
-function loadJSON(raw){ const o=JSON.parse(raw); P=o.project; P.brands=P.brands||{}; P.fonts=P.fonts||[]; ddEnsure(); instEnsure(); DD.cur=null; DD.sel=null; ASSETS=Object.assign({},IMGS,o.assets||{}); P.fonts.forEach(registerFont); computeSpreads(); ui.sel=null; ui.spread=0; hist.stack=[]; hist.i=-1; commit(true); renderAll(); }
+function loadJSON(raw){ const o=JSON.parse(raw); P=o.project; P.brands=P.brands||{}; P.fonts=P.fonts||[]; ddEnsure(); instEnsure(); DD.cur=null; DD.sel=null; ASSETS=Object.assign({},IMGS,o.assets||{}); P.fonts.forEach(registerFont); computeSpreads(); ui.sel=null; ui.spread=0; footerFit(); hist.stack=[]; hist.i=-1; commit(true); renderAll(); }
 
 /* =====================================================================
    EXPORTAÇÃO
