@@ -7,7 +7,7 @@
   var cfg = window.FLUXO_CONFIG || {};
   var temBase = !!(cfg.supabaseUrl && cfg.supabaseAnonKey);
   var SUPA = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.1/dist/umd/supabase.js";
-  var BUCKET = "anexos", PASTA = "soldamaq", AREA = "soldamaq", LOCAL = "soldamaq-tabloide";
+  var BUCKET = "anexos", PASTA = "soldamaq", AREA = "soldamaq", LOCAL = "soldamaq-tabloide", ULTIMO = "soldamaq-ultimo";
   var client = null, perfil = null;
 
   function h(tag, attrs, html) { var e = document.createElement(tag); Object.keys(attrs || {}).forEach(function (k) { e.setAttribute(k, attrs[k]); }); if (html != null) e.innerHTML = html; return e; }
@@ -15,7 +15,25 @@
   function slugP(s) { return String(s || "projeto").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 50) || "projeto"; }
   function quando(ts) { var d = new Date(ts); if (isNaN(d)) return ""; var p = function (n) { return String(n).padStart(2, "0"); }; return p(d.getDate()) + "/" + p(d.getMonth() + 1) + " " + p(d.getHours()) + ":" + p(d.getMinutes()); }
   function mb(b) { return b > 1048576 ? (b / 1048576).toFixed(1).replace(".", ",") + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
-  function guardarLocal(json) { try { localStorage.setItem(LOCAL, json); return true; } catch (e) { return false; } }
+  // projeto grande demais para o navegador: apaga a cópia antiga para ela não voltar no lugar da nova
+  function guardarLocal(json) { try { localStorage.setItem(LOCAL, json); return true; } catch (e) { try { localStorage.removeItem(LOCAL); } catch (x) {} return false; } }
+  function marcarUltimo(id) { try { localStorage.setItem(ULTIMO, id); } catch (e) {} }
+  function lerUltimo() { try { return localStorage.getItem(ULTIMO); } catch (e) { return null; } }
+  function tsArq(f) { return +String(f.name).split("__")[0] || 0; }
+  // versões salvas de um projeto, da mais nova para a mais antiga
+  function versoes(id) { return client.storage.from(BUCKET).list(PASTA + "/" + id, { limit: 100 }).then(function (x) { return (x.data || []).filter(function (f) { return /\.json$/.test(f.name); }).sort(function (a, c) { return a.name < c.name ? 1 : -1; }); }); }
+  // todos os projetos do time, cada um com a versão mais nova, do mais recente para o mais antigo
+  function projetos() {
+    return client.storage.from(BUCKET).list(PASTA, { limit: 200 }).then(function (r) {
+      if (r.error) throw r.error;
+      var pastas = (r.data || []).filter(function (f) { return !f.id; }); // pastas não têm id
+      return Promise.all(pastas.map(function (p) { return versoes(p.name).then(function (fs) { return fs.length ? { id: p.name, f: fs[0] } : null; }); }));
+    }).then(function (itens) { return itens.filter(Boolean).sort(function (a, c) { return a.f.name < c.f.name ? 1 : -1; }); });
+  }
+  function abrir(it) {
+    return client.storage.from(BUCKET).download(PASTA + "/" + it.id + "/" + it.f.name).then(function (r) { if (r.error) throw r.error; return r.data.text(); })
+      .then(function (txt) { loadJSON(txt); P.fluxoId = it.id; marcarUltimo(it.id); guardarLocal(projectJSON()); });
+  }
 
   // botões no topo do editor
   function montarBotoes() {
@@ -59,17 +77,17 @@
   function salvarNoFluxo() {
     if (!client) return;
     if (!P.fluxoId) P.fluxoId = Math.random().toString(36).slice(2, 10);
-    var json = projectJSON(), o = JSON.parse(json);
-    o.fluxo = { por: perfil && perfil.nome, em: new Date().toISOString() };
+    var json = projectJSON(), o = JSON.parse(json), agora = Date.now();
+    o.fluxo = { por: perfil && perfil.nome, em: new Date(agora).toISOString() };
     json = JSON.stringify(o);
     guardarLocal(json);
-    var id = P.fluxoId, path = PASTA + "/" + id + "/" + Date.now() + "__" + slugP(P.name) + ".json";
+    var id = P.fluxoId, path = PASTA + "/" + id + "/" + agora + "__" + slugP(P.name) + ".json";
     var blob = new Blob([json], { type: "application/json" });
     var b = document.getElementById("b-save"); b.disabled = true; b.textContent = "Salvando…";
     client.storage.from(BUCKET).upload(path, blob, { contentType: "application/json", upsert: false })
       .then(function (r) {
         if (r.error) throw r.error;
-        toast("Projeto salvo no FLUXO (" + mb(blob.size) + ").");
+        marcarUltimo(id); toast("Projeto salvo no FLUXO (" + mb(blob.size) + ").");
         // mantém as 3 versões mais recentes deste projeto (só apaga quem tem permissão; as outras ficam)
         return client.storage.from(BUCKET).list(PASTA + "/" + id, { limit: 100 }).then(function (l) {
           var velhos = (l.data || []).filter(function (f) { return f.name !== path.split("/").pop(); }).sort(function (a, c) { return a.name < c.name ? 1 : -1; }).slice(2).map(function (f) { return PASTA + "/" + id + "/" + f.name; });
@@ -86,12 +104,7 @@
     var intro = h("p", { class: "hint", style: "margin:0 0 10px" }, "Projetos Soldamaq salvos no Fluxo. Abrir troca o projeto da tela pelo escolhido, com lâminas, desdobres e imagens.");
     var wrap = h("div"); wrap.appendChild(intro); wrap.appendChild(box);
     var m = modal("Projetos do time", wrap);
-    client.storage.from(BUCKET).list(PASTA, { limit: 200 }).then(function (r) {
-      if (r.error) throw r.error;
-      var pastas = (r.data || []).filter(function (f) { return !f.id; }); // pastas não têm id
-      return Promise.all(pastas.map(function (p) { return client.storage.from(BUCKET).list(PASTA + "/" + p.name, { limit: 100 }).then(function (x) { var fs = (x.data || []).filter(function (f) { return /\.json$/.test(f.name); }).sort(function (a, c) { return a.name < c.name ? 1 : -1; }); return fs.length ? { id: p.name, f: fs[0] } : null; }); }));
-    }).then(function (itens) {
-      itens = itens.filter(Boolean).sort(function (a, c) { return a.f.name < c.f.name ? 1 : -1; });
+    projetos().then(function (itens) {
       if (!itens.length) { box.innerHTML = '<p class="hint">Nenhum projeto salvo ainda. Use "Salvar no FLUXO".</p>'; return; }
       box.innerHTML = itens.map(function (it, i) {
         var nome = it.f.name.replace(/^\d+__/, "").replace(/\.json$/, "").replace(/-/g, " "), ts = +it.f.name.split("__")[0];
@@ -100,13 +113,31 @@
       box.onclick = function (e) {
         var b = e.target.closest("[data-fxo]"); if (!b) return;
         var it = itens[+b.dataset.fxo]; b.disabled = true; b.textContent = "Abrindo…";
-        client.storage.from(BUCKET).download(PASTA + "/" + it.id + "/" + it.f.name).then(function (r) { if (r.error) throw r.error; return r.data.text(); })
-          .then(function (txt) { loadJSON(txt); P.fluxoId = it.id; guardarLocal(projectJSON()); m.close(); toast("Projeto aberto: " + escH(P.name || "")); })
+        abrir(it)
+          .then(function () { m.close(); toast("Projeto aberto: " + escH(P.name || "")); })
           .catch(function (er) { console.error(er); b.disabled = false; b.textContent = "Abrir"; toast("Não consegui abrir esse projeto."); });
       };
     }).catch(function (e) { console.error(e); box.innerHTML = '<p class="hint">Não consegui listar os projetos. Confira a internet.</p>'; });
   }
 
+  // ao entrar: traz a versão mais nova do último projeto salvo no FLUXO (pode ter sido salva em outro computador).
+  // Sem projeto neste navegador, abre o mais recente do time. Nunca troca o que a pessoa já começou a mexer.
+  function retomar() {
+    if (!client) return;
+    var h0 = hist.i, id = lerUltimo() || P.fluxoId, localTs = 0;
+    try { var o = JSON.parse(localStorage.getItem(LOCAL) || "null"); if (o) localTs = Date.parse((o.fluxo && o.fluxo.em) || o.savedAt) || 0; } catch (e) {}
+    (id ? versoes(id).then(function (fs) { return fs.length ? { id: id, f: fs[0] } : null; }) : Promise.resolve(null))
+      .then(function (x) { return x || (localTs ? null : projetos().then(function (l) { return l[0] || null; })); })
+      .then(function (x) {
+        if (!x) return;
+        if (localTs && P.fluxoId === x.id && tsArq(x.f) <= localTs) return; // o deste navegador já é o mais novo
+        var nome = x.f.name.replace(/^\d+__/, "").replace(/\.json$/, "").replace(/-/g, " ");
+        if (hist.i !== h0) { var t = toast("Há uma versão mais nova de <b>" + escH(nome) + "</b> no FLUXO (salva " + quando(tsArq(x.f)) + "). ", 12000); var b = h("button", { class: "btn sm", type: "button" }, "Abrir"); b.onclick = function () { t.remove(); abrir(x).then(function () { toast("Projeto aberto: " + escH(P.name || "")); }); }; t.appendChild(b); return; }
+        return abrir(x).then(function () { toast("Abri o projeto salvo no FLUXO: <b>" + escH(P.name || nome) + "</b> (salvo " + quando(tsArq(x.f)) + "). Outros estão em Projetos.", 7000); });
+      })
+      .catch(function (e) { console.error(e); });
+  }
+
   montarBotoes();
-  portao().catch(function () {});
+  portao().then(retomar).catch(function () {});
 })();

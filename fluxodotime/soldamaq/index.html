@@ -1789,31 +1789,33 @@ const SAMPLE_ROWS = [
 $('#b-import').onclick=()=>openImport();
 function openCompras(aoa, fname){
   const dest=el('select',{class:'inp',id:'f-dest',style:{width:'auto'}}, el('option',{value:'2x1'},'DESTAQUE = 2 blocos (2×1)'), el('option',{value:'2x2'},'DESTAQUE = 4 blocos (2×2)'), el('option',{value:'1x2'},'DESTAQUE = 2 blocos em pé (1×2)'));
+  const dup=el('select',{class:'inp',id:'f-dup',style:{width:'auto'}}, el('option',{value:'2x1'},'2 LINHAS = 2 blocos lado a lado (2×1)'), el('option',{value:'1x2'},'2 LINHAS = 2 blocos em pé (1×2)'));
   const freshC=el('input',{type:'checkbox',id:'f-fresh',checked:true});
   const out=el('div',{});
-  const draw=()=>{ const res=parseCompras(aoa,{dest:dest.value}); out.innerHTML='';
+  const draw=()=>{ const res=parseCompras(aoa,{dest:dest.value,dup:dup.value}); out.innerHTML='';
     const all=res.folhas.flatMap(f=>f.seq.filter(e=>e.type==='item').map(e=>e.it));
-    const tb=el('table',{class:'t'}, el('thead',{},el('tr',{}, ...['Folha','Produtos','Destaques','Com variação','Parcelado / à vista / sem preço','Banners','Seções'].map(h=>el('th',{},h)))));
+    const tb=el('table',{class:'t'}, el('thead',{},el('tr',{}, ...['Folha','Produtos','2 espaços','Destaques','Com variação','Parcelado / à vista / sem preço','Banners','Seções'].map(h=>el('th',{},h)))));
     const body=el('tbody');
     res.folhas.forEach(f=>{ const its=f.seq.filter(e=>e.type==='item').map(e=>e.it); const bs=f.seq.filter(e=>e.type==='banner');
       const cells=its.reduce((a,i)=>a+i.cs*i.rs,0)+bs.reduce((a,b)=>a+b.rows*P.grid.cols,0); const cap=P.grid.cols*P.grid.rows;
       const secs=[...new Set(its.map(i=>i.section))].join(', ');
-      body.append(el('tr',{}, el('td',{class:'num'},f.n), el('td',{class:'num'}, `${its.length}`), el('td',{class:'num'}, its.filter(i=>i._dest||i._duplo).length||'—'), el('td',{class:'num'}, its.filter(i=>i.variants.length).length||'—'),
+      body.append(el('tr',{}, el('td',{class:'num'},f.n), el('td',{class:'num'}, `${its.length}`), el('td',{class:'num'}, its.filter(i=>i._span>1).length||'—'), el('td',{class:'num'}, its.filter(i=>(i._dest||i._duplo)&&!(i._span>1)).length||'—'), el('td',{class:'num'}, its.filter(i=>i.variants.length).length||'—'),
         el('td',{class:'num'}, `${its.filter(i=>i.mode==='parc'||i.variants.some(v=>v.x)).length} / ${its.filter(i=>i.mode==='avista'||i.variants.some(v=>!v.x&&v.avista!=null)).length} / ${its.filter(i=>i.mode==='none'&&!i.variants.length).length}`),
         el('td',{}, bs.map(b=>`${b.rows}× ${b.label}`).join(' · ')||'—'), el('td',{style:{whiteSpace:'normal',minWidth:'220px',color:cells>cap?'#ffb3a8':''}}, (cells>cap?`⚠ ocupa ${cells} de ${cap} blocos · `:'')+secs)));
     }); tb.append(body);
     const vlist=all.filter(i=>i.variants.length).slice(0,6).map(i=>`${i.desc}: ${i.variants.map(v=>`${v.label} (${v.code}) ${v.x?`${v.x}x ${fmt(v.parc)}`:`só ${v.avista!=null?fmt(v.avista):'?'}`}`).join(' · ')}`);
     out.append(el('p',{class:'fine',style:{margin:'0 0 8px'}}, `${fname}: ${res.folhas.length} folhas, ${all.length} produtos, ${all.filter(i=>i.variants.length).length} com variação, ${res.folhas.reduce((a,f)=>a+f.seq.filter(e=>e.type==='banner').length,0)} banners reservados.`),
       el('div',{class:'tbl-wrap',style:{maxHeight:'34vh'}},tb),
+      (()=>{ const sp=res.folhas.flatMap(f=>f.seq.filter(e=>e.type==='item'&&e.it._span>1).map(e=>({f:f.n,it:e.it}))); return sp.length? el('div',{class:'issues',style:{color:'var(--ui-fg)'}}, el('b',{},`Produtos com 2 espaços (${sp.length})`), el('ul',{style:{margin:'4px 0 0',paddingLeft:'18px'}}, ...sp.map(({f,it})=>el('li',{style:{color:'#9fd0ff'}},`Folha ${f} · linhas ${it._row}–${it._row+it._span-1} · ${it.code||'sem código'} ${it.desc} · ${it.cs}×${it.rs}`)))) : null; })(),
       vlist.length? el('div',{class:'issues',style:{color:'var(--ui-fg)'}}, el('b',{},'Como li as variações'), el('ul',{style:{margin:'4px 0 0',paddingLeft:'18px'}}, ...vlist.map(v=>el('li',{style:{color:'#9fd0ff'}},v)))) : null,
       res.issues.length? el('div',{class:'issues'}, el('b',{style:{color:'var(--ui-fg)'}},`Para conferir na planilha (${res.issues.length})`), el('ul',{style:{margin:'4px 0 0',paddingLeft:'18px'}}, ...res.issues.map(t=>el('li',{},t)))) : '');
   };
-  dest.onchange=draw; draw();
+  dest.onchange=draw; dup.onchange=draw; draw();
   const m=modal('Planilha do compras', el('div',{},
-    el('p',{class:'fine',style:{marginTop:0}},'Reconheci o formato do compras: cada FOLHA vira uma página, as linhas de FILEIRAS viram banners reservados na posição em que aparecem, e a SEÇÃO vira pasta e marcador lateral. COMPRADOR é ignorado.'),
-    el('div',{class:'acts',style:{padding:'0 0 10px',alignItems:'center'}}, dest, el('label',{class:'chk',style:{padding:0}},freshC,'Começar do zero (substitui as páginas atuais)')),
+    el('p',{class:'fine',style:{marginTop:0}},'Reconheci o formato do compras: cada FOLHA vira uma página (a 1 é a capa, a última é o verso), as linhas de FILEIRAS viram banners reservados na posição em que aparecem, e a SEÇÃO vira pasta e marcador lateral. Produto em 2 linhas mescladas (ou repetido em 2 linhas seguidas) ocupa 2 espaços. COMPRADOR é ignorado.'),
+    el('div',{class:'acts',style:{padding:'0 0 10px',alignItems:'center',flexWrap:'wrap'}}, dup, dest, el('label',{class:'chk',style:{padding:0}},freshC,'Começar do zero (substitui as páginas atuais)')),
     out,
-    el('div',{class:'acts',style:{padding:'14px 0 0'}}, el('button',{class:'btn pri',onclick:()=>{ const res=parseCompras(aoa,{dest:dest.value}); const r=placeCompras(res,{fresh:freshC.checked}); m.close(); ui.spread=0; ui.sel=null; renderAll(); renderThumbs(true); commit(true);
+    el('div',{class:'acts',style:{padding:'14px 0 0'}}, el('button',{class:'btn pri',onclick:()=>{ const res=parseCompras(aoa,{dest:dest.value,dup:dup.value}); const r=placeCompras(res,{fresh:freshC.checked}); m.close(); ui.spread=0; ui.sel=null; renderAll(); renderThumbs(true); commit(true);
       toast(`<b>${r.placed}</b> produtos em <b>${r.pages}</b> páginas · <b>${r.banners}</b> banners reservados${r.tray?` · <b>${r.tray}</b> na bandeja`:''}`, 7000); }},'Diagramar o tabloide'))));
 }
 function openImport(){
@@ -1858,15 +1860,21 @@ function commonPrefix(arr){ if(!arr.length) return ''; let p=arr[0]; for(const a
 function parseCompras(aoa, opts={}){
   const hi=aoa.findIndex(r=>r.some(c=>hnorm(c)==='descricao')); const H=aoa[hi].map(hnorm);
   const col=(...ns)=>{ for(const n of ns){ const i=H.indexOf(n); if(i>=0) return i; } for(const n of ns){ const i=H.findIndex(h=>h.startsWith(n)); if(i>=0) return i; } return -1; };
-  const C={ ord:col('itens'), sec:col('secao','sessao'), code:col('item','codigo'), desc:col('descricao'), varc:col('variacao','variante'), t1:col('tag 1','tag1'), t2:col('tag 2','tag2'), brand:col('marca'), de:col('preco de'), por:col('preco por'), x:col('n parcelas','no parcelas','parcelas'), parc:col('preco parcela'), size:col('tamanho','blocos') };
+  const C={ ord:col('itens'), sec:col('secao','sessao'), code:col('item','codigo'), desc:col('descricao'), varc:col('variacao','variante'), t1:col('tag 1','tag1'), t2:col('tag 2','tag2'), t3:col('tag 3','tag3'), brand:col('marca'), de:col('preco de'), por:col('preco por'), x:col('n parcelas','no parcelas','parcelas'), parc:col('preco parcela'), size:col('tamanho','blocos') };
   const g = (r,k) => C[k]>=0 ? r[C[k]] : null;
   const folhas=new Map(); let fo=1; const issues=[]; let lastSec=''; const miss={};
   const F_=n=>{ if(!folhas.has(n)) folhas.set(n,{n,seq:[]}); return folhas.get(n); };
+  // produto em 2 linhas: células mescladas na vertical (DESCRIÇÃO, ITEM ou PREÇO) = ocupa 2 espaços
+  const span={}, cover={}, rowItem={}; const R0=aoa.r0||0, C0=aoa.c0||0;
+  (aoa.merges||[]).forEach(m=>{ const a=m.s.r-R0, z=m.e.r-R0, c0=m.s.c-C0, c1=m.e.c-C0; if(z>a && [C.desc,C.code,C.por].some(c=>c>=0&&c>=c0&&c<=c1)) span[a]=Math.max(span[a]||1,z-a+1); });
+  for(const k in span) for(let j=1;j<span[k];j++) cover[+k+j]=+k;
   for(let i=hi+1;i<aoa.length;i++){
     const r=aoa[i]; const filled=r.map((v,j)=>[v,j]).filter(([v])=>v!=null && String(v).trim()!=='');
     if(!filled.length) continue;
-    const first=String(r[0]??'').trim();
-    if(filled.length===1 && filled[0][1]===0){
+    if(cover[i]!=null){ const host=rowItem[cover[i]]; if(host){ const ex=['t1','t2','t3'].flatMap(k=>cellLines(g(r,k)).map(String)).filter(t=>!host.tags.split('\n').includes(t)); if(ex.length) host.tags=[host.tags,...ex].filter(Boolean).join('\n'); } continue; }
+    const lone=filled.length===1? String(filled[0][0]).trim() : '';
+    const first=lone && filled[0][1]!==0 && /^FOLHA\s*\d|\d+\s*FILEIRAS?\b/i.test(lone)? lone : String(r[0]??'').trim();
+    if(filled.length===1 && (filled[0][1]===0 || first===lone)){
       let m=first.match(/^FOLHA\s*(\d+)/i); if(m){ fo=+m[1]; F_(fo); continue; }
       m=first.match(/(\d+)\s*FILEIRAS?\b(.*)$/i);
       if(m){ const rest=m[2]; const an=/AN[UÚ]NCIO/i.test(rest); let name=''; const par=rest.match(/\(([^)]*)\)/); if(an){ name=rest.replace(/\(.*$/,'').replace(/.*AN[UÚ]NCIO/i,'').trim(); } else if(par){ name=par[1].replace(/ARTE/i,'').trim(); }
@@ -1878,7 +1886,7 @@ function parseCompras(aoa, opts={}){
     const ord=oneLine(g(r,'ord'))||'?'; const where=`Folha ${fo} · linha ${ord}`;
     let secRaw=oneLine(g(r,'sec')); const dest=/destaque/i.test(secRaw); let sec=secRaw.replace(/\s*-?\s*destaque\s*/ig,' ').replace(/\s+/g,' ').trim().replace(/\s*-\s*$/,''); if(!sec) sec=lastSec; lastSec=sec;
     const noPrice=/sem pre[cç]o/i.test(sec);
-    let tagLines=[...cellLines(g(r,'t1')).map(String), ...cellLines(g(r,'t2')).map(String)];
+    let tagLines=[...cellLines(g(r,'t1')).map(String), ...cellLines(g(r,'t2')).map(String), ...cellLines(g(r,'t3')).map(String)];
     const duplo=tagLines.some(t=>/destaque duplo/i.test(t)); tagLines=tagLines.filter(t=>!/destaque duplo/i.test(t));
     const x=num(g(r,'x')); const brand=oneLine(g(r,'brand'));
     const codes=cellLines(code).map(String).flatMap(c=>c.split(/\s*\/\s*/)).map(c=>c.replace(/\.0$/,'').trim()).filter(Boolean);
@@ -1904,7 +1912,7 @@ function parseCompras(aoa, opts={}){
       const vlab=oneLine(g(r,'varc')); if(vlab) it._var=vlab.toUpperCase();
     }
     if(!oneLine(descRaw)){ issues.push(`${where} (${codes.join('/')||'sem código'}): sem DESCRIÇÃO`); it.desc=it.desc||'SEM DESCRIÇÃO'; }
-    it.desc=oneLine(it.desc); it.section=sec; it._dest=dest; it._duplo=duplo;
+    it.desc=oneLine(it.desc); it.section=sec; it._dest=dest; it._duplo=duplo; it._span=span[i]||1; it._row=i+1+R0; rowItem[i]=it;
     const sz=String(g(r,'size')||'').match(/(\d)\s*[x×]\s*(\d)/);
     if(sz){ it.cs=+sz[1]; it.rs=+sz[2]; it._fixed=true; }
     // uma linha por variação (coluna VARIAÇÃO): junta com a anterior de mesma descrição
@@ -1913,14 +1921,15 @@ function parseCompras(aoa, opts={}){
       const P0=prev.it; if(!P0.variants.length){ P0.variants=[varOf(P0)]; P0.mode='none'; P0.style.price=THEME.navy; P0.style.line='#2b63c6'; }
       P0.variants.push(varOf(it)); P0.code=''; continue;
     }
+    if(prev && prev.type==='item' && !it._var && it.code && prev.it.code===it.code && bkey(prev.it.desc)===bkey(it.desc) && prev.it._row+prev.it._span===it._row){ prev.it._span+=it._span; rowItem[i]=prev.it; continue; }
     seq.push({type:'item', it});
   }
   for(const [f,cs] of Object.entries(miss)) issues.unshift(`Folha ${f}: ${cs.length} produto(s) sem PREÇO POR, entraram como "sem preço" (${cs.slice(0,6).join(', ')}${cs.length>6?'…':''})`);
   function varOf(o){ const v={label:o._var||'', code:o.code}; if(o.mode==='parc') Object.assign(v,{x:o.x,parc:o.parc,total:o.total,de:o.de}); else Object.assign(v,{avista:o.avista??null,de:o.de}); return v; }
   // tamanhos
-  const [dc,dr]=(opts.dest||'2x1').split('x').map(Number);
+  const [dc,dr]=(opts.dest||'2x1').split('x').map(Number); const [uc,ur]=(opts.dup||'2x1').split('x').map(Number);
   for(const f of folhas.values()) for(const e of f.seq){ if(e.type!=='item') continue; const it=e.it; if(it._fixed) continue;
-    if(it._duplo){ it.cs=2; it.rs=2; } else if(it._dest){ it.cs=dc; it.rs=dr; } else if(it.variants.length>=3){ it.cs=2; it.rs=1; } }
+    if(it._duplo){ it.cs=2; it.rs=2; } else if(it._span>1){ const n=it._span; if(n===2){ it.cs=uc; it.rs=ur; } else if(n===3){ it.cs=uc>=ur?3:1; it.rs=uc>=ur?1:3; } else { it.cs=2; it.rs=2; } } else if(it._dest){ it.cs=dc; it.rs=dr; } else if(it.variants.length>=3){ it.cs=2; it.rs=1; } }
   return { folhas:[...folhas.values()].sort((a,b)=>a.n-b.n), issues };
 }
 function placeCompras(res, opts={}){
@@ -1945,7 +1954,7 @@ function placeCompras(res, opts={}){
       lastSec=sec;
       let spot=firstFree(pg,Math.min(it.cs,G.cols),Math.min(it.rs,G.rows),secStart);
       if(!spot && (it.cs>1||it.rs>1)){ spot=firstFree(pg,1,1,secStart); if(spot){ issues.push(`Folha ${f.n}: "${it.desc}" entrou com 1 bloco porque não havia espaço para ${it.cs}×${it.rs}`); it.cs=1; it.rs=1; } }
-      ['_dest','_duplo','_var','_fixed'].forEach(k=>delete it[k]);
+      ['_dest','_duplo','_var','_fixed','_span','_row'].forEach(k=>delete it[k]);
       if(!spot){ P.tray.push(it); tray++; issues.push(`Folha ${f.n}: "${it.desc}" não coube e foi para a bandeja`); continue; }
       it.c=spot.c; it.r=spot.r; pg.items.push(it); placed++;
       const top=sec.split(/\s+-\s+/)[0], lab=(sec.split(/\s+-\s+/).slice(1).join(' - ')||top);
@@ -1962,7 +1971,7 @@ function placeCompras(res, opts={}){
 async function needLib(globalName, url){ if(window[globalName]) return window[globalName]; await new Promise((ok,er)=>{ const s=document.createElement('script'); s.src=url; s.onload=ok; s.onerror=er; document.head.append(s); }); return window[globalName]; }
 const LIB = { xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', h2c:'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', pdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js', zip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js' };
 async function readSheet(file){ const X=await needLib('XLSX',LIB.xlsx); const buf=await file.arrayBuffer(); const wb=X.read(buf,{type:'array'}); return X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:'',raw:false}); }
-async function readAoA(file){ const X=await needLib('XLSX',LIB.xlsx); const buf=await file.arrayBuffer(); const wb=X.read(buf,{type:'array'}); const all=wb.SheetNames.map(n=>X.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:null,raw:true})); return all.find(isCompras)||all[0]; }
+async function readAoA(file){ const X=await needLib('XLSX',LIB.xlsx); const buf=await file.arrayBuffer(); const wb=X.read(buf,{type:'array'}); const all=wb.SheetNames.map(n=>{ const ws=wb.Sheets[n]; const a=X.utils.sheet_to_json(ws,{header:1,defval:null,raw:true,blankrows:true}); const rg=ws['!ref']?X.utils.decode_range(ws['!ref']):{s:{r:0,c:0}}; a.r0=rg.s.r; a.c0=rg.s.c; a.merges=ws['!merges']||[]; return a; }); return all.find(isCompras)||all[0]; }
 async function downloadTemplate(){ const X=await needLib('XLSX',LIB.xlsx);
   const H=['ITENS','COMPRADOR','SEÇÃO','ITEM','DESCRIÇÃO','TAG 1','TAG 2','MARCA','PREÇO DE:','PREÇO POR:','Nº PARCELAS','PREÇO PARCELA','VARIAÇÃO','TAMANHO'];
   const rows=[H,['FOLHA 1'],['1 FILEIRA PARA TOPO (ARTE) EQUIVALE 3 PRODUTOS'],
@@ -2085,10 +2094,109 @@ async function impoSide(pair, s, {bleed=3, dpi=300, creep=0}){
   }
   return cv;
 }
+/* =====================================================================
+   PDF DA GRÁFICA EM CMYK · preto só no K
+   A página renderizada (RGB) é convertida pixel a pixel para CMYK com troca total do cinza pelo preto (GCR):
+   preto, cinzas e textos escuros saem só no K, sem C, M e Y por baixo. Pretos neutros até #222 viram K 100%.
+   Cores somam no máximo o limite de tinta escolhido (TAC), para a rotativa secar sem borrar.
+   Preto sobre cor sai sobreposto (a cor do fundo continua por baixo do K, ~0,2 mm), como o overprint da pré-impressão:
+   se o registro da rotativa variar, não abre filete branco em volta do texto. Preto sobre branco continua só K.
+   O resultado vira um JPEG CMYK (padrão Adobe, como o Photoshop grava), que o PDF usa sem nova conversão.
+   ===================================================================== */
+const CMYK = (()=>{
+  const ZN=[0,1,5,6,14,15,27,28,2,4,7,13,16,26,29,42,3,8,12,17,25,30,41,43,9,11,18,24,31,40,44,53,10,19,23,32,39,45,52,54,20,22,33,38,46,51,55,60,21,34,37,47,50,56,59,61,35,36,48,49,57,58,62,63];
+  const QL=[16,11,10,16,24,40,51,61,12,12,14,19,26,58,60,55,14,13,16,24,40,57,69,56,14,17,22,29,51,87,80,62,18,22,37,56,68,109,103,77,24,35,55,64,81,104,113,92,49,64,78,87,103,121,120,101,72,92,95,98,112,100,103,99];
+  const DC_N=[0,1,5,1,1,1,1,1,1,0,0,0,0,0,0,0], DC_V=[0,1,2,3,4,5,6,7,8,9,10,11];
+  const AC_N=[0,2,1,3,3,2,4,3,5,5,4,4,0,0,1,0x7d];
+  const AC_V=[0x01,0x02,0x03,0x00,0x04,0x11,0x05,0x12,0x21,0x31,0x41,0x06,0x13,0x51,0x61,0x07,0x22,0x71,0x14,0x32,0x81,0x91,0xa1,0x08,0x23,0x42,0xb1,0xc1,0x15,0x52,0xd1,0xf0,0x24,0x33,0x62,0x72,0x82,0x09,0x0a,0x16,0x17,0x18,0x19,0x1a,0x25,0x26,0x27,0x28,0x29,0x2a,0x34,0x35,0x36,0x37,0x38,0x39,0x3a,0x43,0x44,0x45,0x46,0x47,0x48,0x49,0x4a,0x53,0x54,0x55,0x56,0x57,0x58,0x59,0x5a,0x63,0x64,0x65,0x66,0x67,0x68,0x69,0x6a,0x73,0x74,0x75,0x76,0x77,0x78,0x79,0x7a,0x83,0x84,0x85,0x86,0x87,0x88,0x89,0x8a,0x92,0x93,0x94,0x95,0x96,0x97,0x98,0x99,0x9a,0xa2,0xa3,0xa4,0xa5,0xa6,0xa7,0xa8,0xa9,0xaa,0xb2,0xb3,0xb4,0xb5,0xb6,0xb7,0xb8,0xb9,0xba,0xc2,0xc3,0xc4,0xc5,0xc6,0xc7,0xc8,0xc9,0xca,0xd2,0xd3,0xd4,0xd5,0xd6,0xd7,0xd8,0xd9,0xda,0xe1,0xe2,0xe3,0xe4,0xe5,0xe6,0xe7,0xe8,0xe9,0xea,0xf1,0xf2,0xf3,0xf4,0xf5,0xf6,0xf7,0xf8,0xf9,0xfa];
+  const huff=(n,v)=>{ const t=[]; let code=0,k=0; for(let len=1;len<=16;len++){ for(let i=0;i<n[len-1];i++){ t[v[k++]]=[code,len]; code++; } code<<=1; } return t; };
+  const DCT=huff(DC_N,DC_V), ACT=huff(AC_N,AC_V);
+  const AAN=[1.0,1.387039845,1.306562965,1.175875602,1.0,0.785694958,0.541196100,0.275899379];
+  function tables(q){ q=Math.max(1,Math.min(100,q)); const sf=q<50?Math.floor(5000/q):200-q*2; const zz=new Uint8Array(64), fd=new Float64Array(64);
+    for(let i=0;i<64;i++){ const t=Math.max(1,Math.min(255,Math.floor((QL[i]*sf+50)/100))); zz[ZN[i]]=t; fd[i]=1/(t*AAN[i>>3]*AAN[i&7]*8); } return {zz,fd}; }
+  // RGB (canvas) → 4 planos com os valores invertidos (255 = sem tinta), como no JPEG CMYK da Adobe
+  function separar(data, w, h, tac, trap){ const n=w*h;
+    const pl=[new Uint8Array(n),new Uint8Array(n),new Uint8Array(n),new Uint8Array(n)], [C,M,Y,K]=pl, lim=tac>0?tac/100:9;
+    for(let i=0,j=0;i<n;i++,j+=4){
+      const r=data[j]/255, g=data[j+1]/255, b=data[j+2]/255, mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+      let c=0,m=0,y=0,k;
+      if(mx-mn<=6/255){ k=1-(r+g+b)/3; if(k>=0.866) k=1; }               // cinza neutro: só K; preto até #222 = K 100
+      else { k=1-mx; const d=1-k; c=(d-r)/d; m=(d-g)/d; y=(d-b)/d;        // troca total do cinza pelo preto
+        const s=c+m+y; if(s+k>lim){ const f=(lim-k)/s; c*=f; m*=f; y*=f; } }
+      C[i]=255-Math.round(c*255); M[i]=255-Math.round(m*255); Y[i]=255-Math.round(y*255); K[i]=255-Math.round(k*255);
+    }
+    if(trap>0){
+      // cor máxima de C, M e Y num raio de "trap" pixels, aplicada só onde o preto é cheio (K ≥ 95%)
+      const tmp=new Uint8Array(n), mxs=[0,1,2].map(ci=>{ const P=pl[ci], out=new Uint8Array(n);
+        for(let y=0;y<h;y++){ const o=y*w; for(let x=0;x<w;x++){ let v=0; const a=Math.max(0,x-trap), b=Math.min(w-1,x+trap); for(let q=a;q<=b;q++){ const t=255-P[o+q]; if(t>v) v=t; } tmp[o+x]=v; } }
+        for(let y=0;y<h;y++){ const a=Math.max(0,y-trap), b=Math.min(h-1,y+trap); for(let x=0;x<w;x++){ let v=0; for(let q=a;q<=b;q++){ const t=tmp[q*w+x]; if(t>v) v=t; } out[y*w+x]=v; } }
+        return out; });
+      const lim255=lim*255;
+      for(let i=0;i<n;i++){ const k=255-K[i]; if(k<242) continue;
+        let c=mxs[0][i], m=mxs[1][i], y=mxs[2][i]; const s=c+m+y; if(!s) continue;
+        if(s+k>lim255){ const f=Math.max(0,lim255-k)/s; c*=f; m*=f; y*=f; }
+        C[i]=255-Math.round(c); M[i]=255-Math.round(m); Y[i]=255-Math.round(y); }
+    }
+    return pl;
+  }
+  async function jpeg(planes, w, h, q, tick){
+    const {zz,fd}=tables(q); let buf=new Uint8Array(1<<20), len=0;
+    const put=b=>{ if(len>=buf.length){ const nb=new Uint8Array(buf.length*2); nb.set(buf); buf=nb; } buf[len++]=b; };
+    const put16=v=>{ put(v>>8&255); put(v&255); };
+    let bb=0, bc=0; const bits=(code,n)=>{ bb=(bb<<n)|code; bc+=n; while(bc>=8){ const by=(bb>>(bc-8))&255; put(by); if(by===255) put(0); bc-=8; } bb&=(1<<bc)-1; };
+    put16(0xFFD8);
+    put16(0xFFEE); put16(14); [65,100,111,98,101].forEach(put); put16(100); put16(0); put16(0); put(0);   // Adobe, sem transformação de cor
+    put16(0xFFDB); put16(67); put(0); for(let i=0;i<64;i++) put(zz[i]);
+    put16(0xFFC0); put16(20); put(8); put16(h); put16(w); put(4); for(let c=1;c<=4;c++){ put(c); put(0x11); put(0); }
+    put16(0xFFC4); put16(2+29+179); put(0x00); DC_N.forEach(put); DC_V.forEach(put); put(0x10); AC_N.forEach(put); AC_V.forEach(put);
+    put16(0xFFDA); put16(14); put(4); for(let c=1;c<=4;c++){ put(c); put(0); } put(0); put(63); put(0);
+    const d=new Float64Array(64), DU=new Int32Array(64), prev=[0,0,0,0];
+    const cat=v=>{ let a=v<0?-v:v, n=0; while(a){ n++; a>>=1; } return n; };
+    const bx=Math.ceil(w/8), by=Math.ceil(h/8);
+    for(let my=0;my<by;my++){
+      for(let mx=0;mx<bx;mx++) for(let ci=0;ci<4;ci++){
+        const P=planes[ci];
+        for(let yy=0;yy<8;yy++){ const sy=Math.min(h-1,my*8+yy)*w; for(let xx=0;xx<8;xx++) d[yy*8+xx]=P[sy+Math.min(w-1,mx*8+xx)]-128; }
+        for(let o=0;o<64;o+=8){ const d0=d[o],d1=d[o+1],d2=d[o+2],d3=d[o+3],d4=d[o+4],d5=d[o+5],d6=d[o+6],d7=d[o+7];
+          const t0=d0+d7,t7=d0-d7,t1=d1+d6,t6=d1-d6,t2=d2+d5,t5=d2-d5,t3=d3+d4,t4=d3-d4;
+          let a=t0+t3, e=t0-t3, b2=t1+t2, f=t1-t2; d[o]=a+b2; d[o+4]=a-b2; const z1=(f+e)*0.707106781; d[o+2]=e+z1; d[o+6]=e-z1;
+          a=t4+t5; b2=t5+t6; f=t6+t7; const z5=(a-f)*0.382683433, z2=0.5411961*a+z5, z4=1.306562965*f+z5, z3=b2*0.707106781, z11=t7+z3, z13=t7-z3;
+          d[o+5]=z13+z2; d[o+3]=z13-z2; d[o+1]=z11+z4; d[o+7]=z11-z4; }
+        for(let o=0;o<8;o++){ const d0=d[o],d1=d[o+8],d2=d[o+16],d3=d[o+24],d4=d[o+32],d5=d[o+40],d6=d[o+48],d7=d[o+56];
+          const t0=d0+d7,t7=d0-d7,t1=d1+d6,t6=d1-d6,t2=d2+d5,t5=d2-d5,t3=d3+d4,t4=d3-d4;
+          let a=t0+t3, e=t0-t3, b2=t1+t2, f=t1-t2; d[o]=a+b2; d[o+32]=a-b2; const z1=(f+e)*0.707106781; d[o+16]=e+z1; d[o+48]=e-z1;
+          a=t4+t5; b2=t5+t6; f=t6+t7; const z5=(a-f)*0.382683433, z2=0.5411961*a+z5, z4=1.306562965*f+z5, z3=b2*0.707106781, z11=t7+z3, z13=t7-z3;
+          d[o+40]=z13+z2; d[o+24]=z13-z2; d[o+8]=z11+z4; d[o+56]=z11-z4; }
+        for(let i=0;i<64;i++){ const v=d[i]*fd[i]; DU[ZN[i]]=Math.round(v); }
+        const df=DU[0]-prev[ci]; prev[ci]=DU[0];
+        if(df===0) bits(DCT[0][0],DCT[0][1]); else { const n=cat(df); bits(DCT[n][0],DCT[n][1]); bits(df<0?df+(1<<n)-1:df,n); }
+        let end=63; while(end>0 && DU[end]===0) end--;
+        if(end===0){ bits(ACT[0][0],ACT[0][1]); continue; }
+        let i=1;
+        while(i<=end){ const st=i; while(DU[i]===0 && i<=end) i++; let z=i-st;
+          while(z>=16){ bits(ACT[0xF0][0],ACT[0xF0][1]); z-=16; }
+          const v=DU[i], n=cat(v), s=(z<<4)+n; bits(ACT[s][0],ACT[s][1]); bits(v<0?v+(1<<n)-1:v,n); i++; }
+        if(end!==63) bits(ACT[0][0],ACT[0][1]);
+      }
+      if(tick && my%24===23) await tick(my/by);
+    }
+    if(bc>0) bits((1<<(8-bc))-1, 8-bc);
+    put16(0xFFD9);
+    return buf.slice(0,len);
+  }
+  async function deCanvas(cv,{tac=240,q=95,dpi=300,tick}={}){
+    const w=cv.width, h=cv.height, data=cv.getContext('2d').getImageData(0,0,w,h).data;
+    const pl=separar(data,w,h,tac,Math.max(1,Math.round(0.2*dpi/25.4))); if(tick) await tick(0); return jpeg(pl,w,h,q,tick);
+  }
+  return { deCanvas, separar, jpeg };
+})();
 function openExport(){
   const bleed=el('select',{class:'inp',id:'f-bleed'},el('option',{value:0},'Sem sangria'),el('option',{value:3,selected:true},'3 mm'),el('option',{value:5},'5 mm'));
   const dpi=el('select',{class:'inp',id:'f-dpi'},el('option',{value:150},'150 dpi'),el('option',{value:300,selected:true},'300 dpi'));
   const marks=el('input',{type:'checkbox',id:'f-marks',checked:true});
+  const cor=el('select',{class:'inp',id:'f-cor'},el('option',{value:'cmyk'},'CMYK'),el('option',{value:'rgb'},'RGB (antigo)'));
+  const tac=el('select',{class:'inp',id:'f-tac'},el('option',{value:240},'240% jornal'),el('option',{value:260},'260%'),el('option',{value:300},'300% couché'),el('option',{value:0},'Sem limite'));
+  cor.onchange=()=>{ tacF.hidden=cor.value!=='cmyk'; };
   const pag=el('select',{class:'inp',id:'f-pag'},el('option',{value:'lamina'},`Lâmina inteira · as páginas lado a lado (${P.pairing==='pares'?cm(2*PW):cm(PW)} × ${cm(PH)} cm)`),el('option',{value:'leitura'},`Leitura · uma página (${pageLabel()}) por vez`),el('option',{value:'caderno'},'Caderno cruzado · A3 frente e verso para grampo'));
   const creep=el('select',{class:'inp',id:'f-creep'},el('option',{value:0},'Sem deslocamento'),el('option',{value:.1},'0,1 mm por folha'),el('option',{value:.2},'0,2 mm por folha'),el('option',{value:.3},'0,3 mm por folha'));
   const mapa=el('div',{class:'impo-map'});
@@ -2100,11 +2208,20 @@ function openExport(){
     pl.sheets.forEach(sh=>t.append(el('span',{},String(sh.s+1)), el('span',{},sh.front.map(impoLab).join(' | ')), el('span',{},sh.back.map(impoLab).join(' | '))));
     mapa.append(t); };
   const creepF=F('Deslocamento no miolo (creep)',creep), pagF=F('Paginação',pag); creepF.style.padding=pagF.style.padding='0';
+  const corF=F('Cor do PDF',cor), tacF=F('Limite de tinta (TAC)',tac); corF.style.padding=tacF.style.padding='0';
   pag.addEventListener('change',drawMapa);
   const scope=el('select',{class:'inp',id:'f-scope',style:{width:'auto'}},el('option',{value:'todas'},P.pairing==='pares'?`Todas as ${SPREADS.length} lâminas`:`Todas as ${P.pages.length} páginas`),el('option',{value:'atual'},'Só a lâmina aberta'));
   const prog=el('div',{class:'prog'},el('i')); const status=el('p',{class:'fine',style:{marginTop:'8px'}},'');
   const run=async(kind)=>{
     const list=pagesFromScope(scope.value); const bar=prog.firstChild; status.textContent='Preparando…';
+    const emCMYK = kind==='print' && cor.value==='cmyk';
+    // imagem da página no PDF da gráfica: CMYK (preto só no K) ou RGB como antes
+    const addPrint=async(doc,cv,x,y,w,h)=>{ if(!emCMYK){ doc.addImage(cv.toDataURL('image/jpeg',0.95),'JPEG',x,y,w,h,undefined,'FAST'); return; }
+      const base=status.textContent.replace(/…$/,''); const j=await CMYK.deCanvas(cv,{tac:Number(tac.value),q:95,dpi:Number(dpi.value),tick:async f=>{ status.textContent=`${base} · convertendo para CMYK ${Math.round(f*100)}%…`; await new Promise(r=>setTimeout(r)); }});
+      doc.addImage(j,'JPEG',x,y,w,h,undefined,'NONE'); };
+    // marcas de corte na cor de registro (aparecem nas 4 chapas); texto da página só no K
+    const markColor=doc=>{ if(emCMYK){ doc.setDrawColor(1,1,1,1); doc.setTextColor(0,0,0,1); } else doc.setDrawColor(0); };
+    const sufixo = emCMYK? '-cmyk' : '';
     try{
       if(kind==='print' && pag.value==='caderno'){
         const {jsPDF}=(await needLib('jspdf',LIB.pdf)); const b=Number(bleed.value), mk=marks.checked?9:0, d=Number(dpi.value), cr=Number(creep.value);
@@ -2114,15 +2231,15 @@ function openExport(){
           const [sh,lado,pair]=sides[i];
           status.textContent=`Montando folha ${sh.s+1} · ${lado} (${pair.map(impoLab).join(' | ')})…`; bar.style.width=(i/sides.length*100)+'%';
           const cv=await impoSide(pair, sh.s, {bleed:b, dpi:d, creep:cr}); if(i) doc.addPage([W,Hh],'landscape');
-          doc.addImage(cv.toDataURL('image/jpeg',0.95),'JPEG',mk,mk,2*PW+2*b,PH+2*b,undefined,'FAST');
-          if(mk){ doc.setLineWidth(0.25); doc.setDrawColor(0); const x0=mk+b, y0=mk+b, x1=x0+2*PW, y1=y0+PH, xm=x0+PW, o=b+1.5, L=5;
+          await addPrint(doc,cv,mk,mk,2*PW+2*b,PH+2*b);
+          if(mk){ doc.setLineWidth(0.25); markColor(doc); const x0=mk+b, y0=mk+b, x1=x0+2*PW, y1=y0+PH, xm=x0+PW, o=b+1.5, L=5;
             [[x0,y0,-1,-1],[x1,y0,1,-1],[x0,y1,-1,1],[x1,y1,1,1]].forEach(([x,y,sx,sy])=>{ doc.line(x+sx*o,y,x+sx*(o+L),y); doc.line(x,y+sy*o,x,y+sy*(o+L)); });
             doc.setLineDashPattern([1,1],0); doc.line(xm,y0-o,xm,y0-o-L); doc.line(xm,y1+o,xm,y1+o+L); doc.setLineDashPattern([],0);
             doc.setFontSize(6); doc.text(`${P.name} · Folha ${sh.s+1}/${pl.sheets.length} ${lado} · páginas ${pair.map(impoLab).join(' | ')} · ${2*PW}×${PH} mm · sangria ${b} mm${cr?` · creep ${(cr*sh.s).toFixed(1).replace('.',',')} mm`:''} · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3);
             doc.text('dobra', xm+1, y0-o-L+1.5); }
         }
         bar.style.width='100%'; status.textContent='Gerando arquivo…';
-        await save(`${slugify(P.name)}-grafica-caderno.pdf`, doc.output('blob'));
+        await save(`${slugify(P.name)}-grafica-caderno${sufixo}.pdf`, doc.output('blob'));
       } else if((kind==='print'||kind==='digital') && pag.value==='lamina'){
         const {jsPDF}=(await needLib('jspdf',LIB.pdf)); const b= kind==='print'? Number(bleed.value):0; const mk= kind==='print'&&marks.checked? 9:0; const d= kind==='print'? Number(dpi.value):150;
         const sis= scope.value==='atual'?[ui.spread]:SPREADS.map((_,i)=>i); let doc=null;
@@ -2130,14 +2247,14 @@ function openExport(){
           status.textContent=`Renderizando lâmina ${si+1} (${i+1}/${sis.length})…`; bar.style.width=(i/sis.length*100)+'%';
           const cv=await renderSpreadCanvas(si,{bleed:b,dpi:d});
           if(!doc) doc=new jsPDF({unit:'mm',format:[W,Hh],orientation:ori,compress:true}); else doc.addPage([W,Hh],ori);
-          doc.addImage(cv.toDataURL('image/jpeg', kind==='print'?0.95:0.82),'JPEG',mk,mk,LW+2*b,PH+2*b,undefined,'FAST');
-          if(mk){ doc.setLineWidth(0.25); doc.setDrawColor(0); const x0=mk+b, y0=mk+b, x1=x0+LW, y1=y0+PH, o=b+1.5, L=5;
+          if(kind==='print') await addPrint(doc,cv,mk,mk,LW+2*b,PH+2*b); else doc.addImage(cv.toDataURL('image/jpeg',0.82),'JPEG',mk,mk,LW+2*b,PH+2*b,undefined,'FAST');
+          if(mk){ doc.setLineWidth(0.25); markColor(doc); const x0=mk+b, y0=mk+b, x1=x0+LW, y1=y0+PH, o=b+1.5, L=5;
             [[x0,y0,-1,-1],[x1,y0,1,-1],[x0,y1,-1,1],[x1,y1,1,1]].forEach(([x,y,sx,sy])=>{ doc.line(x+sx*o,y,x+sx*(o+L),y); doc.line(x,y+sy*o,x,y+sy*(o+L)); });
             if(n===2){ const xm=x0+PW; doc.setLineDashPattern([1,1],0); doc.line(xm,y0-o,xm,y0-o-L); doc.line(xm,y1+o,xm,y1+o+L); doc.setLineDashPattern([],0); }
             doc.setFontSize(6); doc.text(`${P.name} · Lâmina ${si+1}/${SPREADS.length} · ${LW}×${PH} mm · sangria ${b} mm · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3); }
         }
         bar.style.width='100%'; status.textContent='Gerando arquivo…';
-        await save(`${slugify(P.name)}-${kind==='print'?'grafica':'digital'}-laminas.pdf`, doc.output('blob'));
+        await save(`${slugify(P.name)}-${kind==='print'?'grafica':'digital'}-laminas${sufixo}.pdf`, doc.output('blob'));
       } else if((kind==='png'||kind==='jpeg') && P.pairing==='pares'){
         const JSZip=await needLib('JSZip',LIB.zip); const zip=new JSZip(); const type= kind==='png'?'image/png':'image/jpeg';
         const sis= scope.value==='atual'?[ui.spread]:SPREADS.map((_,i)=>i);
@@ -2150,13 +2267,13 @@ function openExport(){
         for(let i=0;i<list.length;i++){
           status.textContent=`Renderizando lâmina ${list[i]+1} (${i+1}/${list.length})…`; bar.style.width=(i/list.length*100)+'%';
           const cv=await renderPageCanvas(list[i],{bleed:b,dpi:d}); if(i) doc.addPage([W,Hh],'portrait');
-          doc.addImage(cv.toDataURL('image/jpeg', kind==='print'?0.95:0.82),'JPEG',mk,mk,PW+2*b,PH+2*b,undefined,'FAST');
-          if(mk){ doc.setLineWidth(0.25); doc.setDrawColor(0); const x0=mk+b, y0=mk+b, x1=x0+PW, y1=y0+PH, o=b+1.5, L=5;
+          if(kind==='print') await addPrint(doc,cv,mk,mk,PW+2*b,PH+2*b); else doc.addImage(cv.toDataURL('image/jpeg',0.82),'JPEG',mk,mk,PW+2*b,PH+2*b,undefined,'FAST');
+          if(mk){ doc.setLineWidth(0.25); markColor(doc); const x0=mk+b, y0=mk+b, x1=x0+PW, y1=y0+PH, o=b+1.5, L=5;
             [[x0,y0,-1,-1],[x1,y0,1,-1],[x0,y1,-1,1],[x1,y1,1,1]].forEach(([x,y,sx,sy])=>{ doc.line(x+sx*o,y,x+sx*(o+L),y); doc.line(x,y+sy*o,x,y+sy*(o+L)); });
             doc.setFontSize(6); doc.text(`${P.name} · Lâmina ${list[i]+1}/${P.pages.length} · ${PW}×${PH} mm · sangria ${b} mm · ${new Date().toLocaleDateString('pt-BR')}`, x0, Hh-3); }
         }
         bar.style.width='100%'; status.textContent='Gerando arquivo…';
-        await save(`${slugify(P.name)}-${kind==='print'?'grafica':'digital'}.pdf`, doc.output('blob'));
+        await save(`${slugify(P.name)}-${kind==='print'?'grafica':'digital'}${sufixo}.pdf`, doc.output('blob'));
       } else {
         const JSZip=await needLib('JSZip',LIB.zip); const zip=new JSZip(); const type= kind==='png'?'image/png':'image/jpeg';
         for(let i=0;i<list.length;i++){ status.textContent=`Renderizando lâmina ${list[i]+1} (${i+1}/${list.length})…`; bar.style.width=(i/list.length*100)+'%'; const cv=await renderPageCanvas(list[i],{dpi:150}); zip.file(`lamina-${String(list[i]+1).padStart(2,'0')}.${kind==='png'?'png':'jpg'}`, await toBlob(cv,type,0.9)); }
@@ -2171,14 +2288,14 @@ function openExport(){
   modal(P.pairing==='pares'?`Exportar ${SPREADS.length} lâminas · ${cm(2*PW)} × ${cm(PH)} cm`:`Exportar ${P.pages.length} páginas · ${pageLabel()}`, el('div',{},
     el('div',{class:'acts',style:{padding:'0 0 12px'}}, scope),
     el('div',{class:'cards'},
-      ecard('PDF para gráfica',`Lâmina inteira, página a página (${pageLabel()}) ou caderno cruzado já na ordem de dobra.`+' Com sangria e marcas para a gráfica refilar. Imagens em alta.', el('div',{style:{display:'grid',gap:'8px'}}, el('div',{class:'row2',style:{padding:0}}, F('Sangria',bleed), F('Resolução',dpi)), pagF, creepF, mapa, el('label',{class:'chk',style:{padding:0}},marks,'Marcas de corte, dobra e informações da página')), el('button',{class:'btn pri',onclick:()=>run('print')},'Gerar PDF para gráfica'),'main'),
+      ecard('PDF para gráfica',`Lâmina inteira, página a página (${pageLabel()}) ou caderno cruzado já na ordem de dobra.`+' Com sangria e marcas para a gráfica refilar. Imagens em alta.', el('div',{style:{display:'grid',gap:'8px'}}, el('div',{class:'row2',style:{padding:0}}, F('Sangria',bleed), F('Resolução',dpi)), el('div',{class:'row2',style:{padding:0}}, corF, tacF), pagF, creepF, mapa, el('label',{class:'chk',style:{padding:0}},marks,'Marcas de corte, dobra e informações da página')), el('button',{class:'btn pri',onclick:()=>run('print')},'Gerar PDF para gráfica'),'main'),
       ecard('PDF digital','Para mandar no WhatsApp, e-mail ou site. Sem sangria nem marcas, arquivo leve.', null, el('button',{class:'btn',onclick:()=>run('digital')},'Gerar PDF digital')),
       ecard('PNG','Um .zip com uma imagem por lâmina, fundo sólido, ideal para redes sociais.', null, el('button',{class:'btn',onclick:()=>run('png')},'Gerar PNG')),
       ecard('JPEG','Um .zip com uma imagem por lâmina, mais leve que o PNG para web e status.', null, el('button',{class:'btn',onclick:()=>run('jpeg')},'Gerar JPEG')),
       ecard('Projeto','Arquivo .json com ofertas, imagens e visual, para reabrir depois ou mandar para outro designer.', null, el('div',{style:{display:'grid',gap:'6px',marginTop:'auto'}}, el('button',{class:'btn',onclick:()=>save(`${slugify(P.name)}.json`, new Blob([projectJSON()],{type:'application/json'}))},'Salvar projeto'), el('button',{class:'btn ghost',onclick:()=>{ const f=$('#f-json'); f.value=''; f.onchange=async()=>{ try{ loadJSON(await f.files[0].text()); toast('Projeto aberto'); document.querySelector('.modal-bg')?.remove(); }catch(e){ toast('Esse arquivo não é um projeto do tabloide.'); } }; f.click(); }},'Abrir projeto .json'))),
     ),
     prog, status,
-    el('p',{class:'fine'},'Sangria: o fundo das bordas (marcadores laterais, rodapé, banners e cor da lâmina) é estendido além do corte, então não fica filete branco se a faca desviar. Mantenha textos e preços a pelo menos 5 mm da borda. O PDF sai em RGB; se a gráfica exigir CMYK, a conversão para o perfil pedido (ex.: FOGRA39 ou Coated GRACoL) entra na versão da plataforma.'),
+    el('p',{class:'fine'},'Sangria: o fundo das bordas (marcadores laterais, rodapé, banners e cor da lâmina) é estendido além do corte, então não fica filete branco se a faca desviar. Mantenha textos e preços a pelo menos 5 mm da borda. Em CMYK, preto, cinzas e textos escuros saem só no K (pretos até #222 viram K 100%), preto sobre cor sai sobreposto (overprint, sem filete branco se o registro da rotativa variar) e as cores respeitam o limite de tinta escolhido. A conversão é direta, sem o perfil ICC da gráfica: peça uma prova de cor antes da tiragem. O PDF digital, PNG e JPEG continuam em RGB.'),
   ));
 }
 const slugify=s=>norm(s).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'tabloide';
@@ -3043,7 +3160,7 @@ function inspInst(s, f){
 P = sampleProject(); instEnsure(); computeSpreads(); ui.spread=0; ddSeed(); commit(true);
 document.fonts.ready.then(()=>{ renderAll(); renderThumbs(true); });
 renderAll();
-try{ if(localStorage.getItem('soldamaq-tabloide')){ const t=toast('Há um projeto salvo neste navegador. ',9000); t.append(el('button',{class:'btn sm',onclick:()=>{ openSaved(); t.remove(); toast('Projeto salvo reaberto'); }},'Abrir salvo')); } }catch(e){}
+try{ if(localStorage.getItem('soldamaq-tabloide') && openSaved()) toast(`Reabri o último projeto salvo: <b>${esc(P.name||'sem nome')}</b>. Para começar outro, use Novo.`,6000); }catch(e){}
 </script>
 
 <script src="../config.js"></script>
